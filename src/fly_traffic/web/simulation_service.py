@@ -62,6 +62,7 @@ class SimulationService:
         self._env = TrafficIntersectionEnv(
             config=self.env_config,
             profile_name=self._scenario_name,
+            continuous_mode=True,
         )
         self._env.set_lane_capacity_limit(self.env_config.hard_max_lane_capacity)
         self._current_obs, _ = self._env.reset(seed=42)
@@ -152,6 +153,16 @@ class SimulationService:
         """Update intergreen ALL_RED clearance duration (steps) on the live environment."""
         with self._lock:
             self._env.set_safety_buffer(all_red_steps)
+            return self._build_frame_payload_unlocked()
+
+    def set_continuous_mode(self, enabled: bool) -> dict[str, Any]:
+        """Toggle endless simulation mode vs fixed max_steps episode truncation."""
+        with self._lock:
+            is_enabled = bool(enabled)
+            self._env.set_continuous_mode(is_enabled)
+            if is_enabled:
+                self._pending_episode_reset = False
+                self._episode_just_ended = False
             return self._build_frame_payload_unlocked()
 
     def spawn_vehicles(self, lane_id: int, count: int) -> dict[str, Any]:

@@ -104,6 +104,21 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
             assert buffer_data["snapshot"]["all_red_steps"] == 0
             assert "total_collisions" in buffer_data["snapshot"]
 
+            assert buffer_data["snapshot"]["continuous_mode"] is True
+            resp_finite = await client.post(
+                "/api/simulation/control",
+                json={"action": "set_continuous_mode", "enabled": False},
+            )
+            assert resp_finite.status == 200
+            assert (await resp_finite.json())["snapshot"]["continuous_mode"] is False
+
+            resp_cont = await client.post(
+                "/api/simulation/control",
+                json={"action": "set_continuous_mode", "enabled": True},
+            )
+            assert resp_cont.status == 200
+            assert (await resp_cont.json())["snapshot"]["continuous_mode"] is True
+
             # 4. Simulation WebSocket receives frame
             async with client.ws_connect("/ws/simulation") as sim_ws:
                 msg = await sim_ws.receive_json()

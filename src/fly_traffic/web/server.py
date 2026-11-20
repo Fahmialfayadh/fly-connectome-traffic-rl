@@ -263,6 +263,10 @@ class TrafficLabServer:
                 "all_red_steps",
             )
             return self.simulation_service.set_safety_buffer(all_red_steps)
+        if action == "set_continuous_mode":
+            return self.simulation_service.set_continuous_mode(
+                bool(body.get("enabled", True))
+            )
         if action == "spawn_vehicles":
             lane_id = self._parse_required_int(body.get("lane_id"), "lane_id")
             raw_count = body.get("count", 1)

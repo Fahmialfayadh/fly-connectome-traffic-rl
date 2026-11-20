@@ -33,11 +33,6 @@
       </div>
     </div>
     <div class="header-status-group">
-      <div id="global-mode-pill" class="mode-pill mode-inference" aria-live="polite">
-        <span class="mode-dot" aria-hidden="true"></span>
-        <span id="global-mode-text">MODE: INFERENCE | Connecting...</span>
-      </div>
-
       <nav class="primary-tabs" role="tablist" aria-label="Lab Workspace Views">
         <button
           id="tab-btn-simulation"
@@ -84,22 +79,70 @@
       role="tabpanel"
       aria-labelledby="tab-btn-simulation"
     >
-      <div class="provenance-strip">
-        <div class="provenance-item">
-          <span class="provenance-label">Active Mode</span>
-          <strong id="sim-mode-value" class="mono-value">INFERENCE (Checkpoint Loaded)</strong>
+      <div class="sim-control-bar">
+        <div class="control-block control-block-model">
+          <label for="select-agent" class="control-bar-label">Model / Controller</label>
+          <select id="select-agent" class="control-select control-select-compact">
+            <option value="fly">Fly Connectome PPO</option>
+            <option value="gru">PPO-GRU</option>
+            <option value="mlp">PPO-MLP</option>
+            <option value="fixed_timer">Fixed Timer (Rule-Based)</option>
+          </select>
         </div>
-        <div class="provenance-item">
-          <span class="provenance-label">Controller &amp; Weights</span>
-          <strong id="sim-provenance-value" class="mono-value">Loading...</strong>
+
+        <div class="control-block">
+          <span class="control-bar-label">Traffic Profile</span>
+          <div class="segmented-control" role="group" aria-label="Traffic Profile">
+            <button class="seg-btn" type="button" data-scenario="normal" aria-pressed="false">Normal</button>
+            <button class="seg-btn" type="button" data-scenario="asymmetric" aria-pressed="false">Asymmetric</button>
+            <button class="seg-btn is-active" type="button" data-scenario="rush_hour" aria-pressed="true">Rush Hour</button>
+          </div>
         </div>
-        <div class="provenance-item">
-          <span class="provenance-label">Traffic Regime</span>
-          <strong id="sim-regime-value" class="mono-value">rush_hour | Step 0/300</strong>
+
+        <div class="control-block">
+          <span class="control-bar-label">Signal Buffer</span>
+          <div class="segmented-control" role="group" aria-label="Safety Buffer">
+            <button class="seg-btn is-active" type="button" data-safety-buffer="1" aria-pressed="true">All-Red</button>
+            <button class="seg-btn" type="button" data-safety-buffer="0" aria-pressed="false">Yellow Only</button>
+          </div>
         </div>
-        <div class="provenance-item" data-tooltip="Fase sinyal lampu lalu lintas aktif yang sedang memegang hak jalan (Right-of-Way)." data-tooltip-pos="bottom">
-          <span class="provenance-label tooltip-trigger">Signal State</span>
-          <strong id="sim-signal-value" class="mono-value">NS Straight (GREEN)</strong>
+
+        <div class="control-block">
+          <span class="control-bar-label">Horizon</span>
+          <div class="segmented-control" role="group" aria-label="Simulation Horizon">
+            <button class="seg-btn is-active" type="button" data-continuous-mode="1" aria-pressed="true">Continuous</button>
+            <button class="seg-btn" type="button" data-continuous-mode="0" aria-pressed="false">300-Step</button>
+          </div>
+        </div>
+
+        <div class="control-block control-block-speed">
+          <div class="control-speed-head">
+            <label for="slider-sim-speed" class="control-bar-label">Speed</label>
+            <span id="label-sim-speed" class="mono-value speed-readout">2.0/s</span>
+          </div>
+          <input
+            id="slider-sim-speed"
+            type="range"
+            min="0.5"
+            max="8.0"
+            step="0.5"
+            value="2.0"
+            aria-label="Simulation Speed"
+          >
+        </div>
+
+        <div class="control-telemetry-group">
+          <div class="telemetry-pill">
+            <span class="control-bar-label">Step</span>
+            <strong id="sim-regime-value" class="mono-value">0 / 300</strong>
+          </div>
+          <div class="telemetry-pill">
+            <span class="control-bar-label">Signal</span>
+            <strong id="sim-signal-value" class="mono-value signal-badge">
+              <span id="sim-signal-dot" class="signal-dot signal-dot-green" aria-hidden="true"></span>
+              <span id="sim-signal-text">NS Straight · GREEN</span>
+            </strong>
+          </div>
         </div>
       </div>
 
@@ -216,50 +259,6 @@
               <span id="metric-collisions" class="metric-number mono-value">0</span>
             </div>
           </div>
-
-          <div class="sim-selector-row">
-            <div class="field-group">
-              <label for="select-agent" class="tooltip-trigger" data-tooltip="Pilihan arsitektur kontroler lampu lalu lintas (Fly Connectome, GRU, MLP, atau Fixed Timer)." data-tooltip-pos="top">Active Model / Controller</label>
-              <select id="select-agent" class="control-select">
-                <option value="fly">Fly Connectome PPO</option>
-                <option value="gru">PPO-GRU</option>
-                <option value="mlp">PPO-MLP</option>
-                <option value="fixed_timer">Fixed Timer (Rule-Based)</option>
-              </select>
-            </div>
-
-            <div class="field-group">
-              <label for="select-scenario" class="tooltip-trigger" data-tooltip="Profil pola kedatangan kendaraan: normal (seimbang), asymmetric (dominan NS), rush_hour (lonjakan dinamis)." data-tooltip-pos="top">Traffic Profile</label>
-              <select id="select-scenario" class="control-select">
-                <option value="rush_hour">rush_hour (Dynamic Surge)</option>
-                <option value="asymmetric">asymmetric (Heavy NS)</option>
-                <option value="normal">normal (Balanced)</option>
-              </select>
-            </div>
-
-            <div class="field-group">
-              <label for="select-safety-buffer" class="tooltip-trigger" data-tooltip="Penyisipan fase All-Red (kuning + all-red) untuk proteksi pengosongan persimpangan sebelum fase berikutnya." data-tooltip-pos="top">Safety Buffer</label>
-              <select id="select-safety-buffer" class="control-select">
-                <option value="1">Yellow + All-Red (Protected)</option>
-                <option value="0">Yellow Only (High-Risk Stress)</option>
-              </select>
-            </div>
-
-            <div class="field-group">
-              <label for="slider-sim-speed" class="tooltip-trigger" data-tooltip="Kecepatan eksekusi langkah simulasi lingkungan per detik." data-tooltip-pos="top">
-                Sim Speed: <span id="label-sim-speed" class="mono-value">2.0 steps/s</span>
-              </label>
-              <input
-                id="slider-sim-speed"
-                type="range"
-                min="0.5"
-                max="8.0"
-                step="0.5"
-                value="2.0"
-                aria-label="Simulation Speed"
-              >
-            </div>
-          </div>
         </div>
 
         <!-- RIGHT COLUMN: 3D FLY BRAIN / 2D CONNECTOME, POLICY OUTPUT, PHARMACOLOGY -->
@@ -352,32 +351,56 @@
             </div>
 
             <div class="brain3d-toolbar">
-              <div class="brain3d-control-group" role="group" aria-label="Neuron 3D Layout">
-                <button class="seg-btn is-active" type="button" data-brain3d-layout="neuropil" aria-pressed="true">Neuropil</button>
-                <button class="seg-btn" type="button" data-brain3d-layout="soma" aria-pressed="false">Soma</button>
+              <div class="brain3d-toolbar-modes">
+                <div class="brain3d-control-labeled">
+                  <span class="toolbar-label tooltip-trigger" data-tooltip="Filter visibilitas neuron berdasarkan besar aktivasi |h_t| saat ini." data-tooltip-pos="top">Activity</span>
+                  <div class="brain3d-control-group" role="group" aria-label="Activity Filter">
+                    <button class="seg-btn is-active" type="button" data-brain3d-filter="active" aria-pressed="true" data-tooltip="Hanya menyorot neuron yang sedang memiliki aktivasi |h_t| kuat; neuron diam diredupkan." data-tooltip-pos="top">Active</button>
+                    <button class="seg-btn" type="button" data-brain3d-filter="all" aria-pressed="false" data-tooltip="Menampilkan seluruh 2.500 neuron termasuk yang sedang mendekati aktivasi netral." data-tooltip-pos="top">All</button>
+                  </div>
+                </div>
+
+                <div class="brain3d-control-labeled">
+                  <span class="toolbar-label tooltip-trigger" data-tooltip="Mode pemetaan posisi 3D neuron di dalam anatomi otak Drosophila." data-tooltip-pos="top">Position</span>
+                  <div class="brain3d-control-group" role="group" aria-label="Neuron 3D Layout">
+                    <button class="seg-btn is-active" type="button" data-brain3d-layout="neuropil" aria-pressed="true" data-tooltip="Menempatkan titik di dalam volume neuropil dominannya (wilayah sinaptik tempat koneksi berlangsung)." data-tooltip-pos="top">Neuropil</button>
+                    <button class="seg-btn" type="button" data-brain3d-layout="soma" aria-pressed="false" data-tooltip="Memindahkan titik ke koordinat badan sel (soma) asli neuron pada ruang FlyWire FAFB14.1." data-tooltip-pos="top">Soma</button>
+                  </div>
+                </div>
+
+                <div class="brain3d-control-labeled">
+                  <span class="toolbar-label tooltip-trigger" data-tooltip="Fokus wilayah sirkuit otak yang ditampilkan pada model 3D." data-tooltip-pos="top">Circuit</span>
+                  <div class="brain3d-control-group" role="group" aria-label="Circuit Region Focus">
+                    <button class="seg-btn is-active" type="button" data-brain3d-focus="-1" aria-pressed="true" data-tooltip="Menampilkan gabungan kedua sirkuit: Central Complex (1.800) dan Mushroom Body (700)." data-tooltip-pos="left">All</button>
+                    <button class="seg-btn" type="button" data-brain3d-focus="0" aria-pressed="false" data-tooltip="Fokus ke Central Complex (PB, FB, EB, NO): sirkuit orientasi arah dan pemilihan aksi." data-tooltip-pos="left">CX</button>
+                    <button class="seg-btn" type="button" data-brain3d-focus="1" aria-pressed="false" data-tooltip="Fokus ke Mushroom Body (CA, PED, ML, VL): sirkuit memori asosiatif dan konteks." data-tooltip-pos="left">MB</button>
+                  </div>
+                </div>
               </div>
 
-              <div class="brain3d-control-group" role="group" aria-label="Circuit Region Focus">
-                <button class="seg-btn is-active" type="button" data-brain3d-focus="-1" aria-pressed="true">All</button>
-                <button class="seg-btn" type="button" data-brain3d-focus="0" aria-pressed="false">CX</button>
-                <button class="seg-btn" type="button" data-brain3d-focus="1" aria-pressed="false">MB</button>
-              </div>
+              <div class="brain3d-toolbar-actions">
+                <div class="brain3d-action-cluster">
+                  <span class="toolbar-label">View</span>
+                  <div class="view-preset-group" role="group" aria-label="Camera View">
+                    <button class="view-btn" type="button" data-brain3d-view="front" data-tooltip="Kamera tampak depan (anterior) menghadap wajah otak." data-tooltip-pos="top">Front</button>
+                    <button class="view-btn" type="button" data-brain3d-view="top" data-tooltip="Kamera tampak atas (dorsal)." data-tooltip-pos="top">Top</button>
+                    <button class="view-btn" type="button" data-brain3d-view="side" data-tooltip="Kamera tampak samping (lateral)." data-tooltip-pos="top">Side</button>
+                  </div>
+                </div>
 
-              <div class="brain3d-control-group" role="group" aria-label="Camera View">
-                <button class="seg-btn" type="button" data-brain3d-view="front">Front</button>
-                <button class="seg-btn" type="button" data-brain3d-view="top">Top</button>
-                <button class="seg-btn" type="button" data-brain3d-view="side">Side</button>
-              </div>
-
-              <div class="brain3d-control-group" role="group" aria-label="3D Layers">
-                <button id="btn-brain3d-edges" class="seg-btn is-active" type="button" aria-pressed="true">Synapses</button>
-                <button id="btn-brain3d-labels" class="seg-btn is-active" type="button" aria-pressed="true">Labels</button>
-                <button id="btn-brain3d-rotate" class="seg-btn is-active" type="button" aria-pressed="true">Rotate</button>
+                <div class="brain3d-action-cluster">
+                  <span class="toolbar-label">Layers</span>
+                  <div class="toggle-pill-group" role="group" aria-label="3D Layers">
+                    <button id="btn-brain3d-edges" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Tampilkan pulsa aliran pada 3.000 sinapsis terkuat (oranye eksitatori, biru inhibitori)." data-tooltip-pos="top"><span class="toggle-dot" aria-hidden="true"></span>Synapses</button>
+                    <button id="btn-brain3d-labels" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Tampilkan atau sembunyikan label nama wilayah neuropil pada kanvas 3D." data-tooltip-pos="left"><span class="toggle-dot" aria-hidden="true"></span>Labels</button>
+                    <button id="btn-brain3d-rotate" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Aktifkan atau hentikan rotasi kamera otomatis." data-tooltip-pos="left"><span class="toggle-dot" aria-hidden="true"></span>Rotate</button>
+                  </div>
+                </div>
               </div>
             </div>
 
             <details class="brain3d-regions-disclosure" open>
-              <summary>Mean |h_t| by Neuropil (CX &amp; MB)</summary>
+              <summary><span class="tooltip-trigger" data-tooltip="Rata-rata magnitudo aktivasi |h_t| neuron aktif per wilayah neuropil pada Central Complex (CX) dan Mushroom Body (MB)." data-tooltip-pos="top">Mean |h_t| by Neuropil (CX &amp; MB)</span></summary>
               <div class="brain3d-regions" data-brain3d="regions"></div>
             </details>
           </div>

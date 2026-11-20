@@ -108,10 +108,12 @@ class TrafficIntersectionEnv(gym.Env):
         self,
         config: TrafficEnvConfig | None = None,
         profile_name: str | None = None,
+        continuous_mode: bool = False,
     ) -> None:
         super().__init__()
         self.config = config or TrafficEnvConfig()
         self.profile_name = profile_name or self.config.profile_name
+        self._continuous_mode: bool = bool(continuous_mode)
 
         self.observation_space = spaces.Box(
             low=0.0,
@@ -242,7 +244,11 @@ class TrafficIntersectionEnv(gym.Env):
         )
         self._episode_reward += reward
         terminated = False
-        truncated = self._current_step >= self.config.max_steps
+        truncated = (
+            False
+            if self._continuous_mode
+            else (self._current_step >= self.config.max_steps)
+        )
 
         obs = self._build_observation()
         info = self._build_info(
@@ -265,6 +271,10 @@ class TrafficIntersectionEnv(gym.Env):
         clamped_steps = max(0, int(all_red_steps))
         self._all_red_steps = clamped_steps
         self._signal.all_red_steps = clamped_steps
+
+    def set_continuous_mode(self, enabled: bool) -> None:
+        """Enable or disable endless stepping without max_steps episode truncation."""
+        self._continuous_mode = bool(enabled)
 
     def set_lane_capacity_limit(self, capacity: int) -> int:
         """Clamp and apply per-lane queue capacity across all 8 lanes."""
@@ -331,6 +341,7 @@ class TrafficIntersectionEnv(gym.Env):
         return {
             "step": self._current_step,
             "max_steps": self.config.max_steps,
+            "continuous_mode": bool(self._continuous_mode),
             "profile_name": self._active_profile.name,
             "active_phase": int(self._last_executed_phase),
             "phase_label": PHASE_LABELS[self._last_executed_phase],

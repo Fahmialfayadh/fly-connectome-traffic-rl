@@ -117,11 +117,13 @@ class TrafficProfileFactory:
         ) * rate_scale
 
         def arrival_fn(step: int, max_steps: int) -> np.ndarray:
-            first_cut = max(1, max_steps // 3)
-            second_cut = max(first_cut + 1, (2 * max_steps) // 3)
-            if step < first_cut:
+            cycle_len = max(3, max_steps)
+            cycle_step = step % cycle_len
+            first_cut = max(1, cycle_len // 3)
+            second_cut = max(first_cut + 1, (2 * cycle_len) // 3)
+            if cycle_step < first_cut:
                 return regime_moderate.copy()
-            if step < second_cut:
+            if cycle_step < second_cut:
                 return regime_ns_surge.copy()
             return regime_ew_surge.copy()
 

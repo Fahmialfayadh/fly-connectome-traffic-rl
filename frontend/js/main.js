@@ -28,8 +28,6 @@ class TrafficLabApp {
     this.trainingStudio = new TrainingStudioView();
     this.benchmarkView = new BenchmarkInspectorView();
 
-    this.modePill = document.getElementById('global-mode-pill');
-    this.modeText = document.getElementById('global-mode-text');
     this.activeTab = 'simulation';
     this.isTrainingActive = false;
     this.latestSimFrame = null;
@@ -122,6 +120,21 @@ class TrafficLabApp {
     if (btn2d) btn2d.addEventListener('click', () => this._setConnectomeViewMode('2d'));
 
     if (!this.brain3dRoot) return;
+
+    const filterButtons = Array.from(
+      this.brain3dRoot.querySelectorAll('[data-brain3d-filter]')
+    );
+    filterButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!this.brain3dRenderer) return;
+        this.brain3dRenderer.setFilterMode(btn.dataset.brain3dFilter);
+        filterButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+      });
+    });
 
     const layoutButtons = Array.from(
       this.brain3dRoot.querySelectorAll('[data-brain3d-layout]')
@@ -277,8 +290,9 @@ class TrafficLabApp {
     const stepBtn = document.getElementById('btn-sim-step');
     const resetBtn = document.getElementById('btn-sim-reset');
     const agentSelect = document.getElementById('select-agent');
-    const scenarioSelect = document.getElementById('select-scenario');
-    const safetyBufferSelect = document.getElementById('select-safety-buffer');
+    const scenarioButtons = Array.from(document.querySelectorAll('[data-scenario]'));
+    const safetyBufferButtons = Array.from(document.querySelectorAll('[data-safety-buffer]'));
+    const continuousButtons = Array.from(document.querySelectorAll('[data-continuous-mode]'));
     const speedSlider = document.getElementById('slider-sim-speed');
 
     const gExcSlider = document.getElementById('slider-g-exc');
@@ -390,20 +404,45 @@ class TrafficLabApp {
       this._sendSimCommand({ action: 'set_agent', agent_key: agentSelect.value });
     });
 
-    scenarioSelect.addEventListener('change', () => {
-      this._sendSimCommand({ action: 'set_scenario', scenario: scenarioSelect.value });
+    scenarioButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const scenario = btn.dataset.scenario;
+        scenarioButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_scenario', scenario });
+      });
     });
 
-    safetyBufferSelect.addEventListener('change', () => {
-      this._sendSimCommand({
-        action: 'set_safety_buffer',
-        all_red_steps: Number(safetyBufferSelect.value),
+    safetyBufferButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const allRedSteps = Number(btn.dataset.safetyBuffer);
+        safetyBufferButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_safety_buffer', all_red_steps: allRedSteps });
+      });
+    });
+
+    continuousButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const enabled = btn.dataset.continuousMode === '1';
+        continuousButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_continuous_mode', enabled });
       });
     });
 
     speedSlider.addEventListener('input', () => {
       const val = Number(speedSlider.value);
-      document.getElementById('label-sim-speed').textContent = `${val.toFixed(1)} steps/s`;
+      document.getElementById('label-sim-speed').textContent = `${val.toFixed(1)}/s`;
       this._sendSimCommand({ action: 'set_speed', steps_per_second: val });
     });
 
@@ -451,7 +490,6 @@ class TrafficLabApp {
       if (response.ok) {
         this.isTrainingActive = true;
         this.trainingStudio.applyTrainingSnapshot(data);
-        this._refreshGlobalModePill();
       } else if (data.error) {
         document.getElementById('train-status-label').textContent = data.error;
       }
@@ -546,7 +584,6 @@ class TrafficLabApp {
         data.training.status === 'running' || data.training.status === 'stopping';
       this.trainingStudio.applyTrainingSnapshot(data.training);
     }
-    this._refreshGlobalModePill();
   }
 
   _connectSimulationSocket() {
@@ -595,7 +632,6 @@ class TrafficLabApp {
         this.trainingStudio.applyTrainingSnapshot(payload);
         this._fetchOverview();
       }
-      this._refreshGlobalModePill(payload.metrics);
     };
 
     this.trainSocket.onclose = () => {
@@ -636,17 +672,30 @@ class TrafficLabApp {
       this.brain3dRenderer.applyFrame(frame);
     }
 
-    // Header & Provenance strip
-    const trainedStepsText = prov.trained_timesteps
-      ? `${Number(prov.trained_timesteps).toLocaleString()} steps`
-      : 'no learned weights';
-    const provPath = prov.relative_path || prov.checkpoint_file || '-';
-    document.getElementById('sim-mode-value').textContent = frame.running
-      ? 'INFERENCE · Live Simulation Running'
-      : 'INFERENCE · Paused';
-    document.getElementById('sim-provenance-value').textContent = `${frame.agent_name} · ${provPath} (${trainedStepsText})`;
-    document.getElementById('sim-regime-value').textContent = `${snapshot.profile_name} | Step ${snapshot.step}/${snapshot.max_steps}`;
-    document.getElementById('sim-signal-value').textContent = `${snapshot.phase_label} (${snapshot.signal_stage})`;
+    // Top telemetry strip
+    const isContinuous = Boolean(snapshot.continuous_mode);
+    const regimeEl = document.getElementById('sim-regime-value');
+    if (regimeEl) {
+      regimeEl.textContent = isContinuous
+        ? `${snapshot.step ?? 0}`
+        : `${snapshot.step ?? 0} / ${snapshot.max_steps ?? 300}`;
+    }
+    const signalTextEl = document.getElementById('sim-signal-text');
+    const signalDotEl = document.getElementById('sim-signal-dot');
+    const stageStr = String(snapshot.signal_stage || 'GREEN').toUpperCase();
+    if (signalTextEl) {
+      signalTextEl.textContent = `${snapshot.phase_label || '-'} · ${stageStr}`;
+    }
+    if (signalDotEl) {
+      signalDotEl.classList.remove('signal-dot-green', 'signal-dot-amber', 'signal-dot-red');
+      if (stageStr.includes('YELLOW') || stageStr.includes('AMBER')) {
+        signalDotEl.classList.add('signal-dot-amber');
+      } else if (stageStr.includes('RED')) {
+        signalDotEl.classList.add('signal-dot-red');
+      } else {
+        signalDotEl.classList.add('signal-dot-green');
+      }
+    }
 
     // Sync controls
     document.getElementById('btn-sim-play-pause').textContent = frame.running ? 'Pause' : 'Play';
@@ -665,14 +714,29 @@ class TrafficLabApp {
       this.lastInventoryAgentKey = frame.agent_key;
       this.trainingStudio.renderInventory(this.checkpointsInventory, frame.agent_key);
     }
-    document.getElementById('select-scenario').value = frame.scenario;
+    document.querySelectorAll('[data-scenario]').forEach((btn) => {
+      const active = btn.dataset.scenario === frame.scenario;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
     if (snapshot.all_red_steps !== undefined && snapshot.all_red_steps !== null) {
-      document.getElementById('select-safety-buffer').value = String(
-        Number(snapshot.all_red_steps) > 0 ? 1 : 0
-      );
+      const targetBuffer = Number(snapshot.all_red_steps) > 0 ? '1' : '0';
+      document.querySelectorAll('[data-safety-buffer]').forEach((btn) => {
+        const active = btn.dataset.safetyBuffer === targetBuffer;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+    if (snapshot.continuous_mode !== undefined) {
+      const targetContinuous = snapshot.continuous_mode ? '1' : '0';
+      document.querySelectorAll('[data-continuous-mode]').forEach((btn) => {
+        const active = btn.dataset.continuousMode === targetContinuous;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
     }
     document.getElementById('slider-sim-speed').value = String(frame.steps_per_second);
-    document.getElementById('label-sim-speed').textContent = `${Number(frame.steps_per_second).toFixed(1)} steps/s`;
+    document.getElementById('label-sim-speed').textContent = `${Number(frame.steps_per_second).toFixed(1)}/s`;
 
     // Metrics strip
     const totalQueue = Number(snapshot.total_queue || 0);
@@ -755,32 +819,6 @@ class TrafficLabApp {
     ];
     for (const elementId of flyOnlyIds) {
       document.getElementById(elementId).disabled = !brain.is_fly_active;
-    }
-
-    this._refreshGlobalModePill();
-  }
-
-  _refreshGlobalModePill(trainingMetrics = null) {
-    if (this.isTrainingActive) {
-      this.modePill.classList.remove('mode-inference');
-      this.modePill.classList.add('mode-training');
-      if (trainingMetrics) {
-        this.modeText.textContent = `MODE: TRAINING | Update ${Math.round(trainingMetrics.update)}/${Math.round(trainingMetrics.total_updates)}`;
-      } else {
-        this.modeText.textContent = 'MODE: TRAINING | Running PPO on CPU';
-      }
-      return;
-    }
-
-    this.modePill.classList.remove('mode-training');
-    this.modePill.classList.add('mode-inference');
-    if (this.latestSimFrame) {
-      const prov = this.latestSimFrame.checkpoint_provenance || {};
-      const provPath =
-        prov.relative_path || prov.checkpoint_file || this.latestSimFrame.agent_name;
-      this.modeText.textContent = `MODE: INFERENCE | ${provPath}`;
-    } else {
-      this.modeText.textContent = 'MODE: INFERENCE | Ready';
     }
   }
 }

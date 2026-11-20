@@ -370,3 +370,32 @@ def test_collision_pairs_respect_geometric_conflict_matrix_and_snapshot_stages()
     assert green_snapshot["active_phase"] == int(SignalPhase.EW_STRAIGHT)
     assert green_snapshot["green_lanes"] == (4, 6)
     assert green_snapshot["active_straggler_lanes"] == []
+
+
+def test_continuous_mode_runs_past_max_steps_and_cycles_rush_hour() -> None:
+    """Verify continuous_mode disables truncation and wraps rush_hour regimes cyclically."""
+    env = TrafficIntersectionEnv(
+        TrafficEnvConfig(max_steps=9, profile_name="rush_hour"),
+        continuous_mode=True,
+    )
+    env.reset(seed=12)
+
+    for _ in range(15):
+        _, _, terminated, truncated, info = env.step(int(SignalPhase.NS_STRAIGHT))
+        assert not terminated
+        assert not truncated
+        assert info["step"] <= 15
+
+    snap = env.get_render_snapshot()
+    assert snap["continuous_mode"] is True
+    assert snap["step"] == 15
+
+    # rush_hour arrival rate at step 15 should match step (15 % 9 = 6 -> EW surge)
+    rates_at_6 = env._active_profile.sample_rates(6, 9)
+    rates_at_15 = env._active_profile.sample_rates(15, 9)
+    assert np.allclose(rates_at_6, rates_at_15)
+
+    # Disabling continuous_mode when past max_steps truncates on the next step
+    env.set_continuous_mode(False)
+    _, _, _, truncated_after, _ = env.step(int(SignalPhase.NS_STRAIGHT))
+    assert truncated_after is True
