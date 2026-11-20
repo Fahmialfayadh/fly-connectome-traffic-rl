@@ -1,0 +1,99 @@
+/* Apple Monochrome Design Tokens (OKLCH)
+ * Inspired by Apple Human Interface Guidelines / macOS Pro Workstation.
+ * Minimalist, refined monochrome palette with high legibility and subtle depth.
+ */
+
+:root {
+  /* Surfaces - Apple System Grays (Light Workstation) */
+  --bg-canvas: oklch(0.968 0.002 260);    /* #F5F5F7 Apple System Gray 6 */
+  --bg-surface: oklch(1.000 0.000 0);      /* #FFFFFF Pure Apple Card Surface */
+  --bg-elevated: oklch(0.938 0.003 260);   /* #EBEBED Apple System Gray 5 Segment Tray */
+  --bg-hover: oklch(0.912 0.004 260);      /* #E0E0E5 Subtle Hover */
+  --bg-active: oklch(0.880 0.004 260);     /* #D6D6DC Pressed State */
+
+  /* Tooltip surface - Apple Floating Dark Pill */
+  --bg-tooltip: oklch(0.185 0.004 260);    /* #1D1D1F Apple Midnight Ink */
+  --ink-tooltip: oklch(0.975 0.002 260);   /* #F5F5F7 Clean White */
+  --border-tooltip: oklch(0.320 0.006 260);
+
+  /* Hairlines and structural borders */
+  --border-subtle: oklch(0.915 0.003 260); /* Apple hairline divider */
+  --border-medium: oklch(0.850 0.004 260); /* Apple control perimeter */
+  --border-strong: oklch(0.680 0.006 260); /* Apple active boundary */
+  --border-focus: oklch(0.185 0.004 260);  /* Apple focus ring */
+
+  /* Typography colors - Apple SF Pro contrast hierarchy */
+  --ink-primary: oklch(0.185 0.004 260);   /* #1D1D1F Primary Charcoal */
+  --ink-secondary: oklch(0.485 0.006 260); /* #6E6E73 Secondary SF Gray */
+  --ink-muted: oklch(0.650 0.005 260);     /* #8E8E93 Tertiary Muted */
+  --ink-on-fill: oklch(0.995 0.000 0);     /* #FFFFFF White on Solid Black */
+
+  /* Brand & Primary Actions (Apple Monochrome Solid Carbon) */
+  --color-primary: oklch(0.185 0.004 260);        /* #1D1D1F Solid Apple Carbon */
+  --color-primary-hover: oklch(0.280 0.005 260);  /* #2C2C2E Graphite Hover */
+  --color-primary-active: oklch(0.120 0.002 260); /* #0C0C0E Deep Black */
+  --color-primary-tint: oklch(0.940 0.003 260);   /* Soft Silver Tint */
+  --color-primary-ring: oklch(0.185 0.004 260 / 0.12);
+
+  /* Secondary Actions (Apple Space Gray / Dark Titanium) */
+  --color-accent: oklch(0.360 0.005 260);         /* #48484A Apple Space Gray */
+  --color-accent-hover: oklch(0.300 0.005 260);   /* #3A3A3C */
+  --color-accent-active: oklch(0.240 0.004 260);  /* #2C2C2E */
+  --color-accent-tint: oklch(0.945 0.003 260);    /* #F0F0F2 */
+  --color-accent-ring: oklch(0.360 0.005 260 / 0.14);
+
+  /* Semantic Traffic Signals (Apple System Tones for Safety Verification) */
+  --signal-green: oklch(0.680 0.170 142);         /* Apple System Green #28CD41 */
+  --signal-green-tint: oklch(0.965 0.025 142);
+  --signal-green-border: oklch(0.820 0.080 142);
+
+  --signal-amber: oklch(0.740 0.160 68);          /* Apple System Amber #FF9500 */
+  --signal-amber-tint: oklch(0.970 0.030 68);
+  --signal-amber-border: oklch(0.850 0.080 68);
+
+  --signal-red: oklch(0.620 0.210 25);            /* Apple System Red #FF3B30 */
+  --signal-red-tint: oklch(0.960 0.030 25);
+  --signal-red-border: oklch(0.800 0.100 25);
+
+  /* Semantic Lane Swatches (Visual clarity for straight vs turn movements) */
+  --swatch-straight: oklch(0.580 0.180 245);      /* Apple System Blue #007AFF */
+  --swatch-turn: oklch(0.680 0.180 50);           /* Apple System Amber/Orange #FF9500 */
+
+  /* Data Visualization Agent Palette (Benchmark & Multi-Agent Telemetry) */
+  --agent-fly: oklch(0.680 0.170 142);            /* Apple System Green #34C759 */
+  --agent-mlp: oklch(0.580 0.180 245);            /* Apple System Blue #007AFF */
+  --agent-gru: oklch(0.620 0.180 300);            /* Apple System Purple #AF52DE */
+  --agent-timer: oklch(0.600 0.010 260);          /* Apple System Slate #8E8E93 */
+
+  /* Multi-layer Apple Diffuse Shadows */
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 0.5px 1px 0 rgba(0, 0, 0, 0.02);
+  --shadow-card: 0 2px 6px -1px rgba(0, 0, 0, 0.05), 0 1px 3px -1px rgba(0, 0, 0, 0.03);
+  --shadow-elevated: 0 4px 14px -3px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-segmented: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 0.5px 1px 0 rgba(0, 0, 0, 0.04);
+  --shadow-tooltip: 0 6px 18px -2px rgba(0, 0, 0, 0.22), 0 2px 6px -1px rgba(0, 0, 0, 0.12);
+
+  /* Apple Smooth Motion */
+  --transition-fast: 120ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 300ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Fonts (Apple SF Pro System Fallback) */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Spacing Scale (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* Apple Radii (Continuous Squircle Feeling, Cards max 12px) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+}

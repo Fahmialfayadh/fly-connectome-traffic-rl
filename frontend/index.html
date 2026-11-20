@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drosophila Connectome Traffic Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/layout.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/three.module.min.js",
+        "three/addons/": "/vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-titles">
+        <h1>Traffic Control with Fly Brain</h1>
+        <p class="header-subtitle">
+          FAFB v783 Sparse Recurrent Policy Control &amp; In-Silico Neuropharmacology
+        </p>
+      </div>
+    </div>
+    <div class="header-status-group">
+      <div id="global-mode-pill" class="mode-pill mode-inference" aria-live="polite">
+        <span class="mode-dot" aria-hidden="true"></span>
+        <span id="global-mode-text">MODE: INFERENCE | Connecting...</span>
+      </div>
+
+      <nav class="primary-tabs" role="tablist" aria-label="Lab Workspace Views">
+        <button
+          id="tab-btn-simulation"
+          class="tab-button is-active"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-simulation"
+          data-tab="simulation"
+          tabindex="0"
+        >
+          Live Simulation
+        </button>
+        <button
+          id="tab-btn-training"
+          class="tab-button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-training"
+          data-tab="training"
+          tabindex="-1"
+        >
+          Training Studio
+        </button>
+        <button
+          id="tab-btn-benchmark"
+          class="tab-button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-benchmark"
+          data-tab="benchmark"
+          tabindex="-1"
+        >
+          Benchmark &amp; Connectome
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="workspace-main">
+    <!-- TAB 1: LIVE SIMULATION & IN-SILICO LAB -->
+    <section
+      id="panel-simulation"
+      class="tab-panel is-active"
+      role="tabpanel"
+      aria-labelledby="tab-btn-simulation"
+    >
+      <div class="provenance-strip">
+        <div class="provenance-item">
+          <span class="provenance-label">Active Mode</span>
+          <strong id="sim-mode-value" class="mono-value">INFERENCE (Checkpoint Loaded)</strong>
+        </div>
+        <div class="provenance-item">
+          <span class="provenance-label">Controller &amp; Weights</span>
+          <strong id="sim-provenance-value" class="mono-value">Loading...</strong>
+        </div>
+        <div class="provenance-item">
+          <span class="provenance-label">Traffic Regime</span>
+          <strong id="sim-regime-value" class="mono-value">rush_hour | Step 0/300</strong>
+        </div>
+        <div class="provenance-item" data-tooltip="Fase sinyal lampu lalu lintas aktif yang sedang memegang hak jalan (Right-of-Way)." data-tooltip-pos="bottom">
+          <span class="provenance-label tooltip-trigger">Signal State</span>
+          <strong id="sim-signal-value" class="mono-value">NS Straight (GREEN)</strong>
+        </div>
+      </div>
+
+      <div class="simulation-grid">
+        <!-- LEFT COLUMN: 2D INTERSECTION CANVAS + METRICS + CONTROLS -->
+        <div class="panel-surface intersection-column">
+          <div class="panel-header-row">
+            <div>
+              <h2>4-Way Intersection Simulation</h2>
+              <p class="panel-caption">
+                Kendaraan mengikuti lampu merah 3-lensa (Lurus &amp; Belok Kiri) sesuai antrean lingkungan Gymnasium.
+              </p>
+            </div>
+            <div class="sim-transport-controls">
+              <button id="btn-sim-play-pause" class="btn btn-primary" type="button">
+                Pause
+              </button>
+              <button id="btn-sim-step" class="btn btn-secondary" type="button">
+                Step +1
+              </button>
+              <button id="btn-sim-reset" class="btn btn-secondary" type="button">
+                Reset Sim
+              </button>
+            </div>
+          </div>
+
+          <div class="canvas-stage">
+            <canvas id="intersection-canvas" width="700" height="580"></canvas>
+          </div>
+
+          <div class="sim-legend-bar">
+            <span class="legend-chip" data-tooltip="Lajur pergerakan kendaraan lurus melintasi persimpangan." data-tooltip-pos="top"><span class="swatch swatch-straight"></span><span class="tooltip-trigger">Lajur Lurus</span></span>
+            <span class="legend-chip" data-tooltip="Lajur pergerakan kendaraan belok kiri terlindung." data-tooltip-pos="top"><span class="swatch swatch-turn"></span><span class="tooltip-trigger">Lajur Belok Kiri</span></span>
+            <span class="legend-chip" data-tooltip="Lampu hijau: kendaraan diizinkan melaju melewati persimpangan." data-tooltip-pos="top"><span class="swatch swatch-green"></span><span class="tooltip-trigger">Hijau (Melaju)</span></span>
+            <span class="legend-chip" data-tooltip="Lampu kuning: peringatan transisi pergantian fase sinyal." data-tooltip-pos="top"><span class="swatch swatch-amber"></span><span class="tooltip-trigger">Kuning (Transisi)</span></span>
+            <span class="legend-chip" data-tooltip="Lampu merah: seluruh kendaraan wajib berhenti sebelum garis stop." data-tooltip-pos="top"><span class="swatch swatch-red"></span><span class="tooltip-trigger">Merah / All-Red</span></span>
+          </div>
+
+          <div class="sim-map-spawner-panel">
+            <div class="sim-zoom-row">
+              <div class="zoom-controls-group">
+                <span class="control-inline-label">Map Zoom</span>
+                <button id="btn-zoom-out" class="btn btn-secondary btn-compact" type="button">Zoom -</button>
+                <span id="label-zoom-level" class="mono-value zoom-level-readout">100%</span>
+                <button id="btn-zoom-in" class="btn btn-secondary btn-compact" type="button">Zoom +</button>
+                <button id="btn-zoom-reset" class="btn btn-secondary btn-compact" type="button">Reset Zoom</button>
+              </div>
+              <span id="metric-capacity-cap" class="mono-value capacity-cap-readout" data-tooltip="Kapasitas maksimum antrean aman persimpangan (80 kendaraan per lajur)." data-tooltip-pos="bottom">Queue Limit: 0 / 640 veh (max 80/lane)</span>
+            </div>
+
+            <div class="sim-spawner-row">
+              <div class="field-group">
+                <label for="select-spawn-lane" class="tooltip-trigger" data-tooltip="Lajur spesifik (0-7) sasaran injeksi penambahan kendaraan." data-tooltip-pos="top">Target Lane</label>
+                <select id="select-spawn-lane" class="control-select">
+                  <option value="0">0: N Straight</option>
+                  <option value="1">1: N Turn</option>
+                  <option value="2">2: S Straight</option>
+                  <option value="3">3: S Turn</option>
+                  <option value="4">4: E Straight</option>
+                  <option value="5">5: E Turn</option>
+                  <option value="6">6: W Straight</option>
+                  <option value="7">7: W Turn</option>
+                </select>
+              </div>
+
+              <div class="field-group">
+                <label for="select-spawn-batch" class="tooltip-trigger" data-tooltip="Jumlah kendaraan yang diinjeksikan per klik peta atau tombol." data-tooltip-pos="top">Spawn Count</label>
+                <select id="select-spawn-batch" class="control-select">
+                  <option value="1" selected>+1 car</option>
+                  <option value="5">+5 cars</option>
+                  <option value="10">+10 cars</option>
+                </select>
+              </div>
+
+              <div class="spawner-button-group">
+                <button id="btn-spawn-lane" class="btn btn-accent" type="button">Add to Lane</button>
+                <button id="btn-spawn-random" class="btn btn-secondary" type="button">+5 Random</button>
+                <button id="btn-spawn-surge" class="btn btn-secondary" type="button">+24 Surge</button>
+              </div>
+            </div>
+
+            <p class="panel-caption spawner-hint-text">
+              Klik langsung salah satu dari 8 lajur masuk pada peta untuk menambah kendaraan ke lajur tersebut (batas aman 80/lajur).
+            </p>
+          </div>
+
+          <div class="metrics-strip">
+            <div class="metric-cell" data-tooltip="Total kendaraan yang sedang mengantre berhenti di seluruh 8 lajur persimpangan." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Total Queue</span>
+              <span id="metric-total-queue" class="metric-number mono-value">0 veh</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Rata-rata lama waktu tunggu seluruh kendaraan sejak tiba di antrean persimpangan (detik)." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Mean Wait Time</span>
+              <span id="metric-mean-wait" class="metric-number mono-value">0.0 s</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Waktu tunggu terlama dari kendaraan posisi terdepan antrean di antara seluruh lajur (detik)." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Max Head Wait</span>
+              <span id="metric-max-wait" class="metric-number mono-value">0.0 s</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Jumlah total kendaraan yang berhasil melintasi dan keluar dari persimpangan." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Total Throughput</span>
+              <span id="metric-throughput" class="metric-number mono-value">0 veh</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Frekuensi pergantian fase sinyal. Pergantian terlalu sering menimbulkan penalti waktu transisi." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Phase Switches</span>
+              <span id="metric-switches" class="metric-number mono-value">0</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Akumulasi skor reward agen pada episode aktif (-Q - 0.1W - 1.0S)." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Episode Return</span>
+              <span id="metric-episode-reward" class="metric-number mono-value">0.00</span>
+            </div>
+            <div class="metric-cell" id="metric-collisions-cell" data-tooltip="Jumlah benturan kendaraan di zona konflik persimpangan." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Collisions</span>
+              <span id="metric-collisions" class="metric-number mono-value">0</span>
+            </div>
+          </div>
+
+          <div class="sim-selector-row">
+            <div class="field-group">
+              <label for="select-agent" class="tooltip-trigger" data-tooltip="Pilihan arsitektur kontroler lampu lalu lintas (Fly Connectome, GRU, MLP, atau Fixed Timer)." data-tooltip-pos="top">Active Model / Controller</label>
+              <select id="select-agent" class="control-select">
+                <option value="fly">Fly Connectome PPO</option>
+                <option value="gru">PPO-GRU</option>
+                <option value="mlp">PPO-MLP</option>
+                <option value="fixed_timer">Fixed Timer (Rule-Based)</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="select-scenario" class="tooltip-trigger" data-tooltip="Profil pola kedatangan kendaraan: normal (seimbang), asymmetric (dominan NS), rush_hour (lonjakan dinamis)." data-tooltip-pos="top">Traffic Profile</label>
+              <select id="select-scenario" class="control-select">
+                <option value="rush_hour">rush_hour (Dynamic Surge)</option>
+                <option value="asymmetric">asymmetric (Heavy NS)</option>
+                <option value="normal">normal (Balanced)</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="select-safety-buffer" class="tooltip-trigger" data-tooltip="Penyisipan fase All-Red (kuning + all-red) untuk proteksi pengosongan persimpangan sebelum fase berikutnya." data-tooltip-pos="top">Safety Buffer</label>
+              <select id="select-safety-buffer" class="control-select">
+                <option value="1">Yellow + All-Red (Protected)</option>
+                <option value="0">Yellow Only (High-Risk Stress)</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="slider-sim-speed" class="tooltip-trigger" data-tooltip="Kecepatan eksekusi langkah simulasi lingkungan per detik." data-tooltip-pos="top">
+                Sim Speed: <span id="label-sim-speed" class="mono-value">2.0 steps/s</span>
+              </label>
+              <input
+                id="slider-sim-speed"
+                type="range"
+                min="0.5"
+                max="8.0"
+                step="0.5"
+                value="2.0"
+                aria-label="Simulation Speed"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: 3D FLY BRAIN / 2D CONNECTOME, POLICY OUTPUT, PHARMACOLOGY -->
+        <div class="panel-surface connectome-column">
+          <div class="panel-header-row">
+            <div>
+              <h2>Connectome Activity &amp; Policy Output</h2>
+              <p class="panel-caption">
+                FAFB v783 · 2.500 neuron (1.800 Central Complex, 700 Mushroom Body) dengan aktivasi rekuren live h_t.
+              </p>
+            </div>
+            <div class="brain-view-switch" role="group" aria-label="Connectome Visualization Mode">
+              <button
+                id="btn-view-3d"
+                class="seg-btn is-active"
+                type="button"
+                aria-pressed="true"
+              >
+                3D Brain
+              </button>
+              <button
+                id="btn-view-2d"
+                class="seg-btn"
+                type="button"
+                aria-pressed="false"
+              >
+                2D Matrix
+              </button>
+            </div>
+          </div>
+
+          <!-- 3D DROSOPHILA BRAIN VIEWER -->
+          <div id="brain3d-root" class="brain3d-root">
+            <div class="brain3d-stage" data-brain3d="stage">
+              <canvas class="brain3d-canvas" data-brain3d="canvas" aria-label="3D Drosophila Connectome Activity"></canvas>
+              <div class="brain3d-labels" data-brain3d="labels" aria-hidden="true"></div>
+
+              <div class="brain3d-hud">
+                <div class="brain3d-hud-line mono-value" data-brain3d="hud-step">Step 0/300</div>
+                <div class="brain3d-hud-line mono-value" data-brain3d="hud-phase">a_t = NS Straight</div>
+                <div class="brain3d-hud-probs" data-brain3d="hud-probs"></div>
+              </div>
+
+              <div class="brain3d-stage-actions">
+                <button
+                  id="btn-brain3d-fullscreen"
+                  class="brain3d-overlay-btn"
+                  type="button"
+                  aria-label="Toggle Fullscreen 3D Brain"
+                >
+                  Fullscreen
+                </button>
+              </div>
+
+              <div class="brain3d-status" data-brain3d="status">
+                Loading FlyWire FAFB14.1 3D meshes...
+              </div>
+
+              <aside class="brain3d-inspector" data-brain3d="inspector" hidden>
+                <div class="brain3d-inspector-head">
+                  <strong class="mono-value" data-field="type">-</strong>
+                  <button
+                    id="btn-brain3d-inspector-close"
+                    class="brain3d-inspector-close"
+                    type="button"
+                    aria-label="Close neuron inspector"
+                  >
+                    Close
+                  </button>
+                </div>
+                <dl class="brain3d-inspector-grid">
+                  <dt>Root ID</dt><dd class="mono-value" data-field="root">-</dd>
+                  <dt>Region</dt><dd class="mono-value"><span data-field="group">-</span> · <span data-field="neuropil">-</span></dd>
+                  <dt>NT</dt><dd class="mono-value" data-field="nt">-</dd>
+                  <dt>Index</dt><dd class="mono-value" data-field="index">-</dd>
+                  <dt>h_t</dt><dd class="mono-value" data-field="h">-</dd>
+                  <dt>State</dt><dd class="mono-value" data-field="state">-</dd>
+                </dl>
+              </aside>
+
+              <div class="brain3d-stage-footer">
+                <div class="brain3d-legend">
+                  <span class="mono-value">-0.40</span>
+                  <span class="brain3d-legend-bar" aria-hidden="true"></span>
+                  <span class="mono-value">+0.40</span>
+                  <span class="brain3d-legend-dead"><span class="dead-ring" aria-hidden="true"></span>Lesioned</span>
+                </div>
+                <span class="brain3d-hint">Drag orbit · Scroll zoom · Click neuron</span>
+              </div>
+            </div>
+
+            <div class="brain3d-toolbar">
+              <div class="brain3d-control-group" role="group" aria-label="Neuron 3D Layout">
+                <button class="seg-btn is-active" type="button" data-brain3d-layout="neuropil" aria-pressed="true">Neuropil</button>
+                <button class="seg-btn" type="button" data-brain3d-layout="soma" aria-pressed="false">Soma</button>
+              </div>
+
+              <div class="brain3d-control-group" role="group" aria-label="Circuit Region Focus">
+                <button class="seg-btn is-active" type="button" data-brain3d-focus="-1" aria-pressed="true">All</button>
+                <button class="seg-btn" type="button" data-brain3d-focus="0" aria-pressed="false">CX</button>
+                <button class="seg-btn" type="button" data-brain3d-focus="1" aria-pressed="false">MB</button>
+              </div>
+
+              <div class="brain3d-control-group" role="group" aria-label="Camera View">
+                <button class="seg-btn" type="button" data-brain3d-view="front">Front</button>
+                <button class="seg-btn" type="button" data-brain3d-view="top">Top</button>
+                <button class="seg-btn" type="button" data-brain3d-view="side">Side</button>
+              </div>
+
+              <div class="brain3d-control-group" role="group" aria-label="3D Layers">
+                <button id="btn-brain3d-edges" class="seg-btn is-active" type="button" aria-pressed="true">Synapses</button>
+                <button id="btn-brain3d-labels" class="seg-btn is-active" type="button" aria-pressed="true">Labels</button>
+                <button id="btn-brain3d-rotate" class="seg-btn is-active" type="button" aria-pressed="true">Rotate</button>
+              </div>
+            </div>
+
+            <details class="brain3d-regions-disclosure" open>
+              <summary>Mean |h_t| by Neuropil (CX &amp; MB)</summary>
+              <div class="brain3d-regions" data-brain3d="regions"></div>
+            </details>
+          </div>
+
+          <!-- 2D MATRIX FALLBACK / ALTERNATE VIEW + CIRCUIT READOUTS -->
+          <div class="heatmap-and-summary" id="connectome-summary-row">
+            <div class="heatmap-frame is-hidden" id="connectome-2d-frame">
+              <canvas id="connectome-canvas" width="320" height="320"></canvas>
+              <div class="heatmap-scale-row">
+                <span class="mono-value">-0.40 (Inhibitory)</span>
+                <span class="heatmap-gradient-bar" aria-hidden="true"></span>
+                <span class="mono-value">+0.40 (Excitatory)</span>
+              </div>
+            </div>
+
+            <div class="circuit-readout-stack circuit-readout-grid" id="circuit-readout-stack">
+              <div class="readout-row" data-tooltip="Jumlah neuron Drosophila FAFB v783 yang aktif beroperasi tanpa terkena lesi sirkuit (CX + MB)." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">Active Neurons</span>
+                <span id="brain-active-neurons" class="readout-val mono-value">2500 / 2500</span>
+              </div>
+              <div class="readout-row" data-tooltip="Tingkat disipasi memori membran neuron per langkah waktu. Mengontrol durasi retensi informasi temporal." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">Leak Rate (tau)</span>
+                <span id="brain-tau" class="readout-val mono-value">0.434</span>
+              </div>
+              <div class="readout-row" data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin (ACh). Mengatur sensitivitas depolarisasi membran dan transmisi sinyal." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">g_exc (ACh)</span>
+                <span id="brain-g-exc" class="readout-val mono-value">1.00</span>
+              </div>
+              <div class="readout-row" data-tooltip="Gain transmisi sinaptik inhibitori GABA dan glutamat. Mengatur stabilisasi hiperpolarisasi dan mencegah kejenuhan aktivasi." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">g_inh (GABA/Glu)</span>
+                <span id="brain-g-inh" class="readout-val mono-value">1.00</span>
+              </div>
+              <div class="readout-row" data-tooltip="Rata-rata magnitudo aktivasi neuron Central Complex (kemudi orientasi arah spasial &amp; pemilihan lajur lalu lintas)." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">CX Mean |h|</span>
+                <span id="brain-cx-act" class="readout-val mono-value">0.000</span>
+              </div>
+              <div class="readout-row" data-tooltip="Rata-rata magnitudo aktivasi neuron Mushroom Body (integrasi konteks memori asosiatif dan modulasi waktu)." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">MB Mean |h|</span>
+                <span id="brain-mb-act" class="readout-val mono-value">0.000</span>
+              </div>
+              <div class="readout-row" data-tooltip="Estimasi nilai state (value function) oleh critic network untuk mengevaluasi keunggulan keputusan fase sinyal." data-tooltip-pos="left">
+                <span class="readout-key tooltip-trigger">Critic V(s_t)</span>
+                <span id="brain-value-est" class="readout-val mono-value">0.000</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="policy-probs-section">
+            <div class="subpanel-title-row">
+              <h3>Action Policy Output (4 Phases)</h3>
+              <span id="policy-chosen-label" class="mono-value">Selected: NS Straight</span>
+            </div>
+            <div class="prob-bars-list">
+              <div class="prob-row" data-phase="0" data-tooltip="Fase lampu hijau lajur lurus Utara-Selatan (North-South Straight)." data-tooltip-pos="left">
+                <span class="prob-name tooltip-trigger">0: NS Straight</span>
+                <div class="prob-track"><div id="prob-bar-0" class="prob-fill"></div></div>
+                <span id="prob-val-0" class="prob-pct mono-value">25%</span>
+              </div>
+              <div class="prob-row" data-phase="1" data-tooltip="Fase lampu hijau lajur belok kiri Utara-Selatan (North-South Turn terproteksi)." data-tooltip-pos="left">
+                <span class="prob-name tooltip-trigger">1: NS Turn</span>
+                <div class="prob-track"><div id="prob-bar-1" class="prob-fill"></div></div>
+                <span id="prob-val-1" class="prob-pct mono-value">25%</span>
+              </div>
+              <div class="prob-row" data-phase="2" data-tooltip="Fase lampu hijau lajur lurus Timur-Barat (East-West Straight)." data-tooltip-pos="left">
+                <span class="prob-name tooltip-trigger">2: EW Straight</span>
+                <div class="prob-track"><div id="prob-bar-2" class="prob-fill"></div></div>
+                <span id="prob-val-2" class="prob-pct mono-value">25%</span>
+              </div>
+              <div class="prob-row" data-phase="3" data-tooltip="Fase lampu hijau lajur belok kiri Timur-Barat (East-West Turn terproteksi)." data-tooltip-pos="left">
+                <span class="prob-name tooltip-trigger">3: EW Turn</span>
+                <div class="prob-track"><div id="prob-bar-3" class="prob-fill"></div></div>
+                <span id="prob-val-3" class="prob-pct mono-value">25%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pharmacology-section">
+            <h3>In-Silico Pharmacology &amp; Circuit Lesioning</h3>
+            <p id="pharmacology-note" class="panel-caption">
+              Pengaturan gain sinaptik dan lesi berlaku langsung saat Fly Connectome PPO aktif.
+            </p>
+
+            <div class="slider-control-group" data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin. Mengatur sensitivitas depolarisasi sirkuit." data-tooltip-pos="top">
+              <div class="slider-header">
+                <label for="slider-g-exc" class="tooltip-trigger">g_exc (Acetylcholine Excitatory Gain)</label>
+                <span id="val-g-exc" class="mono-value">1.00</span>
+              </div>
+              <input id="slider-g-exc" type="range" min="0.0" max="2.5" step="0.05" value="1.0" aria-label="g_exc Excitatory Gain">
+            </div>
+
+            <div class="slider-control-group" data-tooltip="Gain transmisi sinaptik inhibitori GABA/Glutamat. Mengatur stabilisasi hiperpolarisasi peredaman." data-tooltip-pos="top">
+              <div class="slider-header">
+                <label for="slider-g-inh" class="tooltip-trigger">g_inh (GABA / Glutamate Inhibitory Gain)</label>
+                <span id="val-g-inh" class="mono-value">1.00</span>
+              </div>
+              <input id="slider-g-inh" type="range" min="0.0" max="2.5" step="0.05" value="1.0" aria-label="g_inh Inhibitory Gain">
+            </div>
+
+            <div class="lesion-button-row">
+              <button id="btn-lesion-cx" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron Central Complex untuk menguji ketahanan kendali arah." data-tooltip-pos="top">
+                Lesion CX 25%
+              </button>
+              <button id="btn-lesion-mb" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron Mushroom Body untuk menguji ketahanan memori temporal." data-tooltip-pos="top">
+                Lesion MB 25%
+              </button>
+              <button id="btn-lesion-random" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron acak di seluruh jaringan konektom." data-tooltip-pos="top">
+                Random 25%
+              </button>
+              <button id="btn-reset-brain" class="btn btn-accent" type="button" data-tooltip="Mengembalikan seluruh neuron ke status aktif dan mereset gain sinaptik ke 1.00." data-tooltip-pos="top">
+                Reset Brain
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: TRANSPARENT LIVE TRAINING STUDIO -->
+    <section
+      id="panel-training"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-btn-training"
+      hidden
+    >
+      <div class="training-layout">
+        <aside class="panel-surface training-config-panel">
+          <h2>PPO CPU Training Studio</h2>
+          <p class="panel-caption">
+            Jalankan pelatihan PPO langsung pada 8 environment CPU paralel. Progres tiap update dikirim secara real-time melalui WebSocket dan dapat disimpan menimpa checkpoint aktif.
+          </p>
+
+          <form id="training-form" class="training-form">
+            <div class="field-group">
+              <label for="train-model-type">Policy Architecture</label>
+              <select id="train-model-type" class="control-select">
+                <option value="fly">Fly Connectome PPO (70,006 trainable params)</option>
+                <option value="mlp">PPO-MLP Baseline (69,755 trainable params)</option>
+                <option value="gru">PPO-GRU Baseline (69,725 trainable params)</option>
+              </select>
+            </div>
+
+            <div class="field-group">
+              <label for="train-timesteps">Total Timesteps</label>
+              <select id="train-timesteps" class="control-select">
+                <option value="8192">8,192 steps (8 updates, quick demo ~12s)</option>
+                <option value="40960" selected>40,960 steps (40 updates, medium ~1 min)</option>
+                <option value="163840">163,840 steps (160 updates, full ~3.5 min)</option>
+                <option value="524288">524,288 steps (512 updates, Mode Maximal ~12-15 min)</option>
+                <option value="custom">Custom Timesteps (up to 2,000,000)</option>
+              </select>
+            </div>
+
+            <div class="field-group is-hidden" id="custom-timesteps-group">
+              <label for="train-custom-timesteps">Custom Total Timesteps (1,024 - 2,000,000)</label>
+              <input
+                id="train-custom-timesteps"
+                class="control-input mono-value"
+                type="number"
+                min="1024"
+                max="2000000"
+                step="1024"
+                value="262144"
+              >
+            </div>
+
+            <div class="field-row-2">
+              <div class="field-group">
+                <label for="train-lr">Learning Rate</label>
+                <input
+                  id="train-lr"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.0001"
+                  min="0.00001"
+                  max="0.01"
+                  value="0.0008"
+                >
+              </div>
+              <div class="field-group">
+                <label for="train-seed">Random Seed</label>
+                <input
+                  id="train-seed"
+                  class="control-input mono-value"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value="42"
+                >
+              </div>
+            </div>
+
+            <details class="advanced-params-disclosure" id="train-custom-params-box">
+              <summary>Custom PPO Hyperparameters</summary>
+              <div class="advanced-params-body">
+                <div class="field-row-2">
+                  <div class="field-group" data-tooltip="Faktor diskon imbalan masa depan pada estimasi return kumulatif." data-tooltip-pos="top">
+                    <label for="train-gamma" class="tooltip-trigger">Discount (gamma)</label>
+                    <input
+                      id="train-gamma"
+                      class="control-input mono-value"
+                      type="number"
+                      step="0.001"
+                      min="0.80"
+                      max="0.999"
+                      value="0.99"
+                    >
+                  </div>
+                  <div class="field-group" data-tooltip="Koefisien Generalized Advantage Estimation untuk menyeimbangkan bias dan varians." data-tooltip-pos="top">
+                    <label for="train-gae-lambda" class="tooltip-trigger">GAE Lambda (gae_lambda)</label>
+                    <input
+                      id="train-gae-lambda"
+                      class="control-input mono-value"
+                      type="number"
+                      step="0.01"
+                      min="0.50"
+                      max="0.99"
+                      value="0.95"
+                    >
+                  </div>
+                </div>
+
+                <div class="field-row-2">
+                  <div class="field-group" data-tooltip="Batas pemotongan rasio probabilitas kebijakan (clipping) untuk kestabilan update." data-tooltip-pos="top">
+                    <label for="train-clip-coef" class="tooltip-trigger">PPO Clip (clip_coef)</label>
+                    <input
+                      id="train-clip-coef"
+                      class="control-input mono-value"
+                      type="number"
+                      step="0.01"
+                      min="0.05"
+                      max="0.50"
+                      value="0.20"
+                    >
+                  </div>
+                  <div class="field-group" data-tooltip="Bobot penalti entropi dalam fungsi loss untuk mendorong eksplorasi aksi." data-tooltip-pos="top">
+                    <label for="train-ent-coef" class="tooltip-trigger">Entropy Coef (ent_coef)</label>
+                    <input
+                      id="train-ent-coef"
+                      class="control-input mono-value"
+                      type="number"
+                      step="0.001"
+                      min="0.0"
+                      max="0.10"
+                      value="0.005"
+                    >
+                  </div>
+                </div>
+
+                <div class="field-row-2">
+                  <div class="field-group" data-tooltip="Bobot kuadratik error critic value network dalam total loss objektif." data-tooltip-pos="top">
+                    <label for="train-vf-coef" class="tooltip-trigger">Value Loss Coef (vf_coef)</label>
+                    <input
+                      id="train-vf-coef"
+                      class="control-input mono-value"
+                      type="number"
+                      step="0.05"
+                      min="0.05"
+                      max="2.0"
+                      value="0.25"
+                    >
+                  </div>
+                  <div class="field-group" data-tooltip="Jumlah iterasi optimasi gradien per minibatch pada setiap update PPO." data-tooltip-pos="top">
+                    <label for="train-update-epochs" class="tooltip-trigger">Update Epochs</label>
+                    <input
+                      id="train-update-epochs"
+                      class="control-input mono-value"
+                      type="number"
+                      step="1"
+                      min="1"
+                      max="10"
+                      value="4"
+                    >
+                  </div>
+                </div>
+
+                <div class="field-row-2">
+                  <div class="field-group" data-tooltip="Jumlah langkah simulasi per environment sebelum dilakukan pembaruan bobot." data-tooltip-pos="top">
+                    <label for="train-rollout-steps" class="tooltip-trigger">Rollout Steps</label>
+                    <select id="train-rollout-steps" class="control-select mono-value">
+                      <option value="32">32</option>
+                      <option value="64">64</option>
+                      <option value="128" selected>128</option>
+                      <option value="256">256</option>
+                    </select>
+                  </div>
+                  <div class="field-group" data-tooltip="Panjang sekuens potongan waktu BPTT untuk unrolling recurrent state konektom." data-tooltip-pos="top">
+                    <label for="train-chunk-len" class="tooltip-trigger">Sequence Chunk Len</label>
+                    <select id="train-chunk-len" class="control-select mono-value">
+                      <option value="8">8</option>
+                      <option value="16" selected>16</option>
+                      <option value="32">32</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-group" data-tooltip="Jumlah partisi mini-batch untuk optimasi stokastik gradien." data-tooltip-pos="top">
+                  <label for="train-num-minibatches" class="tooltip-trigger">Number of Minibatches</label>
+                  <select id="train-num-minibatches" class="control-select mono-value">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="4" selected>4</option>
+                    <option value="8">8</option>
+                  </select>
+                </div>
+
+                <p id="train-batch-constraint-hint" class="panel-caption mono-value">
+                  Rollout batch: 8 envs x 128 = 1,024 steps/update (64 seq chunks)
+                </p>
+
+                <label class="checkbox-field" for="train-anneal-lr">
+                  <input id="train-anneal-lr" type="checkbox" checked>
+                  <span>Anneal learning rate linearly across updates</span>
+                </label>
+
+                <label class="checkbox-field" for="train-save-on-cancel">
+                  <input id="train-save-on-cancel" type="checkbox" checked>
+                  <span>Simpan progres bobot saat Stop ditekan</span>
+                </label>
+              </div>
+            </details>
+
+            <div class="field-group">
+              <label for="train-save-mode">Model File Save Mode</label>
+              <select id="train-save-mode" class="control-select">
+                <option value="new_file" selected>Create a new model file (.pt)</option>
+                <option value="overwrite_default">Overwrite default checkpoint (&lt;model&gt;_ppo.pt)</option>
+                <option value="none">Do not save (dry run in memory)</option>
+              </select>
+            </div>
+            <div class="field-group" id="custom-filename-group">
+              <label for="train-custom-filename">New Model File Name (optional)</label>
+              <input
+                id="train-custom-filename"
+                class="control-input mono-value"
+                type="text"
+                placeholder="fly_experiment_v2 (blank = auto timestamp)"
+              >
+            </div>
+            <p id="train-save-path-preview" class="panel-caption mono-value">Local save path: artifacts/checkpoints/fly_ppo_&lt;timestamp&gt;.pt</p>
+
+            <div class="training-action-buttons">
+              <button id="btn-start-training" class="btn btn-primary" type="submit">
+                Start Training
+              </button>
+              <button id="btn-stop-training" class="btn btn-secondary" type="button" disabled>
+                Stop Training
+              </button>
+            </div>
+          </form>
+
+          <div class="training-progress-block">
+            <div class="slider-header">
+              <span>Training Status</span>
+              <span id="train-status-label" class="mono-value">idle</span>
+            </div>
+            <div class="progress-track">
+              <div id="train-progress-bar" class="progress-fill"></div>
+            </div>
+            <p id="train-progress-detail" class="panel-caption mono-value">
+              0 / 0 updates (0%)
+            </p>
+          </div>
+
+          <div class="checkpoint-inventory-block">
+            <h3>Saved Checkpoints Inventory</h3>
+            <div id="checkpoint-inventory-list" class="inventory-list"></div>
+          </div>
+        </aside>
+
+        <div class="panel-surface training-telemetry-panel">
+          <h2>Real-Time PPO Optimization Telemetry</h2>
+
+          <div class="metrics-strip">
+            <div class="metric-cell" data-tooltip="Rata-rata return kumulatif per episode dalam batch rollout PPO." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Episode Reward</span>
+              <span id="tmetric-reward" class="metric-number mono-value">-</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Rata-rata kendaraan lolos persimpangan per episode selama rollout." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Mean Throughput</span>
+              <span id="tmetric-throughput" class="metric-number mono-value">-</span>
+            </div>
+            <div class="metric-cell" data-tooltip="PPO clipped surrogate objective loss untuk update actor network." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Policy Loss</span>
+              <span id="tmetric-pg-loss" class="metric-number mono-value">-</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Mean squared error loss antara estimasi critic V(s) dan target return." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Value Loss</span>
+              <span id="tmetric-v-loss" class="metric-number mono-value">-</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Tingkat keacakan probabilitas aksi kebijakan (menjaga kemampuan eksplorasi)." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Policy Entropy</span>
+              <span id="tmetric-entropy" class="metric-number mono-value">-</span>
+            </div>
+            <div class="metric-cell" data-tooltip="Kecepatan komputasi langkah per detik (steps/s) dan nilai parameter leak membran tau aktif." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Speed / Leak tau</span>
+              <span id="tmetric-sps-tau" class="metric-number mono-value">-</span>
+            </div>
+          </div>
+
+          <div class="lifecycle-strip" aria-label="1-Episode Lifecycle">
+            <div class="lifecycle-strip-title">1-Episode Lifecycle (300 steps, dt = 2.0 s)</div>
+            <div class="lifecycle-stages">
+              <span class="lifecycle-stage">1. Reset &amp; Sample Regime</span>
+              <span class="lifecycle-arrow" aria-hidden="true">-&gt;</span>
+              <span class="lifecycle-stage">2. Observe 22-dim State</span>
+              <span class="lifecycle-arrow" aria-hidden="true">-&gt;</span>
+              <span class="lifecycle-stage">3. Policy &amp; Connectome Step</span>
+              <span class="lifecycle-arrow" aria-hidden="true">-&gt;</span>
+              <span class="lifecycle-stage">4. Signal Interlock &amp; Discharge</span>
+              <span class="lifecycle-arrow" aria-hidden="true">-&gt;</span>
+              <span class="lifecycle-stage">5. Collision Check &amp; Reward</span>
+            </div>
+          </div>
+
+          <div class="training-visuals-grid">
+            <div class="chart-box preview-box">
+              <h3>Live Policy Preview (rush_hour)</h3>
+              <div class="preview-canvas-stage">
+                <canvas id="training-preview-canvas" width="520" height="430"></canvas>
+              </div>
+              <p id="train-preview-caption" class="preview-caption mono-value">
+                Update - · Step - · Phase - · Queue - · Collisions -
+              </p>
+            </div>
+
+            <div class="training-charts-stack">
+              <div class="chart-box">
+                <h3>mean_episode_reward vs timesteps</h3>
+                <canvas id="train-reward-chart" width="540" height="240"></canvas>
+              </div>
+              <div class="chart-box">
+                <h3>value_loss &amp; entropy vs timesteps</h3>
+                <canvas id="train-loss-chart" width="540" height="240"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <h3>Per-Update Log</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Update</th>
+                  <th>Timesteps</th>
+                  <th>Steps/s</th>
+                  <th>Reward</th>
+                  <th>Throughput</th>
+                  <th>Policy Loss</th>
+                  <th>Value Loss</th>
+                  <th>Entropy</th>
+                </tr>
+              </thead>
+              <tbody id="training-log-tbody">
+                <tr>
+                  <td colspan="8" class="empty-cell">
+                    Belum ada sesi training aktif pada tab ini. Pilih konfigurasi lalu klik Start Training.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: BENCHMARK, CONNECTOME, & VARIABLE GLOSSARY -->
+    <section
+      id="panel-benchmark"
+      class="tab-panel"
+      role="tabpanel"
+      aria-labelledby="tab-btn-benchmark"
+      hidden
+    >
+      <div class="benchmark-layout">
+        <div class="panel-surface">
+          <div class="panel-header-row">
+            <div>
+              <h2>Sub-Connectome FAFB v783 Summary &amp; Multi-Scenario Benchmark</h2>
+              <p class="panel-caption">
+                Evaluasi 10 seed identik per skenario (normal, asymmetric, rush_hour) serta eksperimen in-silico pharmacology &amp; lesi.
+              </p>
+            </div>
+            <button id="btn-run-benchmark" class="btn btn-primary" type="button">
+              Re-Run Benchmark
+            </button>
+          </div>
+
+          <div id="connectome-facts-strip" class="metrics-strip"></div>
+
+          <div class="benchmark-charts-grid">
+            <div class="chart-box">
+              <h3>mean_reward by scenario &amp; agent</h3>
+              <canvas id="bench-reward-chart" width="520" height="250"></canvas>
+            </div>
+            <div class="chart-box">
+              <h3>mean_wait_time_s (s) by scenario &amp; agent</h3>
+              <canvas id="bench-wait-chart" width="520" height="250"></canvas>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <h3>Scenario Comparison Table</h3>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-tooltip="Profil skenario pola kedatangan arus kendaraan" data-tooltip-pos="bottom"><span class="tooltip-trigger">Scenario</span></th>
+                  <th data-tooltip="Arsitektur model/agen pengambil keputusan sinyal" data-tooltip-pos="bottom"><span class="tooltip-trigger">Agent</span></th>
+                  <th data-tooltip="Rata-rata return reward kumulatif per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Reward</span></th>
+                  <th data-tooltip="Rata-rata panjang antrean kendaraan per langkah simulasi" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Queue</span></th>
+                  <th data-tooltip="Rata-rata lama waktu tunggu kendaraan sejak tiba di antrean (detik)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Wait (s)</span></th>
+                  <th data-tooltip="Rata-rata jumlah kendaraan lolos persimpangan per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Throughput</span></th>
+                  <th data-tooltip="Rata-rata frekuensi pergantian fase sinyal per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Switches</span></th>
+                  <th data-tooltip="Rata-rata jumlah benturan kendaraan akibat pelanggaran fase sinyal" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Collisions</span></th>
+                  <th data-tooltip="Waktu komputasi langkah inferensi model (milidetik per step)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Latency (ms/step)</span></th>
+                </tr>
+              </thead>
+              <tbody id="benchmark-scenario-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="benchmark-lower-grid">
+          <div class="panel-surface">
+            <h3>Pharmacology &amp; Lesioning Results (rush_hour)</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-tooltip="Kondisi uji neuro-farmakologi atau lesi sirkuit" data-tooltip-pos="bottom"><span class="tooltip-trigger">Condition</span></th>
+                    <th data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin" data-tooltip-pos="bottom"><span class="tooltip-trigger">g_exc</span></th>
+                    <th data-tooltip="Gain transmisi sinaptik inhibitori GABA/Glutamat" data-tooltip-pos="bottom"><span class="tooltip-trigger">g_inh</span></th>
+                    <th data-tooltip="Jumlah neuron aktif tanpa lesi (dari total 2.500)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Active Neurons</span></th>
+                    <th data-tooltip="Rata-rata reward kumulatif per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Reward</span></th>
+                    <th data-tooltip="Rata-rata waktu tunggu kendaraan (detik)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Wait (s)</span></th>
+                    <th data-tooltip="Rata-rata kendaraan yang berhasil melintasi persimpangan" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Throughput</span></th>
+                    <th data-tooltip="Rata-rata benturan kendaraan di zona konflik" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Collisions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="benchmark-pharma-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel-surface">
+            <h3>Variable &amp; Equation Reference (PLAN.md Mapping)</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Equation / Symbol</th>
+                    <th>Code Identifier</th>
+                    <th>Module / Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono-value">W_exc, W_inh</td>
+                    <td class="mono-value">w_exc_csr, w_inh_csr</td>
+                    <td>connectome_cell.py (Frozen ACh / GABA+GLUT matrices)</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">g_exc, g_inh</td>
+                    <td class="mono-value">cell.g_exc, cell.g_inh</td>
+                    <td>connectome_cell.py (Live E/I gain multipliers)</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">tau</td>
+                    <td class="mono-value">cell.leak_rate (from tau_logit)</td>
+                    <td>connectome_cell.py (Trainable leaky integration rate)</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">W_in, W_out</td>
+                    <td class="mono-value">input_projection, actor_head, critic_head</td>
+                    <td>connectome_cell.py / fly_policy.py (70,006 trainable params)</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">x_t (22-dim)</td>
+                    <td class="mono-value">_build_observation()</td>
+                    <td>traffic_env.py (queues, waits, phase one-hot, stage, elapsed)</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">r_t, alpha, beta</td>
+                    <td class="mono-value">wait_penalty_alpha, switch_penalty_beta</td>
+                    <td>config.py / traffic_env.py (reward = scale * (-Q - 0.1W - 1.0S))</td>
+                  </tr>
+                  <tr>
+                    <td class="mono-value">decision_mask</td>
+                    <td class="mono-value">PPOTrainer._compute_decision_mask()</td>
+                    <td>ppo_trainer.py (Excludes locked YELLOW/ALL_RED/min-green steps)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>
