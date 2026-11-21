@@ -3,11 +3,11 @@
  * simulation/training WebSockets, and Light Instrument Lab UI state.
  */
 
-import { BenchmarkInspectorView } from './benchmark_view.js';
-import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js';
-import { ConnectomeRenderer } from './connectome_renderer.js';
-import { IntersectionRenderer } from './intersection_renderer.js';
-import { TrainingStudioView } from './training_studio.js';
+import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_2';
+import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_2';
+import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_2';
+import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_2';
+import { TrainingStudioView } from './training_studio.js?v=20261121_2';
 
 const PHASE_NAMES = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
 
@@ -770,6 +770,10 @@ class TrafficLabApp {
       .getElementById('metric-collisions-cell')
       .classList.toggle('has-warning', totalCollisions > 0);
 
+    // Episode crash statistics & reduction trend
+    const epHistory = Array.isArray(frame.episode_history) ? frame.episode_history : [];
+    this._renderEpisodeHistory(epHistory, totalCollisions);
+
     // Connectome readouts
     document.getElementById('brain-active-neurons').textContent = brain.is_fly_active
       ? `${brain.active_neurons} / ${brain.total_neurons}`
@@ -820,6 +824,97 @@ class TrafficLabApp {
     for (const elementId of flyOnlyIds) {
       document.getElementById(elementId).disabled = !brain.is_fly_active;
     }
+  }
+
+  _renderEpisodeHistory(epHistory, currentCollisions) {
+    const summaryBadge = document.getElementById('episode-history-summary');
+    const tableBody = document.getElementById('episode-history-tbody');
+    const metricCrashRed = document.getElementById('metric-crash-reduction');
+    const metricCrashCell = document.getElementById('metric-crash-stats-cell');
+
+    if (epHistory.length === 0) {
+      if (summaryBadge) {
+        summaryBadge.textContent = 'Episode 1 in progress';
+      }
+      if (tableBody) {
+        tableBody.innerHTML =
+          '<tr><td colspan="7" class="empty-cell">Belum ada episode simulasi yang selesai. Jalankan simulasi untuk merekam log crash per episode.</td></tr>';
+      }
+      if (metricCrashRed) {
+        metricCrashRed.textContent = `0 ep · ${currentCollisions} coll`;
+      }
+      if (metricCrashCell) {
+        metricCrashCell.classList.remove('has-warning', 'has-success');
+      }
+      return;
+    }
+
+    const totalEps = epHistory.length;
+    if (summaryBadge) {
+      summaryBadge.textContent = `${totalEps} episodes completed`;
+    }
+
+    const baselineColl = Number(epHistory[0].total_collisions ?? 0);
+    const latestEp = epHistory[epHistory.length - 1];
+    const latestColl = Number(latestEp.total_collisions ?? 0);
+
+    if (metricCrashRed) {
+      if (baselineColl > 0) {
+        const overallRedPct = Math.round(((baselineColl - latestColl) / baselineColl) * 100);
+        const sign = overallRedPct >= 0 ? '↓' : '↑';
+        metricCrashRed.textContent = `${latestColl} coll (${sign}${Math.abs(overallRedPct)}%)`;
+      } else {
+        metricCrashRed.textContent = `${latestColl} coll (base 0)`;
+      }
+    }
+
+    if (metricCrashCell) {
+      metricCrashCell.classList.toggle('has-success', baselineColl > 0 && latestColl < baselineColl);
+      metricCrashCell.classList.toggle('has-warning', latestColl > 1);
+    }
+
+    if (!tableBody) {
+      return;
+    }
+
+    const reversed = epHistory.slice(-20).reverse();
+    tableBody.innerHTML = reversed
+      .map((ep, idx) => {
+        const epIndex = totalEps - idx;
+        const coll = Number(ep.total_collisions ?? 0);
+        let redHtml = '<span class="crash-reduction-neutral">-</span>';
+
+        if (baselineColl > 0) {
+          const redPct = Math.round(((baselineColl - coll) / baselineColl) * 100);
+          if (redPct > 0) {
+            redHtml = `<span class="crash-reduction-positive">↓${redPct}%</span>`;
+          } else if (redPct < 0) {
+            redHtml = `<span class="crash-reduction-negative">↑${Math.abs(redPct)}%</span>`;
+          } else {
+            redHtml = '<span class="crash-reduction-neutral">0%</span>';
+          }
+        } else if (coll === 0) {
+          redHtml = '<span class="crash-reduction-positive">0 (Clean)</span>';
+        }
+
+        const modelLabel = String(ep.agent_key || '-').replace('ckpt:', '');
+        const scenarioLabel = String(ep.scenario || '-');
+        const throughput = Number(ep.total_throughput ?? 0);
+        const reward = Number(ep.episode_reward ?? 0).toFixed(2);
+
+        return `
+        <tr>
+          <td class="mono-value">#${epIndex}</td>
+          <td>${modelLabel}</td>
+          <td>${scenarioLabel}</td>
+          <td class="mono-value ${coll > 0 ? 'has-warning' : ''}">${coll}</td>
+          <td class="mono-value">${redHtml}</td>
+          <td class="mono-value">${throughput}</td>
+          <td class="mono-value">${reward}</td>
+        </tr>
+      `;
+      })
+      .join('');
   }
 }
 

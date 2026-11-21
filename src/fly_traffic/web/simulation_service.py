@@ -53,6 +53,7 @@ class SimulationService:
         self._episode_just_ended: bool = False
         self._last_chosen_action: int = 0
         self._spawn_rng = np.random.default_rng()
+        self._episode_history: list[dict[str, Any]] = []
 
         self._artifact: ConnectomeArtifact | None = (
             ConnectomeArtifact.load(self.connectome_path)
@@ -112,6 +113,18 @@ class SimulationService:
             self._episode_just_ended = episode_finished
             if episode_finished:
                 self._pending_episode_reset = True
+                ep_summary = {
+                    "episode_reward": float(self._env._episode_reward),
+                    "total_throughput": int(self._env._total_throughput),
+                    "total_switches": int(self._env._total_switches),
+                    "total_collisions": int(self._env._total_collisions),
+                    "steps": int(self._env._current_step),
+                    "scenario": self._scenario_name,
+                    "agent_key": self._active_agent_key,
+                }
+                self._episode_history.append(ep_summary)
+                if len(self._episode_history) > 50:
+                    self._episode_history.pop(0)
 
             return self._build_frame_payload_unlocked()
 
@@ -126,6 +139,7 @@ class SimulationService:
             self._pending_episode_reset = False
             self._episode_just_ended = False
             self._last_chosen_action = 0
+            self._episode_history = []
             return self._build_frame_payload_unlocked()
 
     def set_running(self, running: bool) -> dict[str, Any]:
@@ -624,4 +638,5 @@ class SimulationService:
                 "value_estimate": value_estimate,
             },
             "connectome_telemetry": connectome_telemetry,
+            "episode_history": list(self._episode_history),
         }

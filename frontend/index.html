@@ -254,9 +254,13 @@
               <span class="metric-label tooltip-trigger">Episode Return</span>
               <span id="metric-episode-reward" class="metric-number mono-value">0.00</span>
             </div>
-            <div class="metric-cell" id="metric-collisions-cell" data-tooltip="Jumlah benturan kendaraan di zona konflik persimpangan." data-tooltip-pos="top">
+            <div class="metric-cell" id="metric-collisions-cell" data-tooltip="Jumlah benturan kendaraan di zona konflik persimpangan pada episode saat ini." data-tooltip-pos="top">
               <span class="metric-label tooltip-trigger">Collisions</span>
               <span id="metric-collisions" class="metric-number mono-value">0</span>
+            </div>
+            <div class="metric-cell" id="metric-crash-stats-cell" data-tooltip="Rata-rata benturan per episode dan rasio penurunan (reduction) dibanding episode pertama." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Crash Trend / Red.</span>
+              <span id="metric-crash-reduction" class="metric-number mono-value">-</span>
             </div>
           </div>
         </div>
@@ -512,6 +516,36 @@
               <button id="btn-reset-brain" class="btn btn-accent" type="button" data-tooltip="Mengembalikan seluruh neuron ke status aktif dan mereset gain sinaptik ke 1.00." data-tooltip-pos="top">
                 Reset Brain
               </button>
+            </div>
+          </div>
+
+          <!-- RECENT EPISODES LOG & CRASH REDUCTION HISTORY -->
+          <div class="episode-history-section">
+            <div class="episode-history-header">
+              <h3>Recent Episodes Log</h3>
+              <span id="episode-history-summary" class="mono-value episode-summary-badge">0 episodes</span>
+            </div>
+            <div class="table-container episode-table-container">
+              <table class="data-table episode-history-table">
+                <thead>
+                  <tr>
+                    <th>Ep</th>
+                    <th>Model</th>
+                    <th>Regime</th>
+                    <th>Collisions</th>
+                    <th>Reduction</th>
+                    <th>Throughput</th>
+                    <th>Reward</th>
+                  </tr>
+                </thead>
+                <tbody id="episode-history-tbody">
+                  <tr>
+                    <td colspan="7" class="empty-cell">
+                      Belum ada episode simulasi yang selesai. Jalankan simulasi untuk merekam log crash per episode.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -799,6 +833,10 @@
               <span class="metric-label tooltip-trigger">Speed / Leak tau</span>
               <span id="tmetric-sps-tau" class="metric-number mono-value">-</span>
             </div>
+            <div class="metric-cell" id="tmetric-collisions-cell" data-tooltip="Rata-rata crash / benturan kendaraan per episode dalam rollout terbaru dan penurunan persentasenya." data-tooltip-pos="top">
+              <span class="metric-label tooltip-trigger">Mean Collisions</span>
+              <span id="tmetric-collisions" class="metric-number mono-value">-</span>
+            </div>
           </div>
 
           <div class="lifecycle-strip" aria-label="1-Episode Lifecycle">
@@ -830,11 +868,15 @@
             <div class="training-charts-stack">
               <div class="chart-box">
                 <h3>mean_episode_reward vs timesteps</h3>
-                <canvas id="train-reward-chart" width="540" height="240"></canvas>
+                <canvas id="train-reward-chart" width="540" height="180"></canvas>
+              </div>
+              <div class="chart-box">
+                <h3>mean_collisions per episode vs timesteps</h3>
+                <canvas id="train-collisions-chart" width="540" height="180"></canvas>
               </div>
               <div class="chart-box">
                 <h3>value_loss &amp; entropy vs timesteps</h3>
-                <canvas id="train-loss-chart" width="540" height="240"></canvas>
+                <canvas id="train-loss-chart" width="540" height="180"></canvas>
               </div>
             </div>
           </div>
@@ -849,6 +891,7 @@
                   <th>Steps/s</th>
                   <th>Reward</th>
                   <th>Throughput</th>
+                  <th>Collisions</th>
                   <th>Policy Loss</th>
                   <th>Value Loss</th>
                   <th>Entropy</th>
@@ -856,7 +899,7 @@
               </thead>
               <tbody id="training-log-tbody">
                 <tr>
-                  <td colspan="8" class="empty-cell">
+                  <td colspan="9" class="empty-cell">
                     Belum ada sesi training aktif pada tab ini. Pilih konfigurasi lalu klik Start Training.
                   </td>
                 </tr>
@@ -1001,6 +1044,6 @@
     </section>
   </main>
 
-  <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/js/main.js?v=20261121_2"></script>
 </body>
 </html>

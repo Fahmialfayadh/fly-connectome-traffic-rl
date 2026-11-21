@@ -31,6 +31,7 @@ class TrainingHistory:
     mean_episode_reward: list[float] = field(default_factory=list)
     mean_throughput: list[float] = field(default_factory=list)
     mean_switches: list[float] = field(default_factory=list)
+    mean_collisions: list[float] = field(default_factory=list)
     policy_loss: list[float] = field(default_factory=list)
     value_loss: list[float] = field(default_factory=list)
     entropy: list[float] = field(default_factory=list)
@@ -44,6 +45,7 @@ class TrainingHistory:
             "mean_episode_reward": list(self.mean_episode_reward),
             "mean_throughput": list(self.mean_throughput),
             "mean_switches": list(self.mean_switches),
+            "mean_collisions": list(self.mean_collisions),
             "policy_loss": list(self.policy_loss),
             "value_loss": list(self.value_loss),
             "entropy": list(self.entropy),
@@ -124,6 +126,7 @@ class PPOTrainer:
         completed_episode_rewards: list[float] = []
         completed_throughputs: list[float] = []
         completed_switches: list[float] = []
+        completed_collisions: list[float] = []
 
         training_start_time = time.perf_counter()
 
@@ -182,6 +185,7 @@ class PPOTrainer:
                         completed_episode_rewards=completed_episode_rewards,
                         completed_throughputs=completed_throughputs,
                         completed_switches=completed_switches,
+                        completed_collisions=completed_collisions,
                     )
 
                     current_obs = torch.as_tensor(next_observations_np, dtype=torch.float32)
@@ -221,12 +225,18 @@ class PPOTrainer:
                     if completed_switches
                     else 0.0
                 )
+                recent_mean_collisions = (
+                    float(np.mean(completed_collisions[-16:]))
+                    if completed_collisions
+                    else 0.0
+                )
 
                 history.updates.append(update_index)
                 history.timesteps.append(global_timesteps)
                 history.mean_episode_reward.append(recent_mean_reward)
                 history.mean_throughput.append(recent_mean_throughput)
                 history.mean_switches.append(recent_mean_switches)
+                history.mean_collisions.append(recent_mean_collisions)
                 history.policy_loss.append(update_metrics["policy_loss"])
                 history.value_loss.append(update_metrics["value_loss"])
                 history.entropy.append(update_metrics["entropy"])
@@ -252,6 +262,7 @@ class PPOTrainer:
                     "mean_episode_reward": recent_mean_reward,
                     "mean_throughput": recent_mean_throughput,
                     "mean_switches": recent_mean_switches,
+                    "mean_collisions": recent_mean_collisions,
                     "policy_loss": update_metrics["policy_loss"],
                     "value_loss": update_metrics["value_loss"],
                     "entropy": update_metrics["entropy"],
@@ -322,6 +333,7 @@ class PPOTrainer:
         completed_episode_rewards: list[float],
         completed_throughputs: list[float],
         completed_switches: list[float],
+        completed_collisions: list[float],
     ) -> None:
         """Record completed episode stats from final_info on SAME_STEP auto-resets."""
         final_info = infos.get("final_info")
@@ -335,10 +347,13 @@ class PPOTrainer:
             if isinstance(final_info, dict):
                 throughput_array = final_info.get("total_throughput")
                 switches_array = final_info.get("total_switches")
+                collisions_array = final_info.get("total_collisions")
                 if throughput_array is not None:
                     completed_throughputs.append(float(throughput_array[env_index]))
                 if switches_array is not None:
                     completed_switches.append(float(switches_array[env_index]))
+                if collisions_array is not None:
+                    completed_collisions.append(float(collisions_array[env_index]))
 
     def _ppo_update(
         self,

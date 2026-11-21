@@ -40,6 +40,7 @@ export class TrainingStudioView {
     this.logTableBody = document.getElementById('training-log-tbody');
 
     this.rewardCanvas = document.getElementById('train-reward-chart');
+    this.collisionsCanvas = document.getElementById('train-collisions-chart');
     this.lossCanvas = document.getElementById('train-loss-chart');
 
     this.previewCanvas = document.getElementById('training-preview-canvas');
@@ -514,30 +515,63 @@ export class TrainingStudioView {
 
     const tauPart = m.leak_rate_tau && m.leak_rate_tau > 0 ? ` · tau=${m.leak_rate_tau.toFixed(3)}` : '';
     document.getElementById('tmetric-sps-tau').textContent = `${Math.round(m.steps_per_second || 0)} sps${tauPart}`;
+
+    const collVal = Number(m.mean_collisions ?? 0);
+    const collCell = document.getElementById('tmetric-collisions-cell');
+    const collEl = document.getElementById('tmetric-collisions');
+    if (collEl) {
+      if (this.history.length > 1) {
+        const initialColl = Number(this.history[0].mean_collisions ?? collVal);
+        if (initialColl > 0) {
+          const reductionPct = Math.round(((initialColl - collVal) / initialColl) * 100);
+          const sign = reductionPct >= 0 ? '-' : '+';
+          collEl.textContent = `${collVal.toFixed(2)} (${sign}${Math.abs(reductionPct)}%)`;
+        } else {
+          collEl.textContent = `${collVal.toFixed(2)}`;
+        }
+      } else {
+        collEl.textContent = `${collVal.toFixed(2)}`;
+      }
+    }
+    if (collCell) {
+      collCell.classList.toggle('has-warning', collVal > 0.5);
+    }
   }
 
   _rebuildLogTable() {
     if (this.history.length === 0) {
       this.logTableBody.innerHTML =
-        '<tr><td colspan="8" class="empty-cell">Belum ada sesi training aktif pada tab ini. Pilih konfigurasi lalu klik Start Training.</td></tr>';
+        '<tr><td colspan="9" class="empty-cell">Belum ada sesi training aktif pada tab ini. Pilih konfigurasi lalu klik Start Training.</td></tr>';
       return;
     }
 
+    const initialColl = Number(this.history[0].mean_collisions ?? 0);
     const recent = this.history.slice(-15).reverse();
     this.logTableBody.innerHTML = recent
       .map(
-        (m) => `
+        (m) => {
+          const cVal = Number(m.mean_collisions ?? 0);
+          let reductionLabel = '';
+          if (initialColl > 0) {
+            const redPct = Math.round(((initialColl - cVal) / initialColl) * 100);
+            const redClass = redPct > 0 ? 'crash-reduction-positive' : (redPct < 0 ? 'crash-reduction-negative' : 'crash-reduction-neutral');
+            const sign = redPct >= 0 ? '↓' : '↑';
+            reductionLabel = ` <span class="${redClass}">(${sign}${Math.abs(redPct)}%)</span>`;
+          }
+          return `
       <tr>
         <td class="mono-value">${Math.round(m.update)}/${Math.round(m.total_updates)}</td>
         <td class="mono-value">${Math.round(m.timesteps).toLocaleString()}</td>
         <td class="mono-value">${Math.round(m.steps_per_second)}</td>
         <td class="mono-value">${m.mean_episode_reward.toFixed(2)}</td>
         <td class="mono-value">${m.mean_throughput.toFixed(1)}</td>
+        <td class="mono-value">${cVal.toFixed(2)}${reductionLabel}</td>
         <td class="mono-value">${m.policy_loss.toFixed(4)}</td>
         <td class="mono-value">${m.value_loss.toFixed(4)}</td>
         <td class="mono-value">${m.entropy.toFixed(3)}</td>
       </tr>
-    `
+    `;
+        }
       )
       .join('');
   }
@@ -554,6 +588,20 @@ export class TrainingStudioView {
       ],
       'timesteps'
     );
+
+    if (this.collisionsCanvas) {
+      this._drawLineChart(
+        this.collisionsCanvas,
+        [
+          {
+            label: 'mean_collisions',
+            color: '#FF3B30', // Apple System Red
+            values: this.history.map((m) => Number(m.mean_collisions ?? 0)),
+          },
+        ],
+        'timesteps'
+      );
+    }
 
     this._drawLineChart(
       this.lossCanvas,

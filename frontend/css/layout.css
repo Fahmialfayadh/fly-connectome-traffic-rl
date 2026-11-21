@@ -530,6 +530,81 @@ input[type="checkbox"]:focus-visible {
   color: var(--signal-red);
 }
 
+.metric-cell.has-success {
+  background-color: var(--signal-green-tint, rgba(52, 199, 89, 0.1));
+  border-color: var(--signal-green-border, rgba(52, 199, 89, 0.3));
+}
+
+.metric-cell.has-success .metric-number {
+  color: #34c759;
+}
+
+/* Episode History Section (Live Simulation Tab) */
+.episode-history-section {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.episode-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.episode-history-header h3 {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.episode-summary-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--ink-secondary);
+}
+
+.episode-table-container {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.episode-history-table {
+  width: 100%;
+  font-size: 0.72rem;
+}
+
+.episode-history-table th,
+.episode-history-table td {
+  padding: 0.28rem 0.45rem;
+  white-space: nowrap;
+}
+
+.crash-reduction-positive {
+  color: #34c759;
+  font-weight: 600;
+}
+
+.crash-reduction-neutral {
+  color: var(--ink-secondary);
+}
+
+.crash-reduction-negative {
+  color: var(--signal-red);
+  font-weight: 600;
+}
+
 .sim-selector-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
