@@ -172,6 +172,7 @@ class TrafficIntersectionEnv(gym.Env):
         chosen_profile = self.profile_name
         if options and "profile_name" in options:
             chosen_profile = str(options["profile_name"])
+            
         self._active_profile = TrafficProfileFactory.create(
             chosen_profile,
             rng=self.np_random,

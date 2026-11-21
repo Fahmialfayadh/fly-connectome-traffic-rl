@@ -468,9 +468,9 @@ return next_hidden * mask</code></pre>
       <!-- BAGIAN IV: PELATIHAN PPO DI CPU -->
       <section class="doc-section" id="doc-ppo">
         <span class="doc-section-kicker">Bagian IV</span>
-        <h3 class="doc-h2">Pelatihan PPO di CPU</h3>
+        <h3 class="doc-h2">Pelatihan PPO</h3>
         <p class="doc-prose">
-          Seluruh agen neural dilatih di CPU menggunakan <span class="mono-inline">PPOTrainer</span> (<span class="mono-inline">src/fly_traffic/training/ppo_trainer.py</span>) pada <strong>8 environment paralel</strong> (<span class="mono-inline">SyncVectorEnv</span>) dengan profil <span class="mono-inline">mixed</span> (memilih acak <span class="mono-inline">normal</span>, <span class="mono-inline">asymmetric</span>, <span class="mono-inline">asymmetric_ew</span>, atau <span class="mono-inline">rush_hour</span> dengan skala laju <span class="mono-inline">Uniform(0,85, 1,15)</span>).
+          Seluruh agen neural dilatih di CPU menggunakan <span class="mono-inline">PPOTrainer</span> (<span class="mono-inline">src/fly_traffic/training/ppo_trainer.py</span>) pada <strong>8 environment paralel</strong> (<span class="mono-inline">SyncVectorEnv</span>) dengan profil <span class="mono-inline">mixed</span> (memilih acak dengan pembobotan antara profil <span class="mono-inline">normal (22%) </span>, <span class="mono-inline">asymmetric (22%)</span>, <span class="mono-inline">asymmetric_ew (22%)</span>, <span class="mono-inline">rush_hour (22%)</span>, atau <span class="mono-inline">stress_train (11%)</span> dengan skala laju <span class="mono-inline">Uniform(0,85, 1,15)</span>).
         </p>
         <ul class="doc-list">
           <li><strong>Jadwal Update:</strong> <span class="mono-inline">rollout_steps = 128</span> &rarr; 1.024 transisi/update. Pelatihan standar 163.840 langkah berjalan 160 update dengan peluruhan <em>learning rate</em> linear dari <span class="mono-inline">8e-4</span> ke <span class="mono-inline">1,2e-4</span>.</li>
