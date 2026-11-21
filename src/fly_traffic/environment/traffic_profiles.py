@@ -72,6 +72,9 @@ class TrafficProfileFactory:
 
         if name == "stress_test":
             return cls._build_stress_test_profile()
+
+        if name == "stress_train":
+            return cls._build_stress_train_profile(rng=rng)
         
         raise ValueError(
             f"Unknown traffic profile '{name}'. Expected one of {cls.AVAILABLE_PROFILES}."
@@ -144,12 +147,19 @@ class TrafficProfileFactory:
     ) -> TrafficProfile:
         """Sample a randomized traffic regime with mild rate jitter for RL training."""
         generator = rng or np.random.default_rng()
-        choices = ("normal", "asymmetric", "asymmetric_ew", "rush_hour")
-        chosen_name = str(choices[int(generator.integers(0, len(choices)))])
+        choices = ("normal", "asymmetric", "asymmetric_ew", "rush_hour", "stress_train")
+        weights = np.array([1.0, 1.0, 1.0, 1.0, 0.5], dtype=np.float64)
+        probs = weights / weights.sum()
+
+        chosen_name = str(generator.choice(choices, p=probs))
         scale = float(generator.uniform(0.85, 1.15))
 
         if chosen_name == "rush_hour":
             base_profile = cls._build_rush_hour_profile(rate_scale=scale)
+
+        elif chosen_name == "stress_train":
+            base_profile = cls._build_stress_train_profile(rng=generator)
+
         else:
             template = cls.create(chosen_name)
             base_rates = template.sample_rates(0, 300)
@@ -179,4 +189,18 @@ class TrafficProfileFactory:
             ns_turn=0.5,
             ew_straight=0.5,
             ew_turn=0.5,
+        )
+
+    @classmethod
+    def _build_stress_train_profile(cls, rng: np.random.Generator | None = None) -> TrafficProfile:
+        """Create a high-volume profile for stress testing."""
+        generator = rng or np.random.default_rng()
+
+        return cls._build_constant_profile(
+            name="stress_train",
+            description="Extreme traffic volume to test agent robustness",
+            ns_straight=generator.uniform(0.35, 0.4),
+            ns_turn=generator.uniform(0.35, 0.4),
+            ew_straight=generator.uniform(0.35, 0.4),
+            ew_turn=generator.uniform(0.35, 0.4),
         )
