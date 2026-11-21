@@ -955,13 +955,20 @@ export class ArchitectureView {
     this.root.querySelectorAll('[data-arch-filter]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const status = btn.dataset.archFilter;
-        this.filterStatus = this.filterStatus === status ? null : status;
+        if (status === 'all') {
+          this.filterStatus = null;
+        } else {
+          this.filterStatus = this.filterStatus === status ? null : status;
+        }
         this.root.querySelectorAll('[data-arch-filter]').forEach((b) => {
-          const active = b.dataset.archFilter === this.filterStatus;
+          const active =
+            b.dataset.archFilter === 'all'
+              ? this.filterStatus === null
+              : b.dataset.archFilter === this.filterStatus;
           b.classList.toggle('is-active', active);
           b.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
-        this._applyEmphasis();
+        if (this.initialized) this._applyEmphasis();
       });
     });
     const labelsBtn = this.root.querySelector('[data-arch-action="labels"]');
@@ -1123,14 +1130,17 @@ export class ArchitectureView {
         .filter(([, info]) => info.group === group)
         .map(
           ([id, info]) => `
-          <button type="button" class="arch-index-item" data-arch-select="${id}" aria-current="false">
-            <span class="arch-dot status-${info.status}" aria-hidden="true"></span>
-            <span class="arch-index-name mono-value">${info.title}</span>
-            <span class="arch-index-params mono-value">${info.params === '0' ? '-' : info.params.split(' ')[0]}</span>
+          <button type="button" class="arch-pill" data-arch-select="${id}" aria-current="false">
+            <span class="arch-pill-dot status-${info.status}" aria-hidden="true"></span>
+            <span class="arch-pill-name mono-value">${info.title}</span>
           </button>`
         )
         .join('');
-      return `<div class="arch-index-group"><div class="arch-index-heading">${group}</div>${items}</div>`;
+      return `
+        <div class="arch-pipeline-col">
+          <div class="arch-pipeline-col-title">${group}</div>
+          <div class="arch-pipeline-pills">${items}</div>
+        </div>`;
     });
     this.indexEl.innerHTML = groups.join('');
     this.indexEl.querySelectorAll('[data-arch-select]').forEach((btn) => {
@@ -1151,54 +1161,106 @@ export class ArchitectureView {
     if (!this.detailEl) return;
     if (!id) {
       this.detailEl.innerHTML = `
-        <div class="arch-detail-kicker">FlyConnectomePolicy</div>
-        <h3 class="arch-detail-title">Alur satu step</h3>
-        <p class="arch-detail-text">
-          Klik komponen di scene atau di daftar untuk melihat fungsi, bentuk tensor, jumlah parameter,
-          dan apakah nilainya berubah selama training.
-        </p>
-        <div class="arch-equation mono-value">
-          <div>h~ = h_{t-1} * lesion_mask</div>
-          <div>s  = g_exc W_exc h~ - g_inh W_inh h~ + W_in x_t + b_in</div>
-          <div>h_t = [(1 - tau) h~ + tau tanh(s)] * lesion_mask</div>
-          <div>logits = actor_head(h_t),  V = critic_head(h_t)</div>
+        <div class="arch-insp-empty">
+          <div class="arch-insp-header">
+            <h3 class="arch-insp-title">Inspektor Komponen</h3>
+            <span class="arch-tag tag-data">Siap</span>
+          </div>
+          <p class="arch-insp-body">
+            Klik objek mana saja pada model 3D di samping atau pilih modul pada peta komponen di bawah untuk melihat fungsi, bentuk tensor, jumlah parameter, dan status trainingnya.
+          </p>
+          <dl class="arch-insp-metrics">
+            <div class="arch-insp-metric">
+              <dt>Parameter Terlatih</dt>
+              <dd class="mono-value">70.006</dd>
+            </div>
+            <div class="arch-insp-metric">
+              <dt>Sinapsis FAFB (Beku)</dt>
+              <dd class="mono-value">87.171</dd>
+            </div>
+            <div class="arch-insp-metric">
+              <dt>Total Neuron</dt>
+              <dd class="mono-value">2.500 (1.800 CX + 700 MB)</dd>
+            </div>
+          </dl>
+          <p class="arch-insp-footnote">
+            Gulir ke bawah untuk membaca penjelasan matematis lengkap dari langkah (1) hingga (5).
+          </p>
         </div>
-        <dl class="arch-kv">
-          <div><dt>Trainable</dt><dd class="mono-value">70.006 params</dd></div>
-          <div><dt>Frozen</dt><dd class="mono-value">87.171 sinapsis</dd></div>
-          <div><dt>Neuron</dt><dd class="mono-value">2.500 (1.800 CX + 700 MB)</dd></div>
-        </dl>
       `;
       return;
     }
+
     const info = COMPONENTS[id];
-    const changes = {
-      trainable: 'Berubah selama training',
-      frozen: 'Tidak berubah selama training',
-      runtime: 'Tidak dilatih, dapat diubah saat inferensi',
-      data: 'Bukan parameter',
+    const tagClass = `tag-${info.status}`;
+    const changesText = {
+      trainable: 'Berubah saat training (diupdate optimizer Adam)',
+      frozen: 'Konstan (buffer FAFB v783, tidak pernah diubah)',
+      runtime: 'Tidak dilatih (dapat diubah live saat simulasi)',
+      data: 'Bukan parameter (dihitung ulang tiap step)',
     }[info.status];
-    const rows = info.rows
-      .map(([k, v]) => `<div><dt class="mono-value">${k}</dt><dd>${v}</dd></div>`)
-      .join('');
+
+    const extraRows = info.rows && info.rows.length
+      ? `
+        <div class="arch-insp-section">
+          <h4 class="arch-insp-subhead">Rincian Tambahan</h4>
+          <dl class="arch-insp-kv">
+            ${info.rows
+              .map(
+                ([k, v]) => `
+              <div class="arch-insp-kv-row">
+                <dt class="mono-value">${k}</dt>
+                <dd>${v}</dd>
+              </div>`
+              )
+              .join('')}
+          </dl>
+        </div>`
+      : '';
+
     this.detailEl.innerHTML = `
-      <div class="arch-detail-kicker">${info.group}</div>
-      <h3 class="arch-detail-title mono-value">${info.title}</h3>
-      <div class="arch-detail-badges">
-        <span class="arch-status-chip status-${info.status}">${STATUS_LABELS[info.status]}</span>
-        <span class="arch-change-note status-${info.status}">${changes}</span>
+      <div class="arch-insp-header">
+        <div>
+          <div class="arch-insp-group">${info.group}</div>
+          <h3 class="arch-insp-title mono-value">${info.title}</h3>
+        </div>
+        <span class="arch-tag ${tagClass}">${STATUS_LABELS[info.status]}</span>
       </div>
-      <dl class="arch-kv">
-        <div><dt>Kode</dt><dd class="mono-value">${info.code}</dd></div>
-        <div><dt>File</dt><dd class="mono-value">${info.file}</dd></div>
-        <div><dt>Shape</dt><dd class="mono-value">${info.shape}</dd></div>
-        <div><dt>Parameter</dt><dd class="mono-value">${info.params}</dd></div>
+
+      <dl class="arch-insp-kv">
+        <div class="arch-insp-kv-row">
+          <dt>Kode</dt>
+          <dd class="mono-value">${info.code}</dd>
+        </div>
+        <div class="arch-insp-kv-row">
+          <dt>File</dt>
+          <dd class="mono-value">${info.file}</dd>
+        </div>
+        <div class="arch-insp-kv-row">
+          <dt>Shape</dt>
+          <dd class="mono-value">${info.shape}</dd>
+        </div>
+        <div class="arch-insp-kv-row">
+          <dt>Parameter</dt>
+          <dd class="mono-value">${info.params === '0' ? '0 (tanpa bobot)' : info.params}</dd>
+        </div>
+        <div class="arch-insp-kv-row">
+          <dt>Status</dt>
+          <dd>${changesText}</dd>
+        </div>
       </dl>
-      <h4 class="arch-detail-sub">Fungsi</h4>
-      <p class="arch-detail-text">${info.role}</p>
-      <h4 class="arch-detail-sub">Selama training</h4>
-      <p class="arch-detail-text">${info.training}</p>
-      ${rows ? `<dl class="arch-kv arch-kv-compact">${rows}</dl>` : ''}
+
+      <div class="arch-insp-section">
+        <h4 class="arch-insp-subhead">Fungsi</h4>
+        <p class="arch-insp-body">${info.role}</p>
+      </div>
+
+      <div class="arch-insp-section">
+        <h4 class="arch-insp-subhead">Selama Training</h4>
+        <p class="arch-insp-body">${info.training}</p>
+      </div>
+
+      ${extraRows}
     `;
   }
 

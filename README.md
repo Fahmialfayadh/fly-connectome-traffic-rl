@@ -10,10 +10,10 @@ Proyek ini terdiri atas 5 fase yang sudah dapat dijalankan secara terpisah maupu
 
 | Fase | Tujuan | Skrip / Antarmuka | Output Artefak |
 |---|---|---|---|
-| **Fase 1: Ekstraksi Graf** | Saring 1.800 neuron CX + 700 neuron MB dari `connections_princeton.csv`, pisahkan $W_{\text{exc}}$ dan $W_{\text{inh}}$, lalu skalakan *spectral radius* ke `0.95`. | `scripts/extract_connectome.py` | `artifacts/fly_subconnectome.pt` |
-| **Fase 2 & 3: Training PPO** | Latih kebijakan `FlyConnectomePolicy`, `MLPBaselinePolicy`, dan `GRUBaselinePolicy` pada 8 environment CPU paralel menggunakan PPO + *decision-step masking* dan pantau **Live Policy Preview** (4 tick `rush_hour` per update). | **Tab Training Studio** di Web UI, atau `scripts/train_agents.py` | `artifacts/checkpoints/{fly,mlp,gru}_ppo.pt` |
-| **Fase 4: Benchmark** | Evaluasi `Fixed Timer`, `PPO-MLP`, `PPO-GRU`, dan `Fly Connectome PPO` di skenario `normal`, `asymmetric`, `rush_hour` (termasuk metrik `mean_collisions`), serta uji farmakologi & lesi. | **Tab Benchmark & Connectome** di Web UI, atau `scripts/run_benchmark.py` | `artifacts/benchmarks/benchmark_summary.json`, `benchmark_table.md`, `*.png` |
-| **Fase 5: Lab Simulasi** | Jalankan **Inference** secara *real-time* (60 FPS Canvas 2D) dengan lampu merah 3-lensa, pergerakan kendaraan fisik, deteksi kolisi (`red_light_conflict` & `box_clearance_conflict`), kontrol *Safety Buffer* (`all_red_steps`), probabilitas aksi, *heatmap* 50x50 neuron, dan kontrol $g_{\text{exc}} / g_{\text{inh}}$ + lesi. | `scripts/launch_web_lab.py` (Utama) | Web UI di `http://127.0.0.1:8080` |
+| **Fase 1: Ekstraksi Graf** | Saring 1.800 neuron CX + 700 neuron MB dari `connections_princeton.csv`, pisahkan $W_{\text{exc}}$ dan $W_{\text{inh}}$, skalakan *spectral radius* ke `0.95`, serta bangun *null model* acak terkontrol (*global random rewiring*). | `scripts/extract_connectome.py`, `connectome/shuffled.py` | `artifacts/fly_subconnectome.pt`, `artifacts/fly_subconnectome_shuffled.pt` |
+| **Fase 2 & 3: Training PPO** | Latih kebijakan `FlyConnectomePolicy` (`fly`), `Shuffled Connectome PPO` (`fly_shuffled`), `MLPBaselinePolicy`, dan `GRUBaselinePolicy` pada 8 environment CPU paralel menggunakan PPO + *decision-step masking* dan pantau **Live Policy Preview** (4 tick `rush_hour` per update). | **Tab Training Studio** di Web UI, atau `scripts/train_agents.py` | `artifacts/checkpoints/{fly,fly_shuffled,mlp,gru}_ppo.pt` |
+| **Fase 4: Benchmark** | Evaluasi komparatif model yang dipilih pengguna (`Fixed Timer`, `PPO-MLP`, `PPO-GRU`, `Fly Connectome PPO`, `Shuffled Connectome PPO`, maupun *checkpoint* kustom `.pt`) di skenario `normal`, `asymmetric`, `rush_hour` (termasuk grafik & metrik `mean_collisions`), serta uji farmakologi & lesi. | **Tab Benchmark & Connectome** di Web UI, atau `scripts/run_benchmark.py` | `artifacts/benchmarks/benchmark_summary.json`, `benchmark_table.md`, `*.png` |
+| **Fase 5: Lab Simulasi & Eksplorasi 3D** | Jalankan **Inference** secara *real-time* (60 FPS Canvas 2D + visualisasi 3D otak FlyWire), inspeksi end-to-end arsitektur pada **Tab 3D Architecture** (*Forward Pass* vs *Backward Gradient Flow* + panduan matematis), deteksi kolisi, *Safety Buffer*, dan kontrol $g_{\text{exc}} / g_{\text{inh}}$ + lesi. | `scripts/launch_web_lab.py` (Utama) | Web UI di `http://127.0.0.1:8080` |
 
 > **Catatan Penting (Inference vs Training):**  
 > Saat membuka Web UI pertama kali, tab **Live Simulation** berjalan dalam mode **INFERENCE** menggunakan *checkpoint* terlatih yang sudah tersedia di `artifacts/checkpoints/` (hasil training 163.840 langkah sebelumnya).  
@@ -34,8 +34,9 @@ Gunakan environment Python pada `/cache/ml/.venv/bin/python`:
 
 Lalu buka `http://127.0.0.1:8080` di browser untuk mengakses:
 - **Tab Live Simulation**: Simulasi 2D lampu lalu lintas dengan kontrol **Map Zoom** (`45%`–`125%` lewat tombol zoom maupun roda mouse), **penambahan kendaraan manual** (**klik langsung salah satu dari 8 lajur masuk pada peta** dengan pilihan `+1`/`+5`/`+10`, atau gunakan `Target Lane` + `Add to Lane`, `+5 Random`, serta `+24 Surge (3/lane)` dengan batas aman `80` kendaraan/lajur atau `640` total maksimal), pemilih dinamis **Active Model / Controller** (menampilkan seluruh file `.pt` lokal di `artifacts/checkpoints/` beserta nama file dan jumlah langkah latihnya), kontrol **Safety Buffer** (`Yellow + All-Red` vs `Yellow Only`), indikator visual serta penghitung **Collisions** (`red_light_conflict` & `box_clearance_conflict`), grafik probabilitas keputusan 4 fase, *heatmap* 50x50 neuron (`CX` dan `MB`), *slider* pengali $g_{\text{exc}}$ / $g_{\text{inh}}$, dan tombol lesi sirkuit.
-- **Tab Training Studio**: Pengaturan *timesteps* hingga **Mode Maximal** (`524.288` langkah) dan **Custom Timesteps** (`1.024`–`2.000.000`), panel **Custom PPO Hyperparameters** (`gamma`, `gae_lambda`, `clip_coef`, `ent_coef`, `vf_coef`, `update_epochs`, `rollout_steps`, `sequence_chunk_len`, `num_minibatches`, `anneal_lr`, dan opsi **Save-on-Stop** `save_on_cancel` agar bobot parsial tersimpan saat menekan **Stop Training** jika minimal 1 update PPO telah selesai), pilihan **Model File Save Mode** (**Create a new model file (.pt)** dengan nama kustom atau *timestamp*, **Overwrite default**, atau **Dry run**), tombol **Start Training**, grafik optimasi *real-time*, inventaris seluruh *checkpoint* lokal dengan tombol **Load in Live Sim**, serta **Live Policy Preview** (`rush_hour`, memutar 4 snapshot simulasi per update PPO via WebSocket `/ws/training`).
-- **Tab Benchmark & Connectome**: Ringkasan struktur sub-graf `FAFB v783`, hasil perbandingan multi-skenario (termasuk `Mean Collisions`), hasil farmakologi/lesi, dan kamus variabel.
+- **Tab Training Studio**: Pemilihan arsitektur kebijakan (`fly`, `fly_shuffled` *Null Model*, `mlp`, `gru`), pengaturan *timesteps* hingga **Mode Maximal** (`524.288` langkah) dan **Custom Timesteps** (`1.024`–`2.000.000`), panel **Custom PPO Hyperparameters** (`gamma`, `gae_lambda`, `clip_coef`, `ent_coef`, `vf_coef`, `update_epochs`, `rollout_steps`, `sequence_chunk_len`, `num_minibatches`, `anneal_lr`, dan opsi **Save-on-Stop** `save_on_cancel`), pilihan **Model File Save Mode** (**Create a new model file (.pt)**, **Overwrite default**, atau **Dry run**), grafik optimasi *real-time* (termasuk `mean_collisions`), inventaris seluruh *checkpoint* lokal dengan tombol **Load in Live Sim**, serta **Live Policy Preview** (`rush_hour`, 4 snapshot per update PPO via `/ws/training`).
+- **Tab Benchmark & Connectome**: Pemilih model interaktif (*checkbox* untuk memilih kombinasi model bawaan, `Shuffled Connectome PPO`, maupun *checkpoint* kustom `.pt` yang ingin dibandingkan via `POST /api/benchmark/run`), ringkasan sub-graf `FAFB v783`, grafik perbandingan multi-skenario (`mean_reward`, `mean_wait_time_s`, dan `mean_collisions`), tabel hasil farmakologi/lesi, dan kamus variabel.
+- **Tab 3D Architecture**: Visualisasi 3D interaktif *end-to-end* untuk `FlyConnectomePolicy` (`x_t -> input_projection -> ConnectomeRecurrentCell -> actor_head / critic_head -> environment`), sakelar aliran **Forward Pass** vs **Backward Gradient**, filter status (*Trainable*, *Frozen Bio*, *Runtime*), peta komponen horizontal, inspektor detail per modul, serta panduan matematis 4 tahap.
 
 ### 2. Perintah CLI Opsional (Ekstraksi, Training, Benchmark, Tes)
 
@@ -62,9 +63,10 @@ Lalu buka `http://127.0.0.1:8080` di browser untuk mengakses:
 ├── dataset/                        # Data mentah FlyWire FAFB v783 (CSV)
 ├── artifacts/                      # Artefak tergenerasi (sub-connectome, checkpoints, benchmarks)
 ├── docs/
+│   ├── MASTER_DOC.md                 # Laporan teknis lengkap (konektom, null model, lingkungan, PPO, hasil)
 │   ├── TRAINING_AND_EPISODE_GUIDE.md # Panduan alur 1 episode (300 langkah), diagram PPO & penelusuran nyata
 │   └── VARIABLES_AND_MATH.md         # Kamus lengkap variabel kode, kolisi, dan pemetaan rumus matematika
-├── frontend/                       # Antarmuka Web (HTML + OKLCH CSS + Modular Vanilla ES6 + Canvas 2D)
+├── frontend/                       # Antarmuka Web (HTML + OKLCH CSS + Modular Vanilla ES6 + Canvas 2D + Three.js)
 │   ├── index.html
 │   ├── css/
 │   │   ├── tokens.css
@@ -73,6 +75,8 @@ Lalu buka `http://127.0.0.1:8080` di browser untuk mengakses:
 │       ├── main.js
 │       ├── intersection_renderer.js
 │       ├── connectome_renderer.js
+│       ├── brain3d_renderer.js
+│       ├── architecture_view.js
 │       ├── training_studio.js
 │       └── benchmark_view.js
 ├── scripts/                        # CLI entrypoints

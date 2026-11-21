@@ -3,11 +3,14 @@
  * simulation/training WebSockets, and Light Instrument Lab UI state.
  */
 
-import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_2';
-import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_2';
-import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_2';
-import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_2';
-import { TrainingStudioView } from './training_studio.js?v=20261121_2';
+import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_12';
+import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_12';
+import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_12';
+import { DocumentationView } from './documentation_view.js?v=20261121_12';
+import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_12';
+import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261121_12';
+import { TrainingStudioView } from './training_studio.js?v=20261121_12';
+import { ArchitectureView } from './architecture_view.js?v=20261121_12';
 
 const PHASE_NAMES = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
 
@@ -25,8 +28,19 @@ class TrafficLabApp {
         ? new Brain3DRenderer(this.brain3dRoot)
         : null;
     this.connectomeViewMode = this.brain3dRenderer ? '3d' : '2d';
+    this.isFlyModelActive = true;
+    this.modelTelemetryRenderer = new ModelTelemetryRenderer(
+      document.getElementById('baseline-panel-body')
+    );
     this.trainingStudio = new TrainingStudioView();
     this.benchmarkView = new BenchmarkInspectorView();
+    const archPanel = document.getElementById('panel-architecture');
+    this.architectureView = archPanel && webglAvailable()
+      ? new ArchitectureView(archPanel)
+      : null;
+    this.documentationView = new DocumentationView(
+      document.getElementById('panel-docs')
+    );
 
     this.activeTab = 'simulation';
     this.isTrainingActive = false;
@@ -100,12 +114,14 @@ class TrafficLabApp {
       summaryRow.classList.toggle('is-3d-mode', resolved === '3d');
     }
     if (this.brain3dRenderer) {
-      this.brain3dRenderer.setVisible(resolved === '3d' && this.activeTab === 'simulation');
-      if (resolved === '3d' && this.latestSimFrame) {
+      this.brain3dRenderer.setVisible(
+        resolved === '3d' && this.activeTab === 'simulation' && this.isFlyModelActive
+      );
+      if (resolved === '3d' && this.isFlyModelActive && this.latestSimFrame) {
         this.brain3dRenderer.applyFrame(this.latestSimFrame);
       }
     }
-    if (resolved === '2d' && this.latestSimFrame) {
+    if (resolved === '2d' && this.isFlyModelActive && this.latestSimFrame) {
       this.connectomeRenderer.render(
         this.latestSimFrame.connectome_telemetry || {},
         this.latestSimFrame.agent_name
@@ -256,9 +272,17 @@ class TrafficLabApp {
     });
 
     this.trainingStudio.setVisible(targetTabName === 'training');
+    if (this.architectureView) {
+      this.architectureView.setVisible(targetTabName === 'architecture');
+    }
+    if (this.documentationView) {
+      this.documentationView.setVisible(targetTabName === 'docs');
+    }
     if (this.brain3dRenderer) {
       this.brain3dRenderer.setVisible(
-        targetTabName === 'simulation' && this.connectomeViewMode === '3d'
+        targetTabName === 'simulation' &&
+          this.connectomeViewMode === '3d' &&
+          this.isFlyModelActive
       );
     }
     if (targetTabName === 'simulation') {
@@ -506,14 +530,34 @@ class TrafficLabApp {
       this._activateTab('simulation');
     };
 
-    this.benchmarkView.onRunBenchmarkRequested = async () => {
+    const openDocsBtn = document.getElementById('btn-open-docs-from-arch');
+    if (openDocsBtn) {
+      openDocsBtn.addEventListener('click', () => {
+        this._activateTab('docs');
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      });
+    }
+
+    this.benchmarkView.onRunBenchmarkRequested = async (agentKeys) => {
       this.benchmarkView.setRunningState(true);
+      this.benchmarkView.setError(null);
       try {
-        const response = await fetch('/api/benchmark/run', { method: 'POST' });
+        const response = await fetch('/api/benchmark/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_keys: agentKeys }),
+        });
         const summary = await response.json();
         if (response.ok) {
           this.benchmarkView.renderBenchmarkSummary(summary);
+          if (this.documentationView) {
+            this.documentationView.syncBenchmarkSummary(summary);
+          }
+        } else if (summary && summary.error) {
+          this.benchmarkView.setError(summary.error);
         }
+      } catch (err) {
+        this.benchmarkView.setError(`Gagal menjalankan benchmark: ${err.message}`);
       } finally {
         this.benchmarkView.setRunningState(false);
       }
@@ -535,7 +579,7 @@ class TrafficLabApp {
       agentSelect.value;
 
     const entries = Object.values(checkpointsMap).filter(
-      (info) => info && (info.exists || info.key === 'fly')
+      (info) => info && (info.exists || info.key === 'fly' || info.key === 'fly_shuffled')
     );
 
     agentSelect.innerHTML = '';
@@ -576,6 +620,9 @@ class TrafficLabApp {
       this.trainingStudio.renderInventory(this.checkpointsInventory, activeKey);
       this.benchmarkView.renderOverview(data.overview, data.benchmark_summary);
     }
+    if (this.documentationView) {
+      this.documentationView.syncBenchmarkSummary(data.benchmark_summary || null);
+    }
     if (data.simulation) {
       this._applySimulationFrame(data.simulation);
     }
@@ -602,6 +649,7 @@ class TrafficLabApp {
         this.lastInventoryAgentKey = activeKey;
         this._syncAgentSelectorOptions(this.checkpointsInventory, activeKey);
         this.trainingStudio.renderInventory(this.checkpointsInventory, activeKey);
+        this.benchmarkView.renderModelSelector(this.checkpointsInventory);
       }
     };
 
@@ -661,15 +709,23 @@ class TrafficLabApp {
     this.intersectionRenderer.applyBackendFrame(frame);
 
     const snapshot = frame.snapshot || {};
-    const prov = frame.checkpoint_provenance || {};
     const policy = frame.policy_telemetry || {};
     const brain = frame.connectome_telemetry || {};
+    const modelTel = frame.model_telemetry || {};
+    const isFlyActive = Boolean(brain.is_fly_active);
+    this.isFlyModelActive = isFlyActive;
 
-    if (this.connectomeViewMode === '2d') {
-      this.connectomeRenderer.render(brain, frame.agent_name);
-    }
-    if (this.brain3dRenderer && this.brain3dRenderer.ready) {
-      this.brain3dRenderer.applyFrame(frame);
+    this._syncRightColumnForModel(frame, brain, modelTel, isFlyActive);
+
+    if (isFlyActive) {
+      if (this.connectomeViewMode === '2d') {
+        this.connectomeRenderer.render(brain, frame.agent_name);
+      }
+      if (this.brain3dRenderer && this.brain3dRenderer.ready) {
+        this.brain3dRenderer.applyFrame(frame);
+      }
+    } else if (this.modelTelemetryRenderer) {
+      this.modelTelemetryRenderer.render(frame);
     }
 
     // Top telemetry strip
@@ -774,25 +830,19 @@ class TrafficLabApp {
     const epHistory = Array.isArray(frame.episode_history) ? frame.episode_history : [];
     this._renderEpisodeHistory(epHistory, totalCollisions);
 
-    // Connectome readouts
-    document.getElementById('brain-active-neurons').textContent = brain.is_fly_active
-      ? `${brain.active_neurons} / ${brain.total_neurons}`
-      : 'N/A (Baseline)';
-    document.getElementById('brain-tau').textContent = brain.is_fly_active
-      ? Number(brain.leak_rate_tau).toFixed(3)
-      : '-';
-    document.getElementById('brain-g-exc').textContent = Number(brain.g_exc).toFixed(2);
-    document.getElementById('brain-g-inh').textContent = Number(brain.g_inh).toFixed(2);
-    document.getElementById('brain-cx-act').textContent = brain.is_fly_active
-      ? Number(brain.cx_mean_abs_activity).toFixed(4)
-      : '-';
-    document.getElementById('brain-mb-act').textContent = brain.is_fly_active
-      ? Number(brain.mb_mean_abs_activity).toFixed(4)
-      : '-';
-    document.getElementById('brain-value-est').textContent =
-      policy.value_estimate !== null && policy.value_estimate !== undefined
-        ? Number(policy.value_estimate).toFixed(3)
-        : '-';
+    // Connectome readouts (only relevant when Fly / Shuffled Connectome is active)
+    if (isFlyActive) {
+      document.getElementById('brain-active-neurons').textContent = `${brain.active_neurons} / ${brain.total_neurons}`;
+      document.getElementById('brain-tau').textContent = Number(brain.leak_rate_tau).toFixed(3);
+      document.getElementById('brain-g-exc').textContent = Number(brain.g_exc).toFixed(2);
+      document.getElementById('brain-g-inh').textContent = Number(brain.g_inh).toFixed(2);
+      document.getElementById('brain-cx-act').textContent = Number(brain.cx_mean_abs_activity).toFixed(4);
+      document.getElementById('brain-mb-act').textContent = Number(brain.mb_mean_abs_activity).toFixed(4);
+      document.getElementById('brain-value-est').textContent =
+        policy.value_estimate !== null && policy.value_estimate !== undefined
+          ? Number(policy.value_estimate).toFixed(3)
+          : '-';
+    }
 
     // Policy probabilities
     const probs = policy.action_probabilities || [0.25, 0.25, 0.25, 0.25];
@@ -812,7 +862,7 @@ class TrafficLabApp {
       }
     }
 
-    // Enable/disable pharmacology controls clearly when Fly Connectome is active
+    // Enable/disable pharmacology controls when Fly Connectome is active
     const flyOnlyIds = [
       'slider-g-exc',
       'slider-g-inh',
@@ -822,7 +872,80 @@ class TrafficLabApp {
       'btn-reset-brain',
     ];
     for (const elementId of flyOnlyIds) {
-      document.getElementById(elementId).disabled = !brain.is_fly_active;
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.disabled = !isFlyActive;
+      }
+    }
+  }
+
+  _syncRightColumnForModel(frame, brain, modelTel, isFlyActive) {
+    const flyBody = document.getElementById('fly-panel-body');
+    const baselineBody = document.getElementById('baseline-panel-body');
+    const viewSwitch = document.getElementById('brain-view-switch');
+    const titleEl = document.getElementById('right-col-title');
+    const captionEl = document.getElementById('right-col-caption');
+    const shuffledNotice = document.getElementById('shuffled-null-notice');
+    const policyHeadingEl = document.getElementById('policy-output-heading');
+
+    if (flyBody) {
+      flyBody.hidden = !isFlyActive;
+      flyBody.classList.toggle('is-hidden', !isFlyActive);
+    }
+    if (baselineBody) {
+      baselineBody.hidden = isFlyActive;
+      baselineBody.classList.toggle('is-hidden', isFlyActive);
+    }
+    if (viewSwitch) {
+      viewSwitch.hidden = !isFlyActive;
+      viewSwitch.classList.toggle('is-hidden', !isFlyActive);
+    }
+
+    if (this.brain3dRenderer) {
+      this.brain3dRenderer.setVisible(
+        isFlyActive && this.connectomeViewMode === '3d' && this.activeTab === 'simulation'
+      );
+    }
+
+    const kind = resolveControllerKind(frame);
+    const prov = frame.checkpoint_provenance || {};
+    const isShuffled = Boolean(modelTel.is_shuffled || kind === 'fly_shuffled');
+
+    if (shuffledNotice) {
+      shuffledNotice.hidden = !isShuffled;
+    }
+
+    if (titleEl && captionEl) {
+      if (kind === 'fly') {
+        const cx = modelTel.cx_count ?? 1800;
+        const mb = modelTel.mb_count ?? 700;
+        const total = modelTel.num_neurons ?? brain.total_neurons ?? 2500;
+        titleEl.textContent = 'Connectome Activity';
+        captionEl.textContent = `FAFB v783 · ${Number(total).toLocaleString()} neuron (${Number(cx).toLocaleString()} CX, ${Number(mb).toLocaleString()} MB) · live h_t`;
+      } else if (kind === 'fly_shuffled') {
+        const total = modelTel.num_neurons ?? brain.total_neurons ?? 2500;
+        titleEl.textContent = 'Shuffled Connectome Activity (Null Model)';
+        captionEl.textContent = `${Number(total).toLocaleString()} neuron · sisi sinaptik diacak seragam (seed 42), sparsity ${((modelTel.sparsity || 0.986053) * 100).toFixed(2)}%`;
+      } else if (kind === 'gru') {
+        const params = Number(modelTel.trainable_params || prov.trainable_params || 69725);
+        titleEl.textContent = 'GRU Recurrent State';
+        captionEl.textContent = `${modelTel.hidden_dim || 105} unit GRUCell · ${params.toLocaleString()} parameter terlatih`;
+      } else if (kind === 'mlp') {
+        const width = modelTel.hidden_width || 250;
+        const params = Number(modelTel.trainable_params || prov.trainable_params || 69755);
+        titleEl.textContent = 'MLP Feedforward Activations';
+        captionEl.textContent = `2 lapis Tanh (${width} + ${width} unit) · tanpa memori rekuren · ${params.toLocaleString()} parameter`;
+      } else {
+        titleEl.textContent = 'Fixed Timer Schedule';
+        captionEl.textContent = 'Siklus aturan tetap (8, 4, 8, 4) langkah · 0 parameter terlatih';
+      }
+    }
+
+    if (policyHeadingEl) {
+      policyHeadingEl.textContent =
+        kind === 'fixed_timer'
+          ? 'Phase Selection Output (Deterministic)'
+          : 'Action Policy Output (4 Phases)';
     }
   }
 

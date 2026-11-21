@@ -76,6 +76,16 @@ scaled_inhibitory_matrix = (raw_inhibitory_matrix * scaling_factor).astype(np.fl
 
 Setelah penskalaan, matriks dikonversi ke tensor koordinat (COO) dan diserialisasi ke `artifacts/fly_subconnectome.pt` bersama daftar `neuron_ids`, label `circuit_groups`, `dominant_neuropils`, `dominant_nts`, dan metadata ekstraksi. Dengan begitu, proses training tidak perlu memindai ulang berkas CSV mentah setiap kali dijalankan.
 
+### Model Nol Terkontrol (*Shuffled Connectome Null Model*)
+
+Untuk mengisolasi kontribusi **topologi biologis otak lalat** dari sekadar efek proyeksi ke ruang rekuren berdimensi tinggi (*reservoir computing*), modul `src/fly_traffic/connectome/shuffled.py` menyediakan pembanding terkontrol `artifacts/fly_subconnectome_shuffled.pt` (*global uniform random edge rewiring*, `seed = 42`):
+
+- **Ukuran dan kepadatan identik**: tetap `2.500` neuron (`CX=1800`, `MB=700`) dengan *sparsity* persis `98,6053%`.
+- **Distribusi bobot dan polaritas identik**: seluruh nilai bobot dari `36.908` sisi eksitatori dan `50.263` sisi inhibitori dipertahankan, lalu dipasangkan ulang secara acak seragam tanpa duplikasi ke pasangan `(post, pre)` di seluruh matriks `2.500 × 2.500`. Langkah ini menghancurkan modularitas biologis (koneksi lintas wilayah `CX ↔ MB` meningkat dari `2.880` menjadi `35.430`).
+- **Stabilitas spektral dan anggaran latih identik**: matriks hasil pengacakan memiliki *spectral radius* mentah `0,1302` lalu diskalakan kembali ke `0,9500`, dibekukan (*frozen*), dan dilatih dengan PPO pada `70.006` parameter adapter yang sama persis (`model_type = "fly_shuffled"`).
+
+Dengan kontrol ini, hasil perbandingan terhadap `Fly Connectome PPO` memiliki interpretasi objektif apa pun keluarannya: keunggulan `Fly Connectome` mengindikasikan peran motif sirkuit biologis; performa setara menunjukkan dominasi keseimbangan E/I, *sparsity*, dan ekspansi dimensi `2.500`; sedangkan keunggulan `Shuffled` mengindikasikan bahwa spesialisasi struktural biologis justru membatasi pencampuran sinyal pada domain persimpangan.
+
 ---
 
 ## Bagian II: Lingkungan Simulasi Persimpangan
@@ -185,14 +195,15 @@ Dengan pengaturan standar (`yellow_steps = 1` dan `all_red_steps = 1`), jeda dua
 
 ## Bagian III: Arsitektur Pengendali (Agents)
 
-Empat pengendali dievaluasi pada lingkungan dan metrik yang identik. Ketiga model pembelajaran mesin disetel agar memiliki jumlah parameter terlatih yang setara (sekitar 70 ribu parameter):
+Lima pengendali tersedia pada lingkungan dan metrik yang identik. Keempat model pembelajaran mesin disetel agar memiliki jumlah parameter terlatih yang setara (sekitar 70 ribu parameter):
 
 | Pengendali | Kelas / Modul | Memori Rekuren | Parameter Terlatih |
 |---|---|---|---|
-| **Fly Connectome PPO** | `FlyConnectomePolicy` (`fly_policy.py`) | Ya (`2.500` neuron *sparse* FAFB v783) | `70.006` |
-| **PPO-GRU** | `GRUBaselinePolicy` (`baselines.py`) | Ya (`105` unit GRU) | `69.725` |
-| **PPO-MLP** | `MLPBaselinePolicy` (`baselines.py`) | Tidak (2 lapis *feedforward*, lebar `250`) | `69.755` |
-| **Fixed Timer** | `FixedTimerAgent` (`fixed_timer.py`) | Tidak (siklus tetap `(8, 4, 8, 4)` langkah) | `0` |
+| **Fly Connectome PPO** (`fly`) | `FlyConnectomePolicy` (`fly_policy.py`) | Ya (`2.500` neuron *sparse* FAFB v783 asli) | `70.006` |
+| **Shuffled Connectome PPO** (`fly_shuffled`) | `FlyConnectomePolicy` + `shuffled.py` | Ya (`2.500` neuron *sparse* teracak, *null model*) | `70.006` |
+| **PPO-GRU** (`gru`) | `GRUBaselinePolicy` (`baselines.py`) | Ya (`105` unit GRU) | `69.725` |
+| **PPO-MLP** (`mlp`) | `MLPBaselinePolicy` (`baselines.py`) | Tidak (2 lapis *feedforward*, lebar `250`) | `69.755` |
+| **Fixed Timer** (`fixed_timer`) | `FixedTimerAgent` (`fixed_timer.py`) | Tidak (siklus tetap `(8, 4, 8, 4)` langkah) | `0` |
 
 ### Fly Connectome Policy
 
@@ -202,7 +213,7 @@ $$h_{t+1} = (1 - \tau) h_t + \tau \tanh\Big((g_{\text{exc}} W_{\text{exc}} - g_{
 
 Keterangan komponennya:
 
-- $W_{\text{exc}}$ dan $W_{\text{inh}}$ **dibekukan (*frozen*)** selama training agar struktur topologi konektom FAFB v783 tetap utuh.
+- $W_{\text{exc}}$ dan $W_{\text{inh}}$ **dibekukan (*frozen*)** selama training (`requires_grad = False`, didaftarkan melalui `register_buffer`) agar struktur topologi konektom FAFB v783 tetap utuh. Pada saat *backward pass* (BPTT), *autograd* PyTorch tidak menghitung turunan untuk bobot sinapsis biologis, melainkan hanya meneruskan gradien melalui matriks transpose $W_{\text{exc}}^T$ dan $W_{\text{inh}}^T$ agar pembaruan dapat mencapai `input_projection` dan `tau_logit`.
 - **Parameter yang dilatih** (`70.006` total) hanya proyeksi masukan `input_projection` (`55.000` bobot $W_{\text{in}}$ + `2.500` bias = `57.500`), `actor_head` (`2.500 × 4 + 4 = 10.004`), `critic_head` (`2.500 × 1 + 1 = 2.501`) untuk mengestimasi nilai keadaan (*state value*) $V(s_t)$, serta `tau_logit` (`1` parameter) yang memetakan *leak rate* $\tau$ ke rentang `(0,05, 0,95)`.
 - **Kontrol *in-silico* langsung**: pengali gain $g_{\text{exc}}$ (ACh) dan $g_{\text{inh}}$ (GABA/Glu) dapat digeser secara *real-time* pada rentang `[0,0, 2,5]`, sementara buffer biner `lesion_mask` dapat menonaktifkan (*lesion*) sebagian neuron CX, MB, atau acak tanpa membangun ulang matriks sparse.
 
@@ -326,7 +337,9 @@ Seluruh siklus inferensi, manipulasi farmakologis, pelatihan CPU, dan evaluasi d
   - Lokasi 2.500 neuron dalam dua mode tata letak (**Neuropil** maupun **Soma**) dengan pewarnaan aktivasi *live* $h_t$ (`-0,40` biru inhibitori hingga `+0,40` oranye eksitatori) dan penanda cincin merah untuk neuron yang dilesikan.
   - 3.000 sinapsis terkuat dengan pulsa arah aliran sinyal dari neuron presinaptik ke postsinaptik.
   - Inspektor neuron individual saat diklik (`root_id`, `cell_type`, neuropil dominan, neurotransmiter, dan nilai $h_t$), serta fallback matriks 2D `50 × 50`.
-- **Training Studio**: menjalankan `TrainingJobManager` di thread terpisah dengan pratinjau deterministik 4 langkah (*Live Policy Preview*) pada skenario `rush_hour` setiap selesai satu update PPO, tanpa memperlambat loop optimasi.
+- **Training Studio**: menjalankan `TrainingJobManager` di thread terpisah dengan dukungan arsitektur `fly`, `fly_shuffled`, `mlp`, dan `gru`, kustomisasi hyperparameter PPO, penyimpanan berkas *checkpoint* kustom (`.pt`), serta pratinjau deterministik 4 langkah (*Live Policy Preview*) pada skenario `rush_hour` setiap selesai satu update PPO.
+- **Benchmark & Connectome (`BenchmarkInspectorView` & `BenchmarkPlotter`)**: menyediakan pemilih model interaktif untuk membandingkan kombinasi model bawaan, `Shuffled Connectome PPO`, maupun *checkpoint* kustom `.pt` melalui `POST /api/benchmark/run` (`agent_keys`), lengkap dengan grafik batang komparatif `mean_reward`, `mean_wait_time_s`, dan `mean_collisions` baik di antarmuka web maupun berkas gambar Matplotlib (`training_curves.png`, `scenario_comparison.png`, dan `pharmacology_ablation.png`).
+- **Eksplorasi Arsitektur 3D (`ArchitectureView`)**: halaman khusus yang memodelkan topologi *end-to-end* `FlyConnectomePolicy` dalam ruang 3D (`x_t`, `input_projection`, `ConnectomeRecurrentCell` dengan 2.500 neuron FAFB + $\tau$ + kontrol runtime, `actor_head`, `critic_head`, dan umpan balik lingkungan). Dilengkapi sakelar aliran **Forward Pass** vs **Backward Gradient**, filter status (*Trainable*, *Frozen Bio*, *Runtime*), peta komponen horizontal, inspektor per modul, serta panduan matematis 4 tahap.
 
 ---
 
@@ -407,6 +420,7 @@ Berdasarkan pengukuran di workspace ini, sub-konektom *Drosophila melanogaster* 
 ### Neurosains & Konektom
 - *Cross-region edges*: sisi sinaptik yang menghubungkan neuron di Central Complex dengan neuron di Mushroom Body.
 - *Frozen / trainable parameters*: parameter yang dikunci selama training (matriks $W_{\text{exc}}, W_{\text{inh}}$) versus parameter yang diperbarui optimizer ($W_{\text{in}}, b_{\text{in}}$, kepala aktor/kritik, dan $\tau$).
+- *Global random edge rewiring* (*Shuffled null model*): pengacakan pasangan `(post, pre)` secara seragam pada matriks sinapsis *sparse* sembari mempertahankan jumlah sisi, distribusi bobot E/I, *sparsity*, dan *spectral radius* guna mengisolasi kontribusi topologi biologis.
 - *In-silico ablation / lesion mask*: penonaktifan sementara sebagian neuron (menetapkan aktivasi nol melalui masker biner) untuk menguji ketahanan sirkuit tanpa menghitung ulang graf.
 - *Leak rate* ($\tau$): koefisien integrasi membran pada rentang `(0,05, 0,95)` yang menentukan porsi memori lama yang dipertahankan terhadap masukan baru.
 - *Log1p weighting*: transformasi $\log(1 + \text{syn\_count})$ untuk memadatkan rentang jumlah sinaps sebelum normalisasi.

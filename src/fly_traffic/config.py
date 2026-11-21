@@ -55,7 +55,7 @@ class TrafficEnvConfig:
     max_elapsed_norm_steps: float = 20.0
     profile_name: str = "mixed"
     collision_penalty: float = 15.0
-    red_light_wait_threshold_s: float = 36.0
+    red_light_wait_threshold_s: float = 120.0
     red_light_max_prob: float = 0.14
     dilemma_zone_prob: float = 0.18
     enable_collisions: bool = True

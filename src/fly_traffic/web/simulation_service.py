@@ -10,11 +10,16 @@ import numpy as np
 import torch
 
 from fly_traffic.agents.base import BaseTrafficAgent, NeuralAgentAdapter
-from fly_traffic.agents.baselines import load_policy_checkpoint
+from fly_traffic.agents.baselines import (
+    GRUBaselinePolicy,
+    MLPBaselinePolicy,
+    load_policy_checkpoint,
+)
 from fly_traffic.agents.fixed_timer import FixedTimerAgent
 from fly_traffic.agents.fly_policy import FlyConnectomePolicy
 from fly_traffic.config import ConnectomeConfig, PPOConfig, TrafficEnvConfig
 from fly_traffic.connectome.artifact import ConnectomeArtifact
+from fly_traffic.connectome.shuffled import load_or_create_shuffled_connectome
 from fly_traffic.environment.traffic_env import TrafficIntersectionEnv
 
 
@@ -23,11 +28,12 @@ class SimulationService:
 
     AGENT_LABELS: dict[str, str] = {
         "fly": "Fly Connectome PPO",
+        "fly_shuffled": "Shuffled Connectome PPO",
         "gru": "PPO-GRU",
         "mlp": "PPO-MLP",
         "fixed_timer": "Fixed Timer",
     }
-    DEFAULT_MODEL_KEYS: tuple[str, ...] = ("fly", "gru", "mlp")
+    DEFAULT_MODEL_KEYS: tuple[str, ...] = ("fly", "fly_shuffled", "gru", "mlp")
     DEFAULT_CHECKPOINT_FILES: frozenset[str] = frozenset(
         f"{key}_ppo.pt" for key in DEFAULT_MODEL_KEYS
     )
@@ -54,9 +60,15 @@ class SimulationService:
         self._last_chosen_action: int = 0
         self._spawn_rng = np.random.default_rng()
         self._episode_history: list[dict[str, Any]] = []
+        self._prev_gru_hidden: np.ndarray | None = None
 
         self._artifact: ConnectomeArtifact | None = (
             ConnectomeArtifact.load(self.connectome_path)
+            if self.connectome_path.exists()
+            else None
+        )
+        self._shuffled_artifact: ConnectomeArtifact | None = (
+            load_or_create_shuffled_connectome(self.connectome_path)
             if self.connectome_path.exists()
             else None
         )
@@ -98,7 +110,14 @@ class SimulationService:
                     options={"profile_name": self._scenario_name}
                 )
                 active_agent.reset()
+                self._prev_gru_hidden = None
                 self._pending_episode_reset = False
+
+            if isinstance(active_agent, NeuralAgentAdapter) and isinstance(
+                active_agent.policy,
+                GRUBaselinePolicy,
+            ):
+                self._prev_gru_hidden = active_agent.latest_hidden_numpy.copy()
 
             chosen_action = active_agent.select_action(
                 self._current_obs,
@@ -136,6 +155,7 @@ class SimulationService:
                 options={"profile_name": self._scenario_name},
             )
             self._agents[self._active_agent_key].reset()
+            self._prev_gru_hidden = None
             self._pending_episode_reset = False
             self._episode_just_ended = False
             self._last_chosen_action = 0
@@ -241,6 +261,7 @@ class SimulationService:
                 )
             self._active_agent_key = agent_key
             self._agents[agent_key].reset()
+            self._prev_gru_hidden = None
             return self._build_frame_payload_unlocked()
 
     def set_pharmacology(self, g_exc: float, g_inh: float) -> dict[str, Any]:
@@ -377,6 +398,7 @@ class SimulationService:
             policy, payload = load_policy_checkpoint(
                 path=resolved_path,
                 artifact=self._artifact if model_key == "fly" else None,
+                shuffled_artifact=self._shuffled_artifact if model_key == "fly_shuffled" else None,
             )
             trained_steps, saved_at = self._extract_checkpoint_metadata(
                 resolved_path,
@@ -401,47 +423,53 @@ class SimulationService:
             }
             return
 
-        if model_key == "fly" and self._artifact is not None:
-            untrained_fly = FlyConnectomePolicy(
-                obs_dim=22,
-                act_dim=4,
-                artifact=self._artifact,
+        if model_key in ("fly", "fly_shuffled"):
+            target_artifact = (
+                self._shuffled_artifact if model_key == "fly_shuffled" else self._artifact
             )
-            self._agents["fly"] = NeuralAgentAdapter(
-                policy=untrained_fly,
-                agent_name=f"{display_label} (untrained)",
-            )
-            self._checkpoint_inventory["fly"] = {
-                "key": "fly",
-                "model_type": "fly",
-                "label": f"{display_label} (untrained)",
-                "checkpoint_file": "No checkpoint saved yet",
-                "relative_path": "Not saved yet",
-                "is_custom": False,
-                "exists": False,
-                "trainable_params": int(untrained_fly.count_trainable_parameters()),
-                "trained_timesteps": 0,
-                "saved_at_iso": None,
-            }
-        else:
-            self._checkpoint_inventory[model_key] = {
-                "key": model_key,
-                "model_type": model_key,
-                "label": display_label,
-                "checkpoint_file": "Not trained yet",
-                "relative_path": "Not saved yet",
-                "is_custom": False,
-                "exists": False,
-                "trainable_params": 0,
-                "trained_timesteps": 0,
-                "saved_at_iso": None,
-            }
+            if target_artifact is not None:
+                untrained_policy = FlyConnectomePolicy(
+                    obs_dim=22,
+                    act_dim=4,
+                    artifact=target_artifact,
+                )
+                self._agents[model_key] = NeuralAgentAdapter(
+                    policy=untrained_policy,
+                    agent_name=f"{display_label} (untrained)",
+                )
+                self._checkpoint_inventory[model_key] = {
+                    "key": model_key,
+                    "model_type": model_key,
+                    "label": f"{display_label} (untrained)",
+                    "checkpoint_file": "No checkpoint saved yet",
+                    "relative_path": "Not saved yet",
+                    "is_custom": False,
+                    "exists": False,
+                    "trainable_params": int(untrained_policy.count_trainable_parameters()),
+                    "trained_timesteps": 0,
+                    "saved_at_iso": None,
+                }
+                return
+
+        self._checkpoint_inventory[model_key] = {
+            "key": model_key,
+            "model_type": model_key,
+            "label": display_label,
+            "checkpoint_file": "Not trained yet",
+            "relative_path": "Not saved yet",
+            "is_custom": False,
+            "exists": False,
+            "trainable_params": 0,
+            "trained_timesteps": 0,
+            "saved_at_iso": None,
+        }
 
     def _load_custom_checkpoint_unlocked(self, checkpoint_path: Path) -> str:
         """Load and register a custom .pt policy file under key 'ckpt:<stem>'."""
         policy, payload = load_policy_checkpoint(
             path=checkpoint_path,
             artifact=self._artifact,
+            shuffled_artifact=self._shuffled_artifact,
         )
         if not isinstance(payload, dict):
             raise ValueError(f"Checkpoint '{checkpoint_path.name}' payload is not a dict.")
@@ -621,6 +649,12 @@ class SimulationService:
                 "lesion_mask_b64": None,
             }
 
+        model_telemetry = self._build_model_telemetry_unlocked(
+            active_agent=active_agent,
+            checkpoint_info=checkpoint_info,
+            snapshot=snapshot,
+        )
+
         return {
             "type": "simulation_frame",
             "mode": "INFERENCE",
@@ -638,5 +672,151 @@ class SimulationService:
                 "value_estimate": value_estimate,
             },
             "connectome_telemetry": connectome_telemetry,
+            "model_telemetry": model_telemetry,
             "episode_history": list(self._episode_history),
+        }
+
+    @staticmethod
+    def _quantize_unit_interval_b64(values: np.ndarray) -> str:
+        """Encode float activations in [-1, 1] into compact uint8 base64."""
+        scaled = np.clip(np.round((values * 0.5 + 0.5) * 255.0), 0.0, 255.0).astype(
+            np.uint8
+        )
+        return base64.b64encode(scaled.tobytes()).decode("ascii")
+
+    def _build_model_telemetry_unlocked(
+        self,
+        active_agent: BaseTrafficAgent,
+        checkpoint_info: dict[str, Any],
+        snapshot: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Build factual live telemetry specific to the currently active controller."""
+        model_type = str(checkpoint_info.get("model_type") or self._active_agent_key)
+        trainable_params = int(checkpoint_info.get("trainable_params") or 0)
+        trained_timesteps = int(checkpoint_info.get("trained_timesteps") or 0)
+        checkpoint_file = str(checkpoint_info.get("checkpoint_file") or "-")
+
+        if isinstance(active_agent, NeuralAgentAdapter) and isinstance(
+            active_agent.policy,
+            FlyConnectomePolicy,
+        ):
+            meta = active_agent.policy.artifact.metadata
+            is_shuffled = model_type == "fly_shuffled"
+            return {
+                "kind": "fly_shuffled" if is_shuffled else "fly",
+                "is_shuffled": is_shuffled,
+                "architecture": (
+                    "FlyConnectomePolicy (Shuffled Null Model)"
+                    if is_shuffled
+                    else "FlyConnectomePolicy (FAFB v783)"
+                ),
+                "recurrent": True,
+                "trainable_params": trainable_params,
+                "trained_timesteps": trained_timesteps,
+                "checkpoint_file": checkpoint_file,
+                "num_neurons": int(meta.num_neurons),
+                "cx_count": int(meta.cx_count),
+                "mb_count": int(meta.mb_count),
+                "exc_edges": int(meta.exc_edge_count),
+                "inh_edges": int(meta.inh_edge_count),
+                "cross_region_edges": int(meta.cross_region_edges),
+                "sparsity": float(meta.sparsity),
+                "spectral_radius": float(meta.scaled_spectral_radius),
+            }
+
+        if isinstance(active_agent, NeuralAgentAdapter) and isinstance(
+            active_agent.policy,
+            GRUBaselinePolicy,
+        ):
+            hidden_np = active_agent.latest_hidden_numpy
+            abs_h = np.abs(hidden_np)
+            if (
+                self._prev_gru_hidden is not None
+                and self._prev_gru_hidden.shape == hidden_np.shape
+            ):
+                delta_l2 = float(np.linalg.norm(hidden_np - self._prev_gru_hidden))
+            else:
+                delta_l2 = 0.0
+            return {
+                "kind": "gru",
+                "architecture": f"GRUBaselinePolicy ({active_agent.policy.gru_hidden_size} GRU units)",
+                "recurrent": True,
+                "trainable_params": trainable_params,
+                "trained_timesteps": trained_timesteps,
+                "checkpoint_file": checkpoint_file,
+                "hidden_dim": int(hidden_np.shape[0]),
+                "activations_b64": self._quantize_unit_interval_b64(hidden_np),
+                "mean_abs": float(np.mean(abs_h)),
+                "std": float(np.std(hidden_np)),
+                "max_abs": float(np.max(abs_h)) if hidden_np.size > 0 else 0.0,
+                "l2_norm": float(np.linalg.norm(hidden_np)),
+                "delta_l2": delta_l2,
+                "positive_ratio": float(np.mean(hidden_np > 0.0)),
+                "saturated_ratio": float(np.mean(abs_h > 0.8)),
+            }
+
+        if isinstance(active_agent, NeuralAgentAdapter) and isinstance(
+            active_agent.policy,
+            MLPBaselinePolicy,
+        ):
+            l1_t, l2_t = active_agent.policy.latest_layer_activations
+            width = int(active_agent.policy.hidden_width)
+            l1_np = (
+                l1_t.squeeze(0).detach().cpu().numpy().astype(np.float32)
+                if l1_t is not None
+                else np.zeros(width, dtype=np.float32)
+            )
+            l2_np = (
+                l2_t.squeeze(0).detach().cpu().numpy().astype(np.float32)
+                if l2_t is not None
+                else np.zeros(width, dtype=np.float32)
+            )
+            l1_abs = np.abs(l1_np)
+            l2_abs = np.abs(l2_np)
+            return {
+                "kind": "mlp",
+                "architecture": f"MLPBaselinePolicy (2x{width} Tanh)",
+                "recurrent": False,
+                "trainable_params": trainable_params,
+                "trained_timesteps": trained_timesteps,
+                "checkpoint_file": checkpoint_file,
+                "hidden_width": width,
+                "layer1_b64": self._quantize_unit_interval_b64(l1_np),
+                "layer2_b64": self._quantize_unit_interval_b64(l2_np),
+                "layer1_mean_abs": float(np.mean(l1_abs)),
+                "layer1_std": float(np.std(l1_np)),
+                "layer1_saturated_ratio": float(np.mean(l1_abs > 0.8)),
+                "layer2_mean_abs": float(np.mean(l2_abs)),
+                "layer2_std": float(np.std(l2_np)),
+                "layer2_saturated_ratio": float(np.mean(l2_abs > 0.8)),
+                "layer2_l2_norm": float(np.linalg.norm(l2_np)),
+            }
+
+        phase_durations = (
+            list(active_agent.phase_durations)
+            if isinstance(active_agent, FixedTimerAgent)
+            else [8, 4, 8, 4]
+        )
+        active_phase = int(snapshot.get("active_phase", 0))
+        phase_elapsed = int(snapshot.get("phase_elapsed", 0))
+        signal_stage = str(snapshot.get("signal_stage", "GREEN"))
+        target_steps = int(phase_durations[active_phase % len(phase_durations)])
+        remaining_steps = max(0, target_steps - phase_elapsed)
+        return {
+            "kind": "fixed_timer",
+            "architecture": "FixedTimerAgent (8-4-8-4 cyclic schedule)",
+            "recurrent": False,
+            "trainable_params": 0,
+            "trained_timesteps": 0,
+            "checkpoint_file": "Rule-based",
+            "phase_durations": phase_durations,
+            "active_phase": active_phase,
+            "next_phase": (active_phase + 1) % 4,
+            "phase_elapsed": phase_elapsed,
+            "phase_target_steps": target_steps,
+            "remaining_steps": remaining_steps,
+            "is_transitioning": signal_stage != "GREEN",
+            "signal_stage": signal_stage,
+            "dt_seconds": float(self.env_config.dt_seconds),
+            "cycle_total_steps": int(sum(phase_durations)),
         }
