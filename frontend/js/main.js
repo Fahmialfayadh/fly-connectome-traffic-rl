@@ -3,11 +3,14 @@
  * simulation/training WebSockets, and Light Instrument Lab UI state.
  */
 
-import { BenchmarkInspectorView } from './benchmark_view.js';
-import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js';
-import { ConnectomeRenderer } from './connectome_renderer.js';
-import { IntersectionRenderer } from './intersection_renderer.js';
-import { TrainingStudioView } from './training_studio.js';
+import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_12';
+import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_12';
+import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_12';
+import { DocumentationView } from './documentation_view.js?v=20261121_12';
+import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_12';
+import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261121_12';
+import { TrainingStudioView } from './training_studio.js?v=20261121_12';
+import { ArchitectureView } from './architecture_view.js?v=20261121_12';
 
 const PHASE_NAMES = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
 
@@ -25,11 +28,20 @@ class TrafficLabApp {
         ? new Brain3DRenderer(this.brain3dRoot)
         : null;
     this.connectomeViewMode = this.brain3dRenderer ? '3d' : '2d';
+    this.isFlyModelActive = true;
+    this.modelTelemetryRenderer = new ModelTelemetryRenderer(
+      document.getElementById('baseline-panel-body')
+    );
     this.trainingStudio = new TrainingStudioView();
     this.benchmarkView = new BenchmarkInspectorView();
+    const archPanel = document.getElementById('panel-architecture');
+    this.architectureView = archPanel && webglAvailable()
+      ? new ArchitectureView(archPanel)
+      : null;
+    this.documentationView = new DocumentationView(
+      document.getElementById('panel-docs')
+    );
 
-    this.modePill = document.getElementById('global-mode-pill');
-    this.modeText = document.getElementById('global-mode-text');
     this.activeTab = 'simulation';
     this.isTrainingActive = false;
     this.latestSimFrame = null;
@@ -102,12 +114,14 @@ class TrafficLabApp {
       summaryRow.classList.toggle('is-3d-mode', resolved === '3d');
     }
     if (this.brain3dRenderer) {
-      this.brain3dRenderer.setVisible(resolved === '3d' && this.activeTab === 'simulation');
-      if (resolved === '3d' && this.latestSimFrame) {
+      this.brain3dRenderer.setVisible(
+        resolved === '3d' && this.activeTab === 'simulation' && this.isFlyModelActive
+      );
+      if (resolved === '3d' && this.isFlyModelActive && this.latestSimFrame) {
         this.brain3dRenderer.applyFrame(this.latestSimFrame);
       }
     }
-    if (resolved === '2d' && this.latestSimFrame) {
+    if (resolved === '2d' && this.isFlyModelActive && this.latestSimFrame) {
       this.connectomeRenderer.render(
         this.latestSimFrame.connectome_telemetry || {},
         this.latestSimFrame.agent_name
@@ -122,6 +136,21 @@ class TrafficLabApp {
     if (btn2d) btn2d.addEventListener('click', () => this._setConnectomeViewMode('2d'));
 
     if (!this.brain3dRoot) return;
+
+    const filterButtons = Array.from(
+      this.brain3dRoot.querySelectorAll('[data-brain3d-filter]')
+    );
+    filterButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!this.brain3dRenderer) return;
+        this.brain3dRenderer.setFilterMode(btn.dataset.brain3dFilter);
+        filterButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+      });
+    });
 
     const layoutButtons = Array.from(
       this.brain3dRoot.querySelectorAll('[data-brain3d-layout]')
@@ -243,9 +272,17 @@ class TrafficLabApp {
     });
 
     this.trainingStudio.setVisible(targetTabName === 'training');
+    if (this.architectureView) {
+      this.architectureView.setVisible(targetTabName === 'architecture');
+    }
+    if (this.documentationView) {
+      this.documentationView.setVisible(targetTabName === 'docs');
+    }
     if (this.brain3dRenderer) {
       this.brain3dRenderer.setVisible(
-        targetTabName === 'simulation' && this.connectomeViewMode === '3d'
+        targetTabName === 'simulation' &&
+          this.connectomeViewMode === '3d' &&
+          this.isFlyModelActive
       );
     }
     if (targetTabName === 'simulation') {
@@ -277,8 +314,9 @@ class TrafficLabApp {
     const stepBtn = document.getElementById('btn-sim-step');
     const resetBtn = document.getElementById('btn-sim-reset');
     const agentSelect = document.getElementById('select-agent');
-    const scenarioSelect = document.getElementById('select-scenario');
-    const safetyBufferSelect = document.getElementById('select-safety-buffer');
+    const scenarioButtons = Array.from(document.querySelectorAll('[data-scenario]'));
+    const safetyBufferButtons = Array.from(document.querySelectorAll('[data-safety-buffer]'));
+    const continuousButtons = Array.from(document.querySelectorAll('[data-continuous-mode]'));
     const speedSlider = document.getElementById('slider-sim-speed');
 
     const gExcSlider = document.getElementById('slider-g-exc');
@@ -390,20 +428,45 @@ class TrafficLabApp {
       this._sendSimCommand({ action: 'set_agent', agent_key: agentSelect.value });
     });
 
-    scenarioSelect.addEventListener('change', () => {
-      this._sendSimCommand({ action: 'set_scenario', scenario: scenarioSelect.value });
+    scenarioButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const scenario = btn.dataset.scenario;
+        scenarioButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_scenario', scenario });
+      });
     });
 
-    safetyBufferSelect.addEventListener('change', () => {
-      this._sendSimCommand({
-        action: 'set_safety_buffer',
-        all_red_steps: Number(safetyBufferSelect.value),
+    safetyBufferButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const allRedSteps = Number(btn.dataset.safetyBuffer);
+        safetyBufferButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_safety_buffer', all_red_steps: allRedSteps });
+      });
+    });
+
+    continuousButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const enabled = btn.dataset.continuousMode === '1';
+        continuousButtons.forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        this._sendSimCommand({ action: 'set_continuous_mode', enabled });
       });
     });
 
     speedSlider.addEventListener('input', () => {
       const val = Number(speedSlider.value);
-      document.getElementById('label-sim-speed').textContent = `${val.toFixed(1)} steps/s`;
+      document.getElementById('label-sim-speed').textContent = `${val.toFixed(1)}/s`;
       this._sendSimCommand({ action: 'set_speed', steps_per_second: val });
     });
 
@@ -451,7 +514,6 @@ class TrafficLabApp {
       if (response.ok) {
         this.isTrainingActive = true;
         this.trainingStudio.applyTrainingSnapshot(data);
-        this._refreshGlobalModePill();
       } else if (data.error) {
         document.getElementById('train-status-label').textContent = data.error;
       }
@@ -468,14 +530,34 @@ class TrafficLabApp {
       this._activateTab('simulation');
     };
 
-    this.benchmarkView.onRunBenchmarkRequested = async () => {
+    const openDocsBtn = document.getElementById('btn-open-docs-from-arch');
+    if (openDocsBtn) {
+      openDocsBtn.addEventListener('click', () => {
+        this._activateTab('docs');
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      });
+    }
+
+    this.benchmarkView.onRunBenchmarkRequested = async (agentKeys) => {
       this.benchmarkView.setRunningState(true);
+      this.benchmarkView.setError(null);
       try {
-        const response = await fetch('/api/benchmark/run', { method: 'POST' });
+        const response = await fetch('/api/benchmark/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_keys: agentKeys }),
+        });
         const summary = await response.json();
         if (response.ok) {
           this.benchmarkView.renderBenchmarkSummary(summary);
+          if (this.documentationView) {
+            this.documentationView.syncBenchmarkSummary(summary);
+          }
+        } else if (summary && summary.error) {
+          this.benchmarkView.setError(summary.error);
         }
+      } catch (err) {
+        this.benchmarkView.setError(`Gagal menjalankan benchmark: ${err.message}`);
       } finally {
         this.benchmarkView.setRunningState(false);
       }
@@ -497,7 +579,7 @@ class TrafficLabApp {
       agentSelect.value;
 
     const entries = Object.values(checkpointsMap).filter(
-      (info) => info && (info.exists || info.key === 'fly')
+      (info) => info && (info.exists || info.key === 'fly' || info.key === 'fly_shuffled')
     );
 
     agentSelect.innerHTML = '';
@@ -538,6 +620,9 @@ class TrafficLabApp {
       this.trainingStudio.renderInventory(this.checkpointsInventory, activeKey);
       this.benchmarkView.renderOverview(data.overview, data.benchmark_summary);
     }
+    if (this.documentationView) {
+      this.documentationView.syncBenchmarkSummary(data.benchmark_summary || null);
+    }
     if (data.simulation) {
       this._applySimulationFrame(data.simulation);
     }
@@ -546,7 +631,6 @@ class TrafficLabApp {
         data.training.status === 'running' || data.training.status === 'stopping';
       this.trainingStudio.applyTrainingSnapshot(data.training);
     }
-    this._refreshGlobalModePill();
   }
 
   _connectSimulationSocket() {
@@ -565,6 +649,7 @@ class TrafficLabApp {
         this.lastInventoryAgentKey = activeKey;
         this._syncAgentSelectorOptions(this.checkpointsInventory, activeKey);
         this.trainingStudio.renderInventory(this.checkpointsInventory, activeKey);
+        this.benchmarkView.renderModelSelector(this.checkpointsInventory);
       }
     };
 
@@ -595,7 +680,6 @@ class TrafficLabApp {
         this.trainingStudio.applyTrainingSnapshot(payload);
         this._fetchOverview();
       }
-      this._refreshGlobalModePill(payload.metrics);
     };
 
     this.trainSocket.onclose = () => {
@@ -625,28 +709,49 @@ class TrafficLabApp {
     this.intersectionRenderer.applyBackendFrame(frame);
 
     const snapshot = frame.snapshot || {};
-    const prov = frame.checkpoint_provenance || {};
     const policy = frame.policy_telemetry || {};
     const brain = frame.connectome_telemetry || {};
+    const modelTel = frame.model_telemetry || {};
+    const isFlyActive = Boolean(brain.is_fly_active);
+    this.isFlyModelActive = isFlyActive;
 
-    if (this.connectomeViewMode === '2d') {
-      this.connectomeRenderer.render(brain, frame.agent_name);
-    }
-    if (this.brain3dRenderer && this.brain3dRenderer.ready) {
-      this.brain3dRenderer.applyFrame(frame);
+    this._syncRightColumnForModel(frame, brain, modelTel, isFlyActive);
+
+    if (isFlyActive) {
+      if (this.connectomeViewMode === '2d') {
+        this.connectomeRenderer.render(brain, frame.agent_name);
+      }
+      if (this.brain3dRenderer && this.brain3dRenderer.ready) {
+        this.brain3dRenderer.applyFrame(frame);
+      }
+    } else if (this.modelTelemetryRenderer) {
+      this.modelTelemetryRenderer.render(frame);
     }
 
-    // Header & Provenance strip
-    const trainedStepsText = prov.trained_timesteps
-      ? `${Number(prov.trained_timesteps).toLocaleString()} steps`
-      : 'no learned weights';
-    const provPath = prov.relative_path || prov.checkpoint_file || '-';
-    document.getElementById('sim-mode-value').textContent = frame.running
-      ? 'INFERENCE · Live Simulation Running'
-      : 'INFERENCE · Paused';
-    document.getElementById('sim-provenance-value').textContent = `${frame.agent_name} · ${provPath} (${trainedStepsText})`;
-    document.getElementById('sim-regime-value').textContent = `${snapshot.profile_name} | Step ${snapshot.step}/${snapshot.max_steps}`;
-    document.getElementById('sim-signal-value').textContent = `${snapshot.phase_label} (${snapshot.signal_stage})`;
+    // Top telemetry strip
+    const isContinuous = Boolean(snapshot.continuous_mode);
+    const regimeEl = document.getElementById('sim-regime-value');
+    if (regimeEl) {
+      regimeEl.textContent = isContinuous
+        ? `${snapshot.step ?? 0}`
+        : `${snapshot.step ?? 0} / ${snapshot.max_steps ?? 300}`;
+    }
+    const signalTextEl = document.getElementById('sim-signal-text');
+    const signalDotEl = document.getElementById('sim-signal-dot');
+    const stageStr = String(snapshot.signal_stage || 'GREEN').toUpperCase();
+    if (signalTextEl) {
+      signalTextEl.textContent = `${snapshot.phase_label || '-'} · ${stageStr}`;
+    }
+    if (signalDotEl) {
+      signalDotEl.classList.remove('signal-dot-green', 'signal-dot-amber', 'signal-dot-red');
+      if (stageStr.includes('YELLOW') || stageStr.includes('AMBER')) {
+        signalDotEl.classList.add('signal-dot-amber');
+      } else if (stageStr.includes('RED')) {
+        signalDotEl.classList.add('signal-dot-red');
+      } else {
+        signalDotEl.classList.add('signal-dot-green');
+      }
+    }
 
     // Sync controls
     document.getElementById('btn-sim-play-pause').textContent = frame.running ? 'Pause' : 'Play';
@@ -665,14 +770,29 @@ class TrafficLabApp {
       this.lastInventoryAgentKey = frame.agent_key;
       this.trainingStudio.renderInventory(this.checkpointsInventory, frame.agent_key);
     }
-    document.getElementById('select-scenario').value = frame.scenario;
+    document.querySelectorAll('[data-scenario]').forEach((btn) => {
+      const active = btn.dataset.scenario === frame.scenario;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
     if (snapshot.all_red_steps !== undefined && snapshot.all_red_steps !== null) {
-      document.getElementById('select-safety-buffer').value = String(
-        Number(snapshot.all_red_steps) > 0 ? 1 : 0
-      );
+      const targetBuffer = Number(snapshot.all_red_steps) > 0 ? '1' : '0';
+      document.querySelectorAll('[data-safety-buffer]').forEach((btn) => {
+        const active = btn.dataset.safetyBuffer === targetBuffer;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+    if (snapshot.continuous_mode !== undefined) {
+      const targetContinuous = snapshot.continuous_mode ? '1' : '0';
+      document.querySelectorAll('[data-continuous-mode]').forEach((btn) => {
+        const active = btn.dataset.continuousMode === targetContinuous;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
     }
     document.getElementById('slider-sim-speed').value = String(frame.steps_per_second);
-    document.getElementById('label-sim-speed').textContent = `${Number(frame.steps_per_second).toFixed(1)} steps/s`;
+    document.getElementById('label-sim-speed').textContent = `${Number(frame.steps_per_second).toFixed(1)}/s`;
 
     // Metrics strip
     const totalQueue = Number(snapshot.total_queue || 0);
@@ -706,25 +826,23 @@ class TrafficLabApp {
       .getElementById('metric-collisions-cell')
       .classList.toggle('has-warning', totalCollisions > 0);
 
-    // Connectome readouts
-    document.getElementById('brain-active-neurons').textContent = brain.is_fly_active
-      ? `${brain.active_neurons} / ${brain.total_neurons}`
-      : 'N/A (Baseline)';
-    document.getElementById('brain-tau').textContent = brain.is_fly_active
-      ? Number(brain.leak_rate_tau).toFixed(3)
-      : '-';
-    document.getElementById('brain-g-exc').textContent = Number(brain.g_exc).toFixed(2);
-    document.getElementById('brain-g-inh').textContent = Number(brain.g_inh).toFixed(2);
-    document.getElementById('brain-cx-act').textContent = brain.is_fly_active
-      ? Number(brain.cx_mean_abs_activity).toFixed(4)
-      : '-';
-    document.getElementById('brain-mb-act').textContent = brain.is_fly_active
-      ? Number(brain.mb_mean_abs_activity).toFixed(4)
-      : '-';
-    document.getElementById('brain-value-est').textContent =
-      policy.value_estimate !== null && policy.value_estimate !== undefined
-        ? Number(policy.value_estimate).toFixed(3)
-        : '-';
+    // Episode crash statistics & reduction trend
+    const epHistory = Array.isArray(frame.episode_history) ? frame.episode_history : [];
+    this._renderEpisodeHistory(epHistory, totalCollisions);
+
+    // Connectome readouts (only relevant when Fly / Shuffled Connectome is active)
+    if (isFlyActive) {
+      document.getElementById('brain-active-neurons').textContent = `${brain.active_neurons} / ${brain.total_neurons}`;
+      document.getElementById('brain-tau').textContent = Number(brain.leak_rate_tau).toFixed(3);
+      document.getElementById('brain-g-exc').textContent = Number(brain.g_exc).toFixed(2);
+      document.getElementById('brain-g-inh').textContent = Number(brain.g_inh).toFixed(2);
+      document.getElementById('brain-cx-act').textContent = Number(brain.cx_mean_abs_activity).toFixed(4);
+      document.getElementById('brain-mb-act').textContent = Number(brain.mb_mean_abs_activity).toFixed(4);
+      document.getElementById('brain-value-est').textContent =
+        policy.value_estimate !== null && policy.value_estimate !== undefined
+          ? Number(policy.value_estimate).toFixed(3)
+          : '-';
+    }
 
     // Policy probabilities
     const probs = policy.action_probabilities || [0.25, 0.25, 0.25, 0.25];
@@ -744,7 +862,7 @@ class TrafficLabApp {
       }
     }
 
-    // Enable/disable pharmacology controls clearly when Fly Connectome is active
+    // Enable/disable pharmacology controls when Fly Connectome is active
     const flyOnlyIds = [
       'slider-g-exc',
       'slider-g-inh',
@@ -754,34 +872,172 @@ class TrafficLabApp {
       'btn-reset-brain',
     ];
     for (const elementId of flyOnlyIds) {
-      document.getElementById(elementId).disabled = !brain.is_fly_active;
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.disabled = !isFlyActive;
+      }
     }
-
-    this._refreshGlobalModePill();
   }
 
-  _refreshGlobalModePill(trainingMetrics = null) {
-    if (this.isTrainingActive) {
-      this.modePill.classList.remove('mode-inference');
-      this.modePill.classList.add('mode-training');
-      if (trainingMetrics) {
-        this.modeText.textContent = `MODE: TRAINING | Update ${Math.round(trainingMetrics.update)}/${Math.round(trainingMetrics.total_updates)}`;
+  _syncRightColumnForModel(frame, brain, modelTel, isFlyActive) {
+    const flyBody = document.getElementById('fly-panel-body');
+    const baselineBody = document.getElementById('baseline-panel-body');
+    const viewSwitch = document.getElementById('brain-view-switch');
+    const titleEl = document.getElementById('right-col-title');
+    const captionEl = document.getElementById('right-col-caption');
+    const shuffledNotice = document.getElementById('shuffled-null-notice');
+    const policyHeadingEl = document.getElementById('policy-output-heading');
+
+    if (flyBody) {
+      flyBody.hidden = !isFlyActive;
+      flyBody.classList.toggle('is-hidden', !isFlyActive);
+    }
+    if (baselineBody) {
+      baselineBody.hidden = isFlyActive;
+      baselineBody.classList.toggle('is-hidden', isFlyActive);
+    }
+    if (viewSwitch) {
+      viewSwitch.hidden = !isFlyActive;
+      viewSwitch.classList.toggle('is-hidden', !isFlyActive);
+    }
+
+    if (this.brain3dRenderer) {
+      this.brain3dRenderer.setVisible(
+        isFlyActive && this.connectomeViewMode === '3d' && this.activeTab === 'simulation'
+      );
+    }
+
+    const kind = resolveControllerKind(frame);
+    const prov = frame.checkpoint_provenance || {};
+    const isShuffled = Boolean(modelTel.is_shuffled || kind === 'fly_shuffled');
+
+    if (shuffledNotice) {
+      shuffledNotice.hidden = !isShuffled;
+    }
+
+    if (titleEl && captionEl) {
+      if (kind === 'fly') {
+        const cx = modelTel.cx_count ?? 1800;
+        const mb = modelTel.mb_count ?? 700;
+        const total = modelTel.num_neurons ?? brain.total_neurons ?? 2500;
+        titleEl.textContent = 'Connectome Activity';
+        captionEl.textContent = `FAFB v783 · ${Number(total).toLocaleString()} neuron (${Number(cx).toLocaleString()} CX, ${Number(mb).toLocaleString()} MB) · live h_t`;
+      } else if (kind === 'fly_shuffled') {
+        const total = modelTel.num_neurons ?? brain.total_neurons ?? 2500;
+        titleEl.textContent = 'Shuffled Connectome Activity (Null Model)';
+        captionEl.textContent = `${Number(total).toLocaleString()} neuron · sisi sinaptik diacak seragam (seed 42), sparsity ${((modelTel.sparsity || 0.986053) * 100).toFixed(2)}%`;
+      } else if (kind === 'gru') {
+        const params = Number(modelTel.trainable_params || prov.trainable_params || 69725);
+        titleEl.textContent = 'GRU Recurrent State';
+        captionEl.textContent = `${modelTel.hidden_dim || 105} unit GRUCell · ${params.toLocaleString()} parameter terlatih`;
+      } else if (kind === 'mlp') {
+        const width = modelTel.hidden_width || 250;
+        const params = Number(modelTel.trainable_params || prov.trainable_params || 69755);
+        titleEl.textContent = 'MLP Feedforward Activations';
+        captionEl.textContent = `2 lapis Tanh (${width} + ${width} unit) · tanpa memori rekuren · ${params.toLocaleString()} parameter`;
       } else {
-        this.modeText.textContent = 'MODE: TRAINING | Running PPO on CPU';
+        titleEl.textContent = 'Fixed Timer Schedule';
+        captionEl.textContent = 'Siklus aturan tetap (8, 4, 8, 4) langkah · 0 parameter terlatih';
+      }
+    }
+
+    if (policyHeadingEl) {
+      policyHeadingEl.textContent =
+        kind === 'fixed_timer'
+          ? 'Phase Selection Output (Deterministic)'
+          : 'Action Policy Output (4 Phases)';
+    }
+  }
+
+  _renderEpisodeHistory(epHistory, currentCollisions) {
+    const summaryBadge = document.getElementById('episode-history-summary');
+    const tableBody = document.getElementById('episode-history-tbody');
+    const metricCrashRed = document.getElementById('metric-crash-reduction');
+    const metricCrashCell = document.getElementById('metric-crash-stats-cell');
+
+    if (epHistory.length === 0) {
+      if (summaryBadge) {
+        summaryBadge.textContent = 'Episode 1 in progress';
+      }
+      if (tableBody) {
+        tableBody.innerHTML =
+          '<tr><td colspan="7" class="empty-cell">Belum ada episode simulasi yang selesai. Jalankan simulasi untuk merekam log crash per episode.</td></tr>';
+      }
+      if (metricCrashRed) {
+        metricCrashRed.textContent = `0 ep · ${currentCollisions} coll`;
+      }
+      if (metricCrashCell) {
+        metricCrashCell.classList.remove('has-warning', 'has-success');
       }
       return;
     }
 
-    this.modePill.classList.remove('mode-training');
-    this.modePill.classList.add('mode-inference');
-    if (this.latestSimFrame) {
-      const prov = this.latestSimFrame.checkpoint_provenance || {};
-      const provPath =
-        prov.relative_path || prov.checkpoint_file || this.latestSimFrame.agent_name;
-      this.modeText.textContent = `MODE: INFERENCE | ${provPath}`;
-    } else {
-      this.modeText.textContent = 'MODE: INFERENCE | Ready';
+    const totalEps = epHistory.length;
+    if (summaryBadge) {
+      summaryBadge.textContent = `${totalEps} episodes completed`;
     }
+
+    const baselineColl = Number(epHistory[0].total_collisions ?? 0);
+    const latestEp = epHistory[epHistory.length - 1];
+    const latestColl = Number(latestEp.total_collisions ?? 0);
+
+    if (metricCrashRed) {
+      if (baselineColl > 0) {
+        const overallRedPct = Math.round(((baselineColl - latestColl) / baselineColl) * 100);
+        const sign = overallRedPct >= 0 ? '↓' : '↑';
+        metricCrashRed.textContent = `${latestColl} coll (${sign}${Math.abs(overallRedPct)}%)`;
+      } else {
+        metricCrashRed.textContent = `${latestColl} coll (base 0)`;
+      }
+    }
+
+    if (metricCrashCell) {
+      metricCrashCell.classList.toggle('has-success', baselineColl > 0 && latestColl < baselineColl);
+      metricCrashCell.classList.toggle('has-warning', latestColl > 1);
+    }
+
+    if (!tableBody) {
+      return;
+    }
+
+    const reversed = epHistory.slice(-20).reverse();
+    tableBody.innerHTML = reversed
+      .map((ep, idx) => {
+        const epIndex = totalEps - idx;
+        const coll = Number(ep.total_collisions ?? 0);
+        let redHtml = '<span class="crash-reduction-neutral">-</span>';
+
+        if (baselineColl > 0) {
+          const redPct = Math.round(((baselineColl - coll) / baselineColl) * 100);
+          if (redPct > 0) {
+            redHtml = `<span class="crash-reduction-positive">↓${redPct}%</span>`;
+          } else if (redPct < 0) {
+            redHtml = `<span class="crash-reduction-negative">↑${Math.abs(redPct)}%</span>`;
+          } else {
+            redHtml = '<span class="crash-reduction-neutral">0%</span>';
+          }
+        } else if (coll === 0) {
+          redHtml = '<span class="crash-reduction-positive">0 (Clean)</span>';
+        }
+
+        const modelLabel = String(ep.agent_key || '-').replace('ckpt:', '');
+        const scenarioLabel = String(ep.scenario || '-');
+        const throughput = Number(ep.total_throughput ?? 0);
+        const reward = Number(ep.episode_reward ?? 0).toFixed(2);
+
+        return `
+        <tr>
+          <td class="mono-value">#${epIndex}</td>
+          <td>${modelLabel}</td>
+          <td>${scenarioLabel}</td>
+          <td class="mono-value ${coll > 0 ? 'has-warning' : ''}">${coll}</td>
+          <td class="mono-value">${redHtml}</td>
+          <td class="mono-value">${throughput}</td>
+          <td class="mono-value">${reward}</td>
+        </tr>
+      `;
+      })
+      .join('');
   }
 }
 

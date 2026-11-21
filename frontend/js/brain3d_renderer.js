@@ -4,8 +4,8 @@
  * Anatomy: FlyWire whole-brain neuropil surface + JFRC2 neuropil meshes in FAFB14.1
  * space (built by scripts/build_brain_assets.py). Each of the 2,500 recurrent neurons
  * of the Fly Connectome PPO core is drawn at either (a) a deterministic sample inside its
- * dominant neuropil or (b) its FlyWire soma coordinate. Colour/size encode the live
- * hidden state h_t streamed by the simulation WebSocket (quantised to [-0.40, +0.40]).
+ * dominant neuropil or (b) its FlyWire soma coordinate. Colour, size, and travelling
+ * synaptic pulses encode the live hidden state h_t streamed by the simulation WebSocket.
  */
 
 import * as THREE from 'three';
@@ -22,6 +22,16 @@ const REGION_KEYS = ['PB', 'EB', 'FB', 'NO', 'MB_CA', 'MB_PED', 'MB_ML', 'MB_VL'
 const REGION_LABELS = {
   PB: 'PB', EB: 'EB', FB: 'FB', NO: 'NO',
   MB_CA: 'MB CA', MB_PED: 'MB PED', MB_ML: 'MB ML', MB_VL: 'MB VL',
+};
+const REGION_TOOLTIPS = {
+  PB: 'Protocerebral Bridge (CX): jembatan simetris yang menyalurkan sinyal orientasi arah ke FB dan EB.',
+  EB: 'Ellipsoid Body (CX): struktur cincin pusat yang menjaga representasi arah dan status fasa.',
+  FB: 'Fan-shaped Body (CX): struktur kipas berlapis terbesar di CX untuk integrasi konteks dan pemilihan aksi.',
+  NO: 'Noduli (CX): sepasang lobus ventral di bawah FB/EB untuk integrasi masukan ke Central Complex.',
+  MB_CA: 'Mushroom Body Calyx (MB): wilayah masukan dendritik utama sel Kenyon di bagian posterior MB.',
+  MB_PED: 'Mushroom Body Pedunculus (MB): berkas akson penghubung dari Calyx menuju lobus keluaran MB.',
+  MB_ML: 'Mushroom Body Medial Lobe (MB): lobus keluaran horizontal yang terhubung ke neuron keluaran MBON.',
+  MB_VL: 'Mushroom Body Vertical Lobe (MB): lobus keluaran vertikal untuk asosiasi memori dan konteks waktu.',
 };
 const MESH_LABELS = [
   ['PB', 'PB'], ['FB', 'FB'], ['EB', 'EB'], ['NO', 'NO'],
@@ -41,6 +51,7 @@ const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
 
 const POINT_VERTEX = /* glsl */ `
   attribute float aAct;
+  attribute float aSpike;
   attribute float aAlive;
   attribute float aGroup;
   attribute float aIndex;
@@ -50,6 +61,9 @@ const POINT_VERTEX = /* glsl */ `
   uniform float uSelected;
   uniform float uHover;
   uniform float uFlyActive;
+  uniform float uActThreshold;
+  uniform float uQuietAlpha;
+  uniform float uNormScale;
   uniform vec3 uNeg;
   uniform vec3 uPos;
   uniform vec3 uMid;
@@ -60,35 +74,43 @@ const POINT_VERTEX = /* glsl */ `
   varying float vAlpha;
   varying float vRing;
   varying float vDead;
+  varying float vHot;
 
   void main() {
-    float t = clamp(abs(aAct) / ${H_SCALE.toFixed(2)}, 0.0, 1.0);
-    float tg = pow(t, 0.55);
-    vec3 hot = aAct >= 0.0
-      ? mix(uPos, uPosHot, smoothstep(0.55, 1.0, t))
-      : mix(uNeg, uNegHot, smoothstep(0.55, 1.0, t));
-    vColor = mix(uMid, hot, tg);
+    float absAct = abs(aAct);
+    float normAct = clamp(absAct / max(uNormScale, 0.05), 0.0, 1.0);
+    float activeRamp = smoothstep(uActThreshold, 1.0, normAct);
+    float spikeBoost = clamp(aSpike * 4.5, 0.0, 1.0);
+    float energy = clamp(activeRamp + spikeBoost * 0.45, 0.0, 1.0);
 
-    float focusDim = (uFocus < -0.5 || abs(aGroup - uFocus) < 0.5) ? 1.0 : 0.1;
-    float size = uSize * (0.75 + 1.55 * tg);
-    vAlpha = (0.32 + 0.68 * tg) * focusDim;
+    vec3 polarityColor = aAct >= 0.0
+      ? mix(uPos, uPosHot, smoothstep(0.45, 1.0, energy))
+      : mix(uNeg, uNegHot, smoothstep(0.45, 1.0, energy));
+    vColor = mix(uMid, polarityColor, smoothstep(0.05, 0.45, energy));
+
+    float focusDim = (uFocus < -0.5 || abs(aGroup - uFocus) < 0.5) ? 1.0 : 0.06;
+    float size = uSize * (0.42 + 1.55 * pow(energy, 0.85));
+    vAlpha = mix(uQuietAlpha, 0.96, activeRamp) * focusDim;
+    vHot = energy;
     vDead = 0.0;
 
     if (uFlyActive < 0.5) {
       vColor = uMid;
-      vAlpha = 0.55 * focusDim;
-      size = uSize * 0.75;
+      vAlpha = 0.28 * focusDim;
+      size = uSize * 0.55;
+      vHot = 0.0;
     } else if (aAlive < 0.5) {
       vColor = uDead;
-      vAlpha = 0.85 * focusDim;
-      size = uSize * 1.05;
+      vAlpha = 0.92 * focusDim;
+      size = uSize * 1.15;
       vDead = 1.0;
+      vHot = 0.0;
     }
 
     bool picked = abs(aIndex - uSelected) < 0.5 || abs(aIndex - uHover) < 0.5;
     vRing = picked ? 1.0 : 0.0;
     if (picked) {
-      size = max(size, uSize) * 2.6;
+      size = max(size, uSize * 1.2) * 2.1;
       vAlpha = 1.0;
     }
 
@@ -103,25 +125,30 @@ const POINT_FRAGMENT = /* glsl */ `
   varying float vAlpha;
   varying float vRing;
   varying float vDead;
+  varying float vHot;
 
   void main() {
     vec2 c = gl_PointCoord - 0.5;
     float r = length(c);
-    if (r > 0.5) discard;
+    if (r > 0.5 || vAlpha < 0.015) discard;
 
     if (vRing > 0.5) {
-      float ring = smoothstep(0.5, 0.45, r) * smoothstep(0.33, 0.39, r);
+      float ring = smoothstep(0.5, 0.44, r) * smoothstep(0.32, 0.38, r);
       float core = smoothstep(0.26, 0.0, r);
       gl_FragColor = vec4(mix(vColor, vec3(1.0), ring), max(core, ring) * vAlpha);
       return;
     }
     if (vDead > 0.5) {
-      float ring = smoothstep(0.5, 0.42, r) * smoothstep(0.2, 0.3, r);
+      float ring = smoothstep(0.5, 0.40, r) * smoothstep(0.18, 0.28, r);
       gl_FragColor = vec4(vColor, ring * vAlpha);
       return;
     }
-    float glow = pow(smoothstep(0.5, 0.0, r), 1.7);
-    gl_FragColor = vec4(vColor, glow * vAlpha);
+
+    float core = smoothstep(0.34, 0.08, r);
+    float halo = pow(smoothstep(0.5, 0.0, r), 1.8) * (0.55 + 0.62 * vHot);
+    float alpha = max(core, halo) * vAlpha;
+    vec3 color = vColor * (1.12 + 1.05 * core * vHot);
+    gl_FragColor = vec4(color, alpha);
   }
 `;
 
@@ -129,21 +156,28 @@ const EDGE_VERTEX = /* glsl */ `
   attribute float aT;
   attribute float aAct;
   attribute float aWeight;
+  attribute float aPolarity;
+  attribute float aGroup;
   attribute float aPre;
   attribute float aPost;
   uniform float uSelected;
+  uniform float uFocus;
   varying float vT;
   varying float vAct;
   varying float vWeight;
+  varying float vPolarity;
   varying float vSel;
   varying float vPhase;
+  varying float vFocusDim;
 
   void main() {
     vT = aT;
     vAct = aAct;
     vWeight = aWeight;
+    vPolarity = aPolarity;
     vSel = (abs(aPre - uSelected) < 0.5 || abs(aPost - uSelected) < 0.5) ? 1.0 : 0.0;
-    vPhase = fract(aPre * 0.1371);
+    vPhase = fract(aPre * 0.1371 + aPost * 0.0713);
+    vFocusDim = (uFocus < -0.5 || abs(aGroup - uFocus) < 0.5 || vSel > 0.5) ? 1.0 : 0.08;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -151,25 +185,38 @@ const EDGE_VERTEX = /* glsl */ `
 const EDGE_FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform float uOpacity;
-  uniform vec3 uColor;
+  uniform float uEdgeThreshold;
+  uniform vec3 uExcColor;
+  uniform vec3 uInhColor;
   uniform vec3 uSelColor;
   varying float vT;
   varying float vAct;
   varying float vWeight;
+  varying float vPolarity;
   varying float vSel;
   varying float vPhase;
+  varying float vFocusDim;
 
   void main() {
-    float pulse = smoothstep(0.72, 1.0, fract(vT - uTime * 0.55 + vPhase));
-    float strength = vAct * (0.15 + 0.85 * vWeight);
-    float alpha = strength * (0.14 + 1.1 * pulse) * uOpacity;
-    vec3 color = uColor;
+    float activeStrength = smoothstep(uEdgeThreshold, 1.0, vAct);
+    float wave = fract(vT - uTime * 0.65 + vPhase);
+    float packet = smoothstep(0.76, 0.96, wave) * smoothstep(1.0, 0.96, wave);
+    float trail = smoothstep(0.45, 0.92, wave) * 0.22;
+
+    float baseAlpha = activeStrength * (0.045 + 0.08 * vWeight);
+    float pulseAlpha = activeStrength * (0.35 + 0.65 * vWeight) * (packet + trail);
+    float alpha = (baseAlpha + pulseAlpha) * uOpacity * vFocusDim;
+
+    vec3 color = vPolarity >= 0.0 ? uExcColor : uInhColor;
+    color *= (1.0 + 1.15 * packet);
+
     if (vSel > 0.5) {
-      alpha = max(alpha, 0.28 + 0.6 * pulse);
-      color = uSelColor;
+      alpha = max(alpha, (0.28 + 0.68 * packet));
+      color = mix(color, uSelColor, 0.45 + 0.4 * packet);
     }
-    if (alpha < 0.004) discard;
-    gl_FragColor = vec4(color, alpha);
+
+    if (alpha < 0.015) discard;
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.95));
   }
 `;
 
@@ -197,9 +244,10 @@ const SHELL_FRAGMENT = /* glsl */ `
   void main() {
     float facing = abs(dot(normalize(vNormalView), normalize(vViewDir)));
     float fresnel = pow(1.0 - facing, uPower);
-    vec3 color = uColor * (uBase + uRim * fresnel) + uGlowColor * uGlow * (0.18 + 0.9 * fresnel);
-    float alpha = uOpacity * (0.25 + fresnel) + uGlow * 0.25;
-    gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
+    vec3 baseCol = mix(uColor, uGlowColor, uGlow * 0.62);
+    vec3 color = baseCol * (uBase + uRim * fresnel) + uGlowColor * uGlow * (0.09 + 0.60 * fresnel);
+    float alpha = uOpacity * (uBase + fresnel) + uGlow * fresnel * 0.25;
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 0.60));
   }
 `;
 
@@ -223,14 +271,16 @@ export class Brain3DRenderer {
     this.flyActive = false;
     this.agentName = '';
     this.layoutMode = 'neuropil';
+    this.filterMode = 'active';
     this.focusGroup = -1;
     this.showEdges = true;
     this.showLabels = true;
     this.selectedIndex = -1;
     this.hoverIndex = -1;
     this.lastFrameAt = 0;
-    this.smoothingTau = 0.28;
+    this.smoothingTau = 0.24;
     this.elapsed = 0;
+    this.adaptiveNormScale = 0.16;
     this.cameraTween = null;
     this.morph = null;
     this.rafId = null;
@@ -253,7 +303,9 @@ export class Brain3DRenderer {
       soma: Float32Array.from(layout.layout_soma),
     };
     this.targetAct = new Float32Array(this.count);
+    this.prevTargetAct = new Float32Array(this.count);
     this.displayAct = new Float32Array(this.count);
+    this.spikeAct = new Float32Array(this.count);
     this.alive = new Float32Array(this.count).fill(1);
     this.neuronRegion = layout.neuropil_idx.map((i) => regionOfNeuropil(layout.neuropil_names[i]));
 
@@ -282,7 +334,7 @@ export class Brain3DRenderer {
     const now = performance.now();
     if (this.lastFrameAt > 0) {
       const interval = (now - this.lastFrameAt) / 1000;
-      this.smoothingTau = Math.min(0.35, Math.max(0.06, interval * 0.45));
+      this.smoothingTau = Math.min(0.30, Math.max(0.05, interval * 0.42));
     }
     this.lastFrameAt = now;
 
@@ -292,14 +344,31 @@ export class Brain3DRenderer {
     if (this.flyActive) {
       const acts = decodeBase64(brain.activations_b64);
       const mask = brain.lesion_mask_b64 ? decodeBase64(brain.lesion_mask_b64) : null;
+      let maxAbs = 0.08;
       for (let i = 0; i < this.count; i += 1) {
-        this.targetAct[i] = ((acts[i] / 255) * 2 - 1) * H_SCALE;
-        this.alive[i] = mask ? (mask[i] > 0 ? 1 : 0) : 1;
+        const prev = this.targetAct[i];
+        const next = ((acts[i] / 255) * 2 - 1) * H_SCALE;
+        this.prevTargetAct[i] = prev;
+        this.targetAct[i] = next;
+        const delta = Math.abs(next - prev);
+        if (delta > this.spikeAct[i]) {
+          this.spikeAct[i] = delta;
+        }
+        const isAlive = mask ? (mask[i] > 0 ? 1 : 0) : 1;
+        this.alive[i] = isAlive;
+        if (isAlive && Math.abs(next) > maxAbs) {
+          maxAbs = Math.abs(next);
+        }
       }
+      // Smoothly adapt display ceiling so top active firing neurons always reach full contrast.
+      const targetScale = Math.min(H_SCALE, Math.max(0.12, maxAbs * 0.85));
+      this.adaptiveNormScale += (targetScale - this.adaptiveNormScale) * 0.25;
+      this.pointMaterial.uniforms.uNormScale.value = this.adaptiveNormScale;
       this.pointGeometry.attributes.aAlive.needsUpdate = true;
       this._setStatus(null);
     } else {
       this.targetAct.fill(0);
+      this.spikeAct.fill(0);
       this._setStatus(
         `${this.agentName || 'Baseline controller'} aktif. Controller ini tidak memiliki state 2.500 neuron; anatomi ditampilkan tanpa aktivasi.`
       );
@@ -330,14 +399,29 @@ export class Brain3DRenderer {
     };
   }
 
+  setFilterMode(mode) {
+    if (!this.ready) return;
+    this.filterMode = mode === 'all' ? 'all' : 'active';
+    if (this.filterMode === 'active') {
+      this.pointMaterial.uniforms.uActThreshold.value = 0.28;
+      this.pointMaterial.uniforms.uQuietAlpha.value = 0.04;
+      this.edgeMaterial.uniforms.uEdgeThreshold.value = 0.36;
+    } else {
+      this.pointMaterial.uniforms.uActThreshold.value = 0.14;
+      this.pointMaterial.uniforms.uQuietAlpha.value = 0.16;
+      this.edgeMaterial.uniforms.uEdgeThreshold.value = 0.22;
+    }
+  }
+
   setFocus(group) {
     this.focusGroup = group;
     if (!this.ready) return;
     this.pointMaterial.uniforms.uFocus.value = group;
+    this.edgeMaterial.uniforms.uFocus.value = group;
     for (const entry of this.focusMeshes) {
       const dimmed = group >= 0 && entry.group !== group;
       entry.material.uniforms.uOpacity.value = dimmed ? entry.baseOpacity * 0.25 : entry.baseOpacity;
-      entry.material.uniforms.uRim.value = dimmed ? entry.baseRim * 0.3 : entry.baseRim;
+      entry.material.uniforms.uRim.value = dimmed ? entry.baseRim * 0.35 : entry.baseRim;
     }
   }
 
@@ -391,7 +475,9 @@ export class Brain3DRenderer {
       powerPreference: 'high-performance',
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(new THREE.Color('#0b0d11'), 1);
+    renderer.setClearColor(new THREE.Color('#090b10'), 1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
     this.renderer = renderer;
 
     this.scene = new THREE.Scene();
@@ -406,7 +492,7 @@ export class Brain3DRenderer {
     controls.maxDistance = 38;
     controls.rotateSpeed = 0.7;
     controls.autoRotate = !this.reducedMotion;
-    controls.autoRotateSpeed = 0.45;
+    controls.autoRotateSpeed = 0.4;
     controls.addEventListener('start', () => {
       this.cameraTween = null;
     });
@@ -414,12 +500,13 @@ export class Brain3DRenderer {
 
     this.composer = new EffectComposer(renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 256), 0.85, 0.55, 0.12);
+    // Balanced bloom: luminous aura on active spikes, synaptic packets, and lit neuropil rims.
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(512, 256), 0.65, 0.50, 0.34);
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(new OutputPass());
   }
 
-  _fresnelMaterial({ color, base, rim, power, opacity, glowColor = '#eef3fb' }) {
+  _fresnelMaterial({ color, base, rim, power, opacity, glowColor = '#f59e0b' }) {
     return new THREE.ShaderMaterial({
       vertexShader: SHELL_VERTEX,
       fragmentShader: SHELL_FRAGMENT,
@@ -434,8 +521,8 @@ export class Brain3DRenderer {
       },
       transparent: true,
       depthWrite: false,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
+      side: THREE.FrontSide,
+      blending: THREE.NormalBlending,
     });
   }
 
@@ -460,17 +547,37 @@ export class Brain3DRenderer {
 
       let material;
       if (name === 'BRAIN_SHELL') {
-        material = this._fresnelMaterial({ color: '#8d99ad', base: 0.012, rim: 0.42, power: 2.4, opacity: 0.2 });
+        material = this._fresnelMaterial({
+          color: '#93adc9',
+          base: 0.028,
+          rim: 0.62,
+          power: 2.25,
+          opacity: 0.28,
+        });
         mesh.renderOrder = 3;
       } else if (cxSet.has(name) || mbSet.has(name)) {
-        material = this._fresnelMaterial({ color: '#c3cfe2', base: 0.05, rim: 0.7, power: 1.8, opacity: 0.32 });
-        const group = cxSet.has(name) ? 0 : 1;
+        const isCx = cxSet.has(name);
+        material = this._fresnelMaterial({
+          color: isCx ? '#94bfe8' : '#85d1c5',
+          glowColor: isCx ? '#f59e0b' : '#38bdf8',
+          base: 0.028,
+          rim: 0.68,
+          power: 1.95,
+          opacity: 0.22,
+        });
+        const group = isCx ? 0 : 1;
         const region = regionOfNeuropil(name);
         (this.regionMaterials[region] ||= []).push(material);
-        this.focusMeshes.push({ material, group, baseOpacity: 0.32, baseRim: 0.7 });
+        this.focusMeshes.push({ material, group, baseOpacity: 0.22, baseRim: 0.68 });
         mesh.renderOrder = 2;
       } else {
-        material = this._fresnelMaterial({ color: '#6f7a8c', base: 0.0, rim: 0.16, power: 2.6, opacity: 0.12 });
+        material = this._fresnelMaterial({
+          color: '#526073',
+          base: 0.0,
+          rim: 0.18,
+          power: 2.8,
+          opacity: 0.10,
+        });
         mesh.renderOrder = 1;
       }
       mesh.material = material;
@@ -486,6 +593,7 @@ export class Brain3DRenderer {
       new THREE.BufferAttribute(Float32Array.from(this.layoutPositions.neuropil), 3)
     );
     geometry.setAttribute('aAct', new THREE.BufferAttribute(this.displayAct, 1));
+    geometry.setAttribute('aSpike', new THREE.BufferAttribute(this.spikeAct, 1));
     geometry.setAttribute('aAlive', new THREE.BufferAttribute(this.alive, 1));
     geometry.setAttribute('aGroup', new THREE.BufferAttribute(Float32Array.from(this.layout.circuit_groups), 1));
     geometry.setAttribute(
@@ -499,21 +607,24 @@ export class Brain3DRenderer {
       fragmentShader: POINT_FRAGMENT,
       uniforms: {
         uPixelRatio: { value: this.renderer.getPixelRatio() },
-        uSize: { value: 4.2 },
+        uSize: { value: 4.8 },
         uFocus: { value: -1 },
         uSelected: { value: -1 },
         uHover: { value: -1 },
         uFlyActive: { value: 0 },
-        uNeg: { value: new THREE.Color('#3b82f6') },
-        uNegHot: { value: new THREE.Color('#cfe3ff') },
+        uActThreshold: { value: 0.28 },
+        uQuietAlpha: { value: 0.04 },
+        uNormScale: { value: this.adaptiveNormScale },
+        uNeg: { value: new THREE.Color('#0ea5e9') },
+        uNegHot: { value: new THREE.Color('#7dd3fc') },
         uPos: { value: new THREE.Color('#f97316') },
-        uPosHot: { value: new THREE.Color('#ffe9cf') },
-        uMid: { value: new THREE.Color('#3a414e') },
-        uDead: { value: new THREE.Color('#d4485a') },
+        uPosHot: { value: new THREE.Color('#fde047') },
+        uMid: { value: new THREE.Color('#475569') },
+        uDead: { value: new THREE.Color('#ef4444') },
       },
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     });
 
     this.pointGeometry = geometry;
@@ -524,12 +635,15 @@ export class Brain3DRenderer {
   }
 
   _buildEdges() {
-    const { pre, post, weight_norm: weights } = this.layout.edges;
+    const { pre, post, weight_norm: weights, polarity } = this.layout.edges;
+    const groups = this.layout.circuit_groups;
     const edgeCount = pre.length;
     const positions = new Float32Array(edgeCount * 6);
     const tValues = new Float32Array(edgeCount * 2);
     const acts = new Float32Array(edgeCount * 2);
     const weightAttr = new Float32Array(edgeCount * 2);
+    const polarityAttr = new Float32Array(edgeCount * 2);
+    const groupAttr = new Float32Array(edgeCount * 2);
     const preAttr = new Float32Array(edgeCount * 2);
     const postAttr = new Float32Array(edgeCount * 2);
 
@@ -538,6 +652,12 @@ export class Brain3DRenderer {
       tValues[e * 2 + 1] = 1;
       weightAttr[e * 2] = weights[e];
       weightAttr[e * 2 + 1] = weights[e];
+      const pol = polarity ? polarity[e] : 1;
+      polarityAttr[e * 2] = pol;
+      polarityAttr[e * 2 + 1] = pol;
+      const g = groups[pre[e]];
+      groupAttr[e * 2] = g;
+      groupAttr[e * 2 + 1] = g;
       preAttr[e * 2] = pre[e];
       preAttr[e * 2 + 1] = pre[e];
       postAttr[e * 2] = post[e];
@@ -549,6 +669,8 @@ export class Brain3DRenderer {
     geometry.setAttribute('aT', new THREE.BufferAttribute(tValues, 1));
     geometry.setAttribute('aAct', new THREE.BufferAttribute(acts, 1));
     geometry.setAttribute('aWeight', new THREE.BufferAttribute(weightAttr, 1));
+    geometry.setAttribute('aPolarity', new THREE.BufferAttribute(polarityAttr, 1));
+    geometry.setAttribute('aGroup', new THREE.BufferAttribute(groupAttr, 1));
     geometry.setAttribute('aPre', new THREE.BufferAttribute(preAttr, 1));
     geometry.setAttribute('aPost', new THREE.BufferAttribute(postAttr, 1));
 
@@ -557,14 +679,17 @@ export class Brain3DRenderer {
       fragmentShader: EDGE_FRAGMENT,
       uniforms: {
         uTime: { value: 0 },
-        uOpacity: { value: 0.9 },
+        uOpacity: { value: 0.85 },
+        uEdgeThreshold: { value: 0.36 },
         uSelected: { value: -1 },
-        uColor: { value: new THREE.Color('#aeb9cc') },
+        uFocus: { value: -1 },
+        uExcColor: { value: new THREE.Color('#ff8c2e') },
+        uInhColor: { value: new THREE.Color('#38bdf8') },
         uSelColor: { value: new THREE.Color('#ffffff') },
       },
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
     });
 
     this.edgeGeometry = geometry;
@@ -615,11 +740,13 @@ export class Brain3DRenderer {
     const counts = {};
     for (const region of this.neuronRegion) counts[region] = (counts[region] || 0) + 1;
 
-    for (const key of REGION_KEYS) {
+    REGION_KEYS.forEach((key, idx) => {
       const row = document.createElement('div');
       row.className = 'region-row';
+      row.dataset.tooltip = REGION_TOOLTIPS[key] || REGION_LABELS[key];
+      row.dataset.tooltipPos = idx % 2 === 1 ? 'left' : 'top';
       row.innerHTML = `
-        <span class="region-name">${REGION_LABELS[key]}</span>
+        <span class="region-name tooltip-trigger">${REGION_LABELS[key]}</span>
         <span class="region-count mono-value">n=${counts[key] || 0}</span>
         <span class="region-track"><span class="region-fill"></span></span>
         <span class="region-value mono-value">-</span>`;
@@ -628,7 +755,7 @@ export class Brain3DRenderer {
         fill: row.querySelector('.region-fill'),
         value: row.querySelector('.region-value'),
       };
-    }
+    });
   }
 
   // --------------------------------------------------------------- per-frame
@@ -644,7 +771,7 @@ export class Brain3DRenderer {
 
     for (const key of REGION_KEYS) {
       const mean = counts[key] ? sums[key] / counts[key] : 0;
-      const glow = this.flyActive ? Math.min(mean / 0.12, 1) : 0;
+      const glow = this.flyActive ? Math.min(mean / 0.14, 1) : 0;
       for (const material of this.regionMaterials[key] || []) {
         material.userData.targetGlow = glow;
       }
@@ -659,7 +786,10 @@ export class Brain3DRenderer {
   _updateHud(snapshot, policy) {
     const phaseNames = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
     if (this.hudStepEl) {
-      this.hudStepEl.textContent = `Step ${snapshot.step ?? '-'}/${snapshot.max_steps ?? '-'} · ${snapshot.profile_name || '-'}`;
+      const stepLabel = snapshot.continuous_mode
+        ? `Step ${snapshot.step ?? '-'}`
+        : `Step ${snapshot.step ?? '-'}/${snapshot.max_steps ?? '-'}`;
+      this.hudStepEl.textContent = `${stepLabel} · ${snapshot.profile_name || '-'}`;
     }
     const chosen = Number(policy.chosen_action ?? 0);
     if (this.hudPhaseEl) {
@@ -687,19 +817,26 @@ export class Brain3DRenderer {
   }
 
   _tick(dt, now) {
-    // Exponential smoothing toward the latest streamed hidden state.
     const k = this.reducedMotion ? 1 : 1 - Math.exp(-dt / this.smoothingTau);
+    const spikeDecay = this.reducedMotion ? 0 : Math.exp(-dt / 0.35);
     const act = this.displayAct;
+    const spike = this.spikeAct;
     for (let i = 0; i < this.count; i += 1) {
       act[i] += (this.targetAct[i] - act[i]) * k;
+      spike[i] *= spikeDecay;
     }
     this.pointGeometry.attributes.aAct.needsUpdate = true;
+    this.pointGeometry.attributes.aSpike.needsUpdate = true;
 
     if (this.showEdges) {
       const edgeAct = this.edgeGeometry.attributes.aAct.array;
-      const { pre } = this.layout.edges;
+      const { pre, post } = this.layout.edges;
+      const invNorm = 1 / Math.max(this.adaptiveNormScale, 0.05);
       for (let e = 0; e < pre.length; e += 1) {
-        const v = Math.min(Math.max(act[pre[e]], 0) / H_SCALE, 1);
+        const preIdx = pre[e];
+        const postIdx = post[e];
+        const alivePair = this.alive[preIdx] * this.alive[postIdx];
+        const v = alivePair * Math.min(Math.abs(act[preIdx]) * invNorm, 1);
         edgeAct[e * 2] = v;
         edgeAct[e * 2 + 1] = v;
       }
@@ -775,7 +912,7 @@ export class Brain3DRenderer {
   // ------------------------------------------------------------- interaction
   _bindPointer() {
     const raycaster = new THREE.Raycaster();
-    raycaster.params.Points.threshold = 0.07;
+    raycaster.params.Points.threshold = 0.08;
     const ndc = new THREE.Vector2();
     let downAt = null;
     let pendingMove = null;

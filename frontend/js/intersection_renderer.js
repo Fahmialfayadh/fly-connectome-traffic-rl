@@ -1263,14 +1263,14 @@ export class IntersectionRenderer {
     // Painted lane directional arrows (straight vs left turn)
     this._drawLaneArrows(ctx);
 
-    // Approach labels
+    // Approach labels placed cleanly along outer quadrant edges away from signal heads
     const textScale = Math.min(1.6, Math.max(1, 1 / this.zoomLevel));
-    const fontPx = this.compact ? 10.5 : Math.round(12 * textScale * 10) / 10;
+    const fontPx = this.compact ? 10.5 : Math.round(11.5 * textScale * 10) / 10;
     ctx.fillStyle = '#334155';
     ctx.font = `600 ${fontPx}px "IBM Plex Sans", sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText('NORTH APPROACH', cx + half + 16, bounds.minY + 22 * textScale);
-    ctx.fillText('SOUTH APPROACH', cx + half + 16, bounds.maxY - 14 * textScale);
+    ctx.fillText('NORTH APPROACH', cx + half + 16, bounds.minY + 20 * textScale);
+    ctx.fillText('SOUTH APPROACH', cx + half + 16, bounds.maxY - 12 * textScale);
     ctx.fillText('WEST APPROACH', bounds.minX + 14 * textScale, cy - half - 14 * textScale);
     ctx.textAlign = 'right';
     ctx.fillText('EAST APPROACH', bounds.maxX - 14 * textScale, cy - half - 14 * textScale);
@@ -1476,20 +1476,20 @@ export class IntersectionRenderer {
       ctx.stroke();
     }
 
-    // Real 3-lens housings positioned cleanly on the 4 intersection corners
+    // Real 3-lens housings positioned cleanly on the 4 intersection corners with non-overlapping labels
     const headSpecs = [
       // Northbound approach signals (top-left corner for N Straight & N Turn)
-      { x: cx - 156, y: cy - 178, vertical: true, laneId: 0, tag: 'N-STR' },
-      { x: cx - 128, y: cy - 178, vertical: true, laneId: 1, tag: 'N-TRN' },
+      { x: cx - 168, y: cy - 182, vertical: true, laneId: 0, tag: 'N-STR', labelPos: 'bottom' },
+      { x: cx - 128, y: cy - 182, vertical: true, laneId: 1, tag: 'N-TRN', labelPos: 'bottom' },
       // Southbound approach signals (bottom-right corner)
-      { x: cx + 112, y: cy + 124, vertical: true, laneId: 3, tag: 'S-TRN' },
-      { x: cx + 140, y: cy + 124, vertical: true, laneId: 2, tag: 'S-STR' },
+      { x: cx + 112, y: cy + 124, vertical: true, laneId: 3, tag: 'S-TRN', labelPos: 'bottom' },
+      { x: cx + 152, y: cy + 124, vertical: true, laneId: 2, tag: 'S-STR', labelPos: 'bottom' },
       // Eastbound approach signals (top-right corner for E Straight & E Turn)
-      { x: cx + 124, y: cy - 156, vertical: false, laneId: 4, tag: 'E-STR' },
-      { x: cx + 124, y: cy - 128, vertical: false, laneId: 5, tag: 'E-TRN' },
+      { x: cx + 116, y: cy - 182, vertical: false, laneId: 4, tag: 'E-STR', labelPos: 'right' },
+      { x: cx + 116, y: cy - 154, vertical: false, laneId: 5, tag: 'E-TRN', labelPos: 'right' },
       // Westbound approach signals (bottom-left corner)
-      { x: cx - 178, y: cy + 112, vertical: false, laneId: 7, tag: 'W-TRN' },
-      { x: cx - 178, y: cy + 140, vertical: false, laneId: 6, tag: 'W-STR' },
+      { x: cx - 166, y: cy + 114, vertical: false, laneId: 7, tag: 'W-TRN', labelPos: 'left' },
+      { x: cx - 166, y: cy + 142, vertical: false, laneId: 6, tag: 'W-STR', labelPos: 'left' },
     ];
 
     for (const head of headSpecs) {
@@ -1499,12 +1499,13 @@ export class IntersectionRenderer {
         head.y,
         head.vertical,
         this._getLaneSignalColor(head.laneId),
-        head.tag
+        head.tag,
+        head.labelPos
       );
     }
   }
 
-  _drawThreeLensHousing(ctx, x, y, vertical, activeState, labelText) {
+  _drawThreeLensHousing(ctx, x, y, vertical, activeState, labelText, labelPos = 'bottom') {
     const w = vertical ? 20 : 50;
     const h = vertical ? 50 : 20;
 
@@ -1539,9 +1540,23 @@ export class IntersectionRenderer {
       ctx.fill();
     });
 
+    ctx.save();
     ctx.fillStyle = '#475569';
     ctx.font = '600 9px "IBM Plex Mono", monospace';
-    ctx.fillText(labelText, x - 2, y + h + 11);
+    if (labelPos === 'right') {
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, x + w + 6, y + h / 2 + 0.5);
+    } else if (labelPos === 'left') {
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, x - 6, y + h / 2 + 0.5);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(labelText, x + w / 2, y + h + 4);
+    }
+    ctx.restore();
   }
 
   _drawAllVehicles(ctx, timestampMs) {

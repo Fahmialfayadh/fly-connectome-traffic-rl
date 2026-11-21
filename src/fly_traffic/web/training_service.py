@@ -15,6 +15,10 @@ import torch
 from fly_traffic.agents.base import BaseRecurrentActorCritic
 from fly_traffic.config import ConnectomeConfig, PPOConfig, TrafficEnvConfig
 from fly_traffic.connectome.artifact import ConnectomeArtifact
+from fly_traffic.connectome.shuffled import (
+    default_shuffled_connectome_path,
+    load_or_create_shuffled_connectome,
+)
 from fly_traffic.environment.traffic_env import TrafficIntersectionEnv
 from fly_traffic.training.ppo_trainer import PPOTrainer
 from fly_traffic.web.simulation_service import SimulationService
@@ -105,9 +109,9 @@ class TrainingJobManager:
     ) -> dict[str, Any]:
         """Launch a non-blocking CPU PPO training job on a background thread."""
         normalized_model = model_type.lower().strip()
-        if normalized_model not in ("fly", "mlp", "gru"):
+        if normalized_model not in ("fly", "fly_shuffled", "mlp", "gru"):
             raise ValueError(
-                f"Unsupported model_type '{model_type}'. Expected fly, mlp, or gru."
+                f"Unsupported model_type '{model_type}'. Expected fly, fly_shuffled, mlp, or gru."
             )
 
         if save_mode is not None:
@@ -294,8 +298,15 @@ class TrainingJobManager:
 
         try:
             artifact: ConnectomeArtifact | None = None
+            resolved_conn_path = self._connectome_path
             if model_type == "fly":
                 artifact = ConnectomeArtifact.load(self._connectome_path)
+            elif model_type == "fly_shuffled":
+                resolved_conn_path = default_shuffled_connectome_path(self._connectome_path)
+                artifact = load_or_create_shuffled_connectome(
+                    connectome_path=self._connectome_path,
+                    shuffled_path=resolved_conn_path,
+                )
 
             ppo_config = PPOConfig(
                 total_timesteps=int(job_config["total_timesteps"]),
@@ -317,7 +328,7 @@ class TrainingJobManager:
             trainer = PPOTrainer(
                 ppo_config=ppo_config,
                 env_config=TrafficEnvConfig(),
-                connectome_config=ConnectomeConfig(output_path=self._connectome_path),
+                connectome_config=ConnectomeConfig(output_path=resolved_conn_path),
             )
             preview_env = TrafficIntersectionEnv(
                 config=TrafficEnvConfig(profile_name="rush_hour")

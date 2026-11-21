@@ -11,6 +11,7 @@ from fly_traffic.agents.base import BaseRecurrentActorCritic
 from fly_traffic.agents.fly_policy import FlyConnectomePolicy
 from fly_traffic.config import ConnectomeConfig
 from fly_traffic.connectome.artifact import ConnectomeArtifact
+from fly_traffic.connectome.shuffled import load_or_create_shuffled_connectome
 
 
 def _init_linear(layer: nn.Linear, gain: float) -> nn.Linear:
@@ -42,6 +43,8 @@ class MLPBaselinePolicy(BaseRecurrentActorCritic):
         )
         self.actor_head = _init_linear(nn.Linear(hidden_width, act_dim), gain=0.01)
         self.critic_head = _init_linear(nn.Linear(hidden_width, 1), gain=1.0)
+        self._last_layer1: torch.Tensor | None = None
+        self._last_layer2: torch.Tensor | None = None
 
     @property
     def hidden_dim(self) -> int:
@@ -54,7 +57,14 @@ class MLPBaselinePolicy(BaseRecurrentActorCritic):
         device: torch.device | str = "cpu",
     ) -> torch.Tensor:
         """Return dummy zero tensor [batch_size, 1]."""
+        self._last_layer1 = None
+        self._last_layer2 = None
         return torch.zeros(batch_size, 1, dtype=torch.float32, device=device)
+
+    @property
+    def latest_layer_activations(self) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+        """Return detached inference activations from hidden layers 1 and 2."""
+        return self._last_layer1, self._last_layer2
 
     def forward_step(
         self,
@@ -62,7 +72,11 @@ class MLPBaselinePolicy(BaseRecurrentActorCritic):
         hidden: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Compute policy logits and value from current observation alone."""
-        features = self.backbone(obs)
+        layer1 = self.backbone[1](self.backbone[0](obs))
+        features = self.backbone[3](self.backbone[2](layer1))
+        if not torch.is_grad_enabled():
+            self._last_layer1 = layer1.detach()
+            self._last_layer2 = features.detach()
         logits = self.actor_head(features)
         value = self.critic_head(features).squeeze(-1)
         return logits, value, hidden
@@ -144,9 +158,9 @@ def build_policy(
 ) -> BaseRecurrentActorCritic:
     """Instantiate one of the supported RL policy architectures by name."""
     normalized = model_type.lower().strip()
-    if normalized == "fly":
+    if normalized in ("fly", "fly_shuffled"):
         if artifact is None:
-            raise ValueError("ConnectomeArtifact is required to build 'fly' policy.")
+            raise ValueError(f"ConnectomeArtifact is required to build '{normalized}' policy.")
         return FlyConnectomePolicy(obs_dim=obs_dim, act_dim=act_dim, artifact=artifact)
 
     if normalized == "mlp":
@@ -155,7 +169,9 @@ def build_policy(
     if normalized == "gru":
         return GRUBaselinePolicy(obs_dim=obs_dim, act_dim=act_dim)
 
-    raise ValueError(f"Unsupported model_type '{model_type}'. Expected fly, mlp, or gru.")
+    raise ValueError(
+        f"Unsupported model_type '{model_type}'. Expected fly, fly_shuffled, mlp, or gru."
+    )
 
 
 def save_policy_checkpoint(
@@ -204,6 +220,7 @@ def load_policy_checkpoint(
     path: Path,
     artifact: ConnectomeArtifact | None = None,
     device: torch.device | str = "cpu",
+    shuffled_artifact: ConnectomeArtifact | None = None,
 ) -> tuple[BaseRecurrentActorCritic, dict[str, Any]]:
     """Reload a saved policy checkpoint onto CPU/target device."""
     payload = torch.load(path, map_location="cpu", weights_only=True)
@@ -212,7 +229,15 @@ def load_policy_checkpoint(
     act_dim = int(payload["act_dim"])
 
     resolved_artifact = artifact
-    if model_type == "fly" and resolved_artifact is None:
+    if model_type == "fly_shuffled":
+        resolved_artifact = shuffled_artifact
+        if resolved_artifact is None:
+            conn_path_raw = payload.get("connectome_path")
+            if conn_path_raw and Path(conn_path_raw).exists():
+                resolved_artifact = ConnectomeArtifact.load(Path(conn_path_raw))
+            else:
+                resolved_artifact = load_or_create_shuffled_connectome()
+    elif model_type == "fly" and resolved_artifact is None:
         conn_path_raw = payload.get("connectome_path")
         candidate = Path(conn_path_raw) if conn_path_raw else ConnectomeConfig().output_path
         resolved_artifact = ConnectomeArtifact.load(candidate)

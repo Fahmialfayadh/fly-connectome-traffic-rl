@@ -16,6 +16,7 @@ Dokumen ini memetakan seluruh simbol persamaan di `PLAN.md` beserta parameter al
 | $W_{\text{exc}}$ (Eksitatori / ACh) | `w_exc_csr` (buffer sparse CSR) | `artifact.py`, `connectome_cell.py` (`ConnectomeRecurrentCell`) | Matriks konektivitas sinapsis tipe `ACH` dengan `requires_grad=False` (dikunci/frozen). |
 | $W_{\text{inh}}$ (Inhibitori / GABA + GLUT) | `w_inh_csr` (buffer sparse CSR) | `artifact.py`, `connectome_cell.py` (`ConnectomeRecurrentCell`) | Matriks konektivitas sinapsis tipe `GABA` dan `GLUT` dengan `requires_grad=False` (dikunci/frozen). |
 | *Spectral radius* awal & target | `raw_spectral_radius`, `target_spectral_radius` (`0.95`) | `preprocessor.py` (`_compute_spectral_radius`) | Nilai eigen terbesar $\rho(W_{\text{exc}} - W_{\text{inh}})$ sebelum (`113.1494`) dan sesudah (`0.9500`) penskalaan. |
+| *Shuffled Connectome Null Model* | `create_shuffled_connectome_artifact`, `load_or_create_shuffled_connectome` (`model_type="fly_shuffled"`) | `src/fly_traffic/connectome/shuffled.py` | Pengacakan global pasangan `(post, pre)` pada `36.908` sisi eksitatori dan `50.263` sisi inhibitori dengan *sparsity* identik (`98.6053%`) dan *spectral radius* terskalakan `0.9500`, disimpan ke `artifacts/fly_subconnectome_shuffled.pt`. |
 
 ### B. Modul Dinamika Sel Saraf Lalat (`src/fly_traffic/agents/connectome_cell.py` & `fly_policy.py`)
 

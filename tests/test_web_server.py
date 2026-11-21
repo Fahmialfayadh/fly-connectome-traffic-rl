@@ -43,6 +43,9 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
             assert resp_index.status == 200
             html = await resp_index.text()
             assert "Drosophila Connectome Traffic Lab" in html
+            assert 'id="panel-docs"' in html
+            assert "Dorkenwald" in html
+            assert "Schlegel" in html
 
             resp_neurons = await client.get("/assets/brain/fly_brain_neurons.json")
             assert resp_neurons.status == 200
@@ -94,6 +97,8 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
             timer_data = await resp_timer.json()
             assert timer_data["agent_key"] == "fixed_timer"
             assert timer_data["connectome_telemetry"]["is_fly_active"] is False
+            assert timer_data["model_telemetry"]["kind"] == "fixed_timer"
+            assert timer_data["model_telemetry"]["phase_durations"] == [8, 4, 8, 4]
 
             resp_buffer = await client.post(
                 "/api/simulation/control",
@@ -103,6 +108,21 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
             buffer_data = await resp_buffer.json()
             assert buffer_data["snapshot"]["all_red_steps"] == 0
             assert "total_collisions" in buffer_data["snapshot"]
+
+            assert buffer_data["snapshot"]["continuous_mode"] is True
+            resp_finite = await client.post(
+                "/api/simulation/control",
+                json={"action": "set_continuous_mode", "enabled": False},
+            )
+            assert resp_finite.status == 200
+            assert (await resp_finite.json())["snapshot"]["continuous_mode"] is False
+
+            resp_cont = await client.post(
+                "/api/simulation/control",
+                json={"action": "set_continuous_mode", "enabled": True},
+            )
+            assert resp_cont.status == 200
+            assert (await resp_cont.json())["snapshot"]["continuous_mode"] is True
 
             # 4. Simulation WebSocket receives frame
             async with client.ws_connect("/ws/simulation") as sim_ws:
@@ -363,6 +383,7 @@ def test_checkpoint_directory_scanning_and_custom_fly_controls(tmp_path: Path) -
     keys = list(overview["checkpoints"].keys())
     assert keys == [
         "fly",
+        "fly_shuffled",
         "gru",
         "mlp",
         "ckpt:alpha_mlp",
@@ -389,6 +410,22 @@ def test_checkpoint_directory_scanning_and_custom_fly_controls(tmp_path: Path) -
     default_fly_frame = service.set_agent("fly")
     assert abs(default_fly_frame["connectome_telemetry"]["g_exc"] - 1.0) < 1e-5
     assert default_fly_frame["connectome_telemetry"]["active_neurons"] == 100
+    assert default_fly_frame["model_telemetry"]["kind"] == "fly"
+
+    # Custom MLP must expose real layer-1 and layer-2 telemetry after stepping.
+    service.set_agent("ckpt:alpha_mlp")
+    mlp_frame = service.step_once()
+    assert mlp_frame["connectome_telemetry"]["is_fly_active"] is False
+    assert mlp_frame["model_telemetry"]["kind"] == "mlp"
+    assert mlp_frame["model_telemetry"]["layer1_b64"]
+    assert mlp_frame["model_telemetry"]["layer2_b64"]
+    assert mlp_frame["model_telemetry"]["layer1_mean_abs"] > 0.0
+
+    # Shuffled connectome null model must identify itself accurately.
+    shuffled_frame = service.set_agent("fly_shuffled")
+    assert shuffled_frame["connectome_telemetry"]["is_fly_active"] is True
+    assert shuffled_frame["model_telemetry"]["kind"] == "fly_shuffled"
+    assert shuffled_frame["model_telemetry"]["is_shuffled"] is True
 
 
 def test_live_simulation_mode_maximal_and_manual_spawns(tmp_path: Path) -> None:

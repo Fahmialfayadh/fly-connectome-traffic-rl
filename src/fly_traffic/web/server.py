@@ -21,6 +21,7 @@ from fly_traffic.config import (
     TrafficEnvConfig,
 )
 from fly_traffic.connectome.artifact import ConnectomeArtifact
+from fly_traffic.connectome.shuffled import load_or_create_shuffled_connectome
 from fly_traffic.evaluation.evaluator import AgentEvaluator
 from fly_traffic.evaluation.visualizer import BenchmarkPlotter
 from fly_traffic.web.simulation_service import SimulationService
@@ -189,17 +190,54 @@ class TrafficLabServer:
         state = self.training_manager.stop_job()
         return web.json_response(state)
 
-    async def _handle_benchmark_run(self, _request: web.Request) -> web.Response:
+    async def _handle_benchmark_run(self, request: web.Request) -> web.Response:
         if self._benchmark_running:
             return web.json_response(
                 {"error": "Benchmark evaluation is already running."},
                 status=409,
             )
 
+        selected_agent_keys: list[str] | None = None
+        if request.can_read_body:
+            raw_body = await request.text()
+            if raw_body.strip():
+                try:
+                    payload = json.loads(raw_body)
+                except json.JSONDecodeError as exc:
+                    return web.json_response(
+                        {"error": f"Invalid JSON payload: {exc}"},
+                        status=400,
+                    )
+                if not isinstance(payload, dict):
+                    return web.json_response(
+                        {"error": "Benchmark request payload must be a JSON object."},
+                        status=400,
+                    )
+                raw_keys = payload.get("agent_keys")
+                if raw_keys is not None:
+                    if not isinstance(raw_keys, list) or not all(
+                        isinstance(k, str) and k.strip() for k in raw_keys
+                    ):
+                        return web.json_response(
+                            {"error": "agent_keys must be a list of model keys."},
+                            status=400,
+                        )
+                    selected_agent_keys = list(dict.fromkeys(k.strip() for k in raw_keys))
+                    if not selected_agent_keys:
+                        return web.json_response(
+                            {"error": "Pilih minimal satu model untuk menjalankan benchmark."},
+                            status=400,
+                        )
+
         self._benchmark_running = True
         try:
-            summary_payload = await asyncio.to_thread(self._run_benchmark_sync)
+            summary_payload = await asyncio.to_thread(
+                self._run_benchmark_sync,
+                selected_agent_keys,
+            )
             return web.json_response(summary_payload)
+        except ValueError as exc:
+            return web.json_response({"error": str(exc)}, status=400)
         finally:
             self._benchmark_running = False
 
@@ -263,6 +301,10 @@ class TrafficLabServer:
                 "all_red_steps",
             )
             return self.simulation_service.set_safety_buffer(all_red_steps)
+        if action == "set_continuous_mode":
+            return self.simulation_service.set_continuous_mode(
+                bool(body.get("enabled", True))
+            )
         if action == "spawn_vehicles":
             lane_id = self._parse_required_int(body.get("lane_id"), "lane_id")
             raw_count = body.get("count", 1)
@@ -370,33 +412,103 @@ class TrafficLabServer:
         for dead in dead_clients:
             clients.discard(dead)
 
-    def _run_benchmark_sync(self) -> dict[str, Any]:
+    def _run_benchmark_sync(
+        self,
+        selected_agent_keys: list[str] | None = None,
+    ) -> dict[str, Any]:
         artifact = (
             ConnectomeArtifact.load(self.connectome_path)
             if self.connectome_path.exists()
             else None
         )
-        agents: list[BaseTrafficAgent] = [FixedTimerAgent()]
+        shuffled_artifact = (
+            load_or_create_shuffled_connectome(self.connectome_path)
+            if self.connectome_path.exists()
+            else None
+        )
+        agents: list[BaseTrafficAgent] = []
         histories: dict[str, dict[str, list[float]]] = {}
         fly_policy: FlyConnectomePolicy | None = None
 
-        for key, label in [
-            ("mlp", "PPO-MLP"),
-            ("gru", "PPO-GRU"),
-            ("fly", "Fly Connectome PPO"),
-        ]:
-            ckpt = self.checkpoints_dir / f"{key}_ppo.pt"
-            if not ckpt.exists():
-                continue
-            policy, payload = load_policy_checkpoint(
-                path=ckpt,
-                artifact=artifact if key == "fly" else None,
-            )
-            agents.append(NeuralAgentAdapter(policy=policy, agent_name=label))
-            if isinstance(payload.get("history"), dict):
-                histories[label] = payload["history"]
-            if key == "fly" and isinstance(policy, FlyConnectomePolicy):
-                fly_policy = policy
+        if selected_agent_keys is None:
+            agents.append(FixedTimerAgent())
+            for key, label in [
+                ("mlp", "PPO-MLP"),
+                ("gru", "PPO-GRU"),
+                ("fly_shuffled", "Shuffled Connectome PPO"),
+                ("fly", "Fly Connectome PPO"),
+            ]:
+                ckpt = self.checkpoints_dir / f"{key}_ppo.pt"
+                if not ckpt.exists():
+                    continue
+                policy, payload = load_policy_checkpoint(
+                    path=ckpt,
+                    artifact=artifact if key == "fly" else None,
+                    shuffled_artifact=shuffled_artifact if key == "fly_shuffled" else None,
+                )
+                agents.append(NeuralAgentAdapter(policy=policy, agent_name=label))
+                if isinstance(payload.get("history"), dict):
+                    histories[label] = payload["history"]
+                if key == "fly" and isinstance(policy, FlyConnectomePolicy):
+                    fly_policy = policy
+        else:
+            inventory = self.simulation_service.get_overview_payload().get("checkpoints", {})
+            used_names: set[str] = set()
+            for key in selected_agent_keys:
+                if key == "fixed_timer":
+                    agents.append(FixedTimerAgent())
+                    used_names.add("Fixed Timer")
+                    continue
+
+                info = inventory.get(key)
+                if not info:
+                    raise ValueError(f"Model '{key}' tidak ditemukan di inventori.")
+
+                model_type = str(info.get("model_type", ""))
+                if not info.get("exists"):
+                    if key in ("fly", "fly_shuffled"):
+                        target_artifact = shuffled_artifact if key == "fly_shuffled" else artifact
+                        if target_artifact is None:
+                            raise ValueError(f"Connectome artifact tidak tersedia untuk '{key}'.")
+                        policy = FlyConnectomePolicy(
+                            obs_dim=22,
+                            act_dim=4,
+                            artifact=target_artifact,
+                        )
+                        policy.eval()
+                        label = str(info.get("label") or f"{key} (untrained)")
+                        if label in used_names:
+                            label = f"{label} ({key})"
+                        used_names.add(label)
+                        agents.append(NeuralAgentAdapter(policy=policy, agent_name=label))
+                        if fly_policy is None and model_type == "fly":
+                            fly_policy = policy
+                        continue
+                    raise ValueError(f"Model '{key}' belum memiliki checkpoint terlatih.")
+
+                ckpt_file = str(info.get("checkpoint_file", ""))
+                ckpt_path = self.checkpoints_dir / ckpt_file
+                if not ckpt_path.exists():
+                    raise ValueError(f"Checkpoint untuk model '{key}' tidak ditemukan: {ckpt_file}")
+
+                policy, payload = load_policy_checkpoint(
+                    path=ckpt_path,
+                    artifact=artifact if model_type == "fly" else None,
+                    shuffled_artifact=shuffled_artifact if model_type == "fly_shuffled" else None,
+                )
+                label = str(info.get("label") or key)
+                if label in used_names:
+                    label = f"{label} ({ckpt_file})"
+                used_names.add(label)
+
+                agents.append(NeuralAgentAdapter(policy=policy, agent_name=label))
+                if isinstance(payload.get("history"), dict):
+                    histories[label] = payload["history"]
+                if fly_policy is None and model_type == "fly" and isinstance(policy, FlyConnectomePolicy):
+                    fly_policy = policy
+
+        if not agents:
+            raise ValueError("Tidak ada model valid yang dipilih untuk benchmark.")
 
         evaluator = AgentEvaluator(
             benchmark_config=BenchmarkConfig(output_dir=self.benchmarks_dir),
