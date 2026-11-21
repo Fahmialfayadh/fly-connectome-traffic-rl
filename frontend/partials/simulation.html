@@ -1,0 +1,502 @@
+<!-- TAB 1: LIVE SIMULATION & IN-SILICO LAB -->
+<section
+  id="panel-simulation"
+  class="tab-panel is-active"
+  role="tabpanel"
+  aria-labelledby="tab-btn-simulation"
+>
+  <div class="sim-control-bar">
+    <div class="control-block control-block-model">
+      <label for="select-agent" class="control-bar-label">Model / Controller</label>
+      <select id="select-agent" class="control-select control-select-compact">
+        <option value="fly">Fly Connectome PPO</option>
+        <option value="fly_shuffled">Shuffled Connectome PPO (Null Model)</option>
+        <option value="gru">PPO-GRU</option>
+        <option value="mlp">PPO-MLP</option>
+        <option value="fixed_timer">Fixed Timer (Rule-Based)</option>
+      </select>
+    </div>
+
+    <div class="control-block">
+      <span class="control-bar-label">Traffic Profile</span>
+      <div class="segmented-control" role="group" aria-label="Traffic Profile">
+        <button class="seg-btn" type="button" data-scenario="normal" aria-pressed="false">Normal</button>
+        <button class="seg-btn" type="button" data-scenario="asymmetric" aria-pressed="false">Asymmetric</button>
+        <button class="seg-btn is-active" type="button" data-scenario="rush_hour" aria-pressed="true">Rush Hour</button>
+      </div>
+    </div>
+
+    <div class="control-block">
+      <span class="control-bar-label">Signal Buffer</span>
+      <div class="segmented-control" role="group" aria-label="Safety Buffer">
+        <button class="seg-btn is-active" type="button" data-safety-buffer="1" aria-pressed="true">All-Red</button>
+        <button class="seg-btn" type="button" data-safety-buffer="0" aria-pressed="false">Yellow Only</button>
+      </div>
+    </div>
+
+    <div class="control-block">
+      <span class="control-bar-label">Horizon</span>
+      <div class="segmented-control" role="group" aria-label="Simulation Horizon">
+        <button class="seg-btn is-active" type="button" data-continuous-mode="1" aria-pressed="true">Continuous</button>
+        <button class="seg-btn" type="button" data-continuous-mode="0" aria-pressed="false">300-Step</button>
+      </div>
+    </div>
+
+    <div class="control-block control-block-speed">
+      <div class="control-speed-head">
+        <label for="slider-sim-speed" class="control-bar-label">Speed</label>
+        <span id="label-sim-speed" class="mono-value speed-readout">2.0/s</span>
+      </div>
+      <input
+        id="slider-sim-speed"
+        type="range"
+        min="0.5"
+        max="8.0"
+        step="0.5"
+        value="2.0"
+        aria-label="Simulation Speed"
+      >
+    </div>
+
+    <div class="control-telemetry-group">
+      <div class="telemetry-pill">
+        <span class="control-bar-label">Step</span>
+        <strong id="sim-regime-value" class="mono-value">0 / 300</strong>
+      </div>
+      <div class="telemetry-pill">
+        <span class="control-bar-label">Signal</span>
+        <strong id="sim-signal-value" class="mono-value signal-badge">
+          <span id="sim-signal-dot" class="signal-dot signal-dot-green" aria-hidden="true"></span>
+          <span id="sim-signal-text">NS Straight · GREEN</span>
+        </strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="simulation-grid">
+    <!-- LEFT COLUMN: 2D INTERSECTION CANVAS + METRICS + CONTROLS -->
+    <div class="panel-surface intersection-column">
+      <div class="panel-header-row">
+        <div>
+          <h2>4-Way Intersection Simulation</h2>
+        </div>
+        <div class="sim-transport-controls">
+          <button id="btn-sim-play-pause" class="btn btn-primary" type="button">
+            Pause
+          </button>
+          <button id="btn-sim-step" class="btn btn-secondary" type="button">
+            Step +1
+          </button>
+          <button id="btn-sim-reset" class="btn btn-secondary" type="button">
+            Reset Sim
+          </button>
+        </div>
+      </div>
+
+      <div class="canvas-stage">
+        <canvas id="intersection-canvas" width="700" height="580"></canvas>
+      </div>
+
+      <div class="sim-legend-bar">
+        <span class="legend-chip" data-tooltip="Lajur pergerakan kendaraan lurus melintasi persimpangan." data-tooltip-pos="top"><span class="swatch swatch-straight"></span><span class="tooltip-trigger">Lajur Lurus</span></span>
+        <span class="legend-chip" data-tooltip="Lajur pergerakan kendaraan belok kiri terlindung." data-tooltip-pos="top"><span class="swatch swatch-turn"></span><span class="tooltip-trigger">Lajur Belok Kiri</span></span>
+        <span class="legend-chip" data-tooltip="Lampu hijau: kendaraan diizinkan melaju melewati persimpangan." data-tooltip-pos="top"><span class="swatch swatch-green"></span><span class="tooltip-trigger">Hijau</span></span>
+        <span class="legend-chip" data-tooltip="Lampu kuning: peringatan transisi pergantian fase sinyal." data-tooltip-pos="top"><span class="swatch swatch-amber"></span><span class="tooltip-trigger">Kuning</span></span>
+        <span class="legend-chip" data-tooltip="Lampu merah: seluruh kendaraan wajib berhenti sebelum garis stop." data-tooltip-pos="top"><span class="swatch swatch-red"></span><span class="tooltip-trigger">Merah / All-Red</span></span>
+      </div>
+
+      <div class="sim-map-spawner-panel">
+        <div class="sim-zoom-row">
+          <div class="zoom-controls-group">
+            <span class="control-inline-label">Map Zoom</span>
+            <button id="btn-zoom-out" class="btn btn-secondary btn-compact" type="button">Zoom -</button>
+            <span id="label-zoom-level" class="mono-value zoom-level-readout">100%</span>
+            <button id="btn-zoom-in" class="btn btn-secondary btn-compact" type="button">Zoom +</button>
+            <button id="btn-zoom-reset" class="btn btn-secondary btn-compact" type="button">Reset Zoom</button>
+          </div>
+          <span id="metric-capacity-cap" class="mono-value capacity-cap-readout" data-tooltip="Kapasitas maksimum antrean aman persimpangan (80 kendaraan per lajur)." data-tooltip-pos="bottom">Queue Limit: 0 / 640 veh (max 80/lane)</span>
+        </div>
+
+        <div class="sim-spawner-row">
+          <div class="field-group">
+            <label for="select-spawn-lane" class="tooltip-trigger" data-tooltip="Lajur spesifik (0-7) sasaran injeksi penambahan kendaraan." data-tooltip-pos="top">Target Lane</label>
+            <select id="select-spawn-lane" class="control-select">
+              <option value="0">0: N Straight</option>
+              <option value="1">1: N Turn</option>
+              <option value="2">2: S Straight</option>
+              <option value="3">3: S Turn</option>
+              <option value="4">4: E Straight</option>
+              <option value="5">5: E Turn</option>
+              <option value="6">6: W Straight</option>
+              <option value="7">7: W Turn</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="select-spawn-batch" class="tooltip-trigger" data-tooltip="Jumlah kendaraan yang diinjeksikan per klik peta atau tombol." data-tooltip-pos="top">Spawn Count</label>
+            <select id="select-spawn-batch" class="control-select">
+              <option value="1" selected>+1 car</option>
+              <option value="5">+5 cars</option>
+              <option value="10">+10 cars</option>
+            </select>
+          </div>
+
+          <div class="spawner-button-group">
+            <button id="btn-spawn-lane" class="btn btn-accent" type="button">Add to Lane</button>
+            <button id="btn-spawn-random" class="btn btn-secondary" type="button">+5 Random</button>
+            <button id="btn-spawn-surge" class="btn btn-secondary" type="button">+24 Surge</button>
+          </div>
+        </div>
+
+        <p class="panel-caption spawner-hint-text">
+          Klik langsung salah satu dari 8 lajur masuk pada peta untuk menambah kendaraan (maks 80/lajur).
+        </p>
+      </div>
+
+      <div class="metrics-strip">
+        <div class="metric-cell" data-tooltip="Total kendaraan yang sedang mengantre berhenti di seluruh 8 lajur persimpangan." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Total Queue</span>
+          <span id="metric-total-queue" class="metric-number mono-value">0 veh</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Rata-rata lama waktu tunggu seluruh kendaraan sejak tiba di antrean persimpangan (detik)." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Mean Wait Time</span>
+          <span id="metric-mean-wait" class="metric-number mono-value">0.0 s</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Waktu tunggu terlama dari kendaraan posisi terdepan antrean di antara seluruh lajur (detik)." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Max Head Wait</span>
+          <span id="metric-max-wait" class="metric-number mono-value">0.0 s</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Jumlah total kendaraan yang berhasil melintasi dan keluar dari persimpangan." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Total Throughput</span>
+          <span id="metric-throughput" class="metric-number mono-value">0 veh</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Frekuensi pergantian fase sinyal. Pergantian terlalu sering menimbulkan penalti waktu transisi." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Phase Switches</span>
+          <span id="metric-switches" class="metric-number mono-value">0</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Akumulasi skor reward agen pada episode aktif: 0.005 * (-Q - 0.1W - 1.0S - 15.0C)." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Episode Return</span>
+          <span id="metric-episode-reward" class="metric-number mono-value">0.00</span>
+        </div>
+        <div class="metric-cell" id="metric-collisions-cell" data-tooltip="Jumlah benturan kendaraan di zona konflik persimpangan pada episode saat ini." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Collisions</span>
+          <span id="metric-collisions" class="metric-number mono-value">0</span>
+        </div>
+        <div class="metric-cell" id="metric-crash-stats-cell" data-tooltip="Rata-rata benturan per episode dan rasio penurunan dibanding episode pertama." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Crash Trend</span>
+          <span id="metric-crash-reduction" class="metric-number mono-value">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: ADAPTIVE CONTROLLER TELEMETRY + POLICY OUTPUT + EPISODE LOG -->
+    <div class="panel-surface connectome-column">
+      <div class="panel-header-row">
+        <div>
+          <h2 id="right-col-title">Connectome Activity</h2>
+          <p id="right-col-caption" class="panel-caption">
+            FAFB v783 · 2.500 neuron (1.800 CX, 700 MB) · live h_t
+          </p>
+        </div>
+        <div id="brain-view-switch" class="brain-view-switch" role="group" aria-label="Connectome Visualization Mode">
+          <button
+            id="btn-view-3d"
+            class="seg-btn is-active"
+            type="button"
+            aria-pressed="true"
+          >
+            3D Brain
+          </button>
+          <button
+            id="btn-view-2d"
+            class="seg-btn"
+            type="button"
+            aria-pressed="false"
+          >
+            2D Matrix
+          </button>
+        </div>
+      </div>
+
+      <!-- FLY & SHUFFLED CONNECTOME BODY -->
+      <div id="fly-panel-body">
+        <div id="shuffled-null-notice" class="null-model-notice" hidden>
+          <strong>Null Model (Shuffled Edges):</strong> Sisi sinaptik diacak seragam di seluruh 2.500 neuron (modularitas CX/MB tidak dipertahankan). Posisi 3D hanya dipakai untuk memetakan indeks aktivasi <span class="mono-value">h_t</span>.
+        </div>
+
+        <!-- 3D DROSOPHILA BRAIN VIEWER -->
+        <div id="brain3d-root" class="brain3d-root">
+          <div class="brain3d-stage" data-brain3d="stage">
+            <canvas class="brain3d-canvas" data-brain3d="canvas" aria-label="3D Drosophila Connectome Activity"></canvas>
+            <div class="brain3d-labels" data-brain3d="labels" aria-hidden="true"></div>
+
+            <div class="brain3d-hud">
+              <div class="brain3d-hud-line mono-value" data-brain3d="hud-step">Step 0/300</div>
+              <div class="brain3d-hud-line mono-value" data-brain3d="hud-phase">a_t = NS Straight</div>
+              <div class="brain3d-hud-probs" data-brain3d="hud-probs"></div>
+            </div>
+
+            <div class="brain3d-stage-actions">
+              <button
+                id="btn-brain3d-fullscreen"
+                class="brain3d-overlay-btn"
+                type="button"
+                aria-label="Toggle Fullscreen 3D Brain"
+              >
+                Fullscreen
+              </button>
+            </div>
+
+            <div class="brain3d-status" data-brain3d="status">
+              Loading FlyWire FAFB14.1 3D meshes...
+            </div>
+
+            <aside class="brain3d-inspector" data-brain3d="inspector" hidden>
+              <div class="brain3d-inspector-head">
+                <strong class="mono-value" data-field="type">-</strong>
+                <button
+                  id="btn-brain3d-inspector-close"
+                  class="brain3d-inspector-close"
+                  type="button"
+                  aria-label="Close neuron inspector"
+                >
+                  Close
+                </button>
+              </div>
+              <dl class="brain3d-inspector-grid">
+                <dt>Root ID</dt><dd class="mono-value" data-field="root">-</dd>
+                <dt>Region</dt><dd class="mono-value"><span data-field="group">-</span> · <span data-field="neuropil">-</span></dd>
+                <dt>NT</dt><dd class="mono-value" data-field="nt">-</dd>
+                <dt>Index</dt><dd class="mono-value" data-field="index">-</dd>
+                <dt>h_t</dt><dd class="mono-value" data-field="h">-</dd>
+                <dt>State</dt><dd class="mono-value" data-field="state">-</dd>
+              </dl>
+            </aside>
+
+            <div class="brain3d-stage-footer">
+              <div class="brain3d-legend">
+                <span class="mono-value">-0.40</span>
+                <span class="brain3d-legend-bar" aria-hidden="true"></span>
+                <span class="mono-value">+0.40</span>
+                <span class="brain3d-legend-dead"><span class="dead-ring" aria-hidden="true"></span>Lesioned</span>
+              </div>
+              <span class="brain3d-hint">Drag orbit · Scroll zoom · Click neuron</span>
+            </div>
+          </div>
+
+          <p class="dataset-attribution-line">
+            Data anatomi: FlyWire FAFB v783 (Dorkenwald et al., 2024; Schlegel et al., 2024) · Mesh neuropil JFRC2 (Ito et al., 2014; fafbseg-py).
+          </p>
+
+          <div class="brain3d-toolbar">
+            <div class="brain3d-toolbar-modes">
+              <div class="brain3d-control-labeled">
+                <span class="toolbar-label tooltip-trigger" data-tooltip="Filter visibilitas neuron berdasarkan besar aktivasi |h_t| saat ini." data-tooltip-pos="top">Activity</span>
+                <div class="brain3d-control-group" role="group" aria-label="Activity Filter">
+                  <button class="seg-btn is-active" type="button" data-brain3d-filter="active" aria-pressed="true" data-tooltip="Hanya menyorot neuron yang sedang memiliki aktivasi |h_t| kuat; neuron diam diredupkan." data-tooltip-pos="top">Active</button>
+                  <button class="seg-btn" type="button" data-brain3d-filter="all" aria-pressed="false" data-tooltip="Menampilkan seluruh 2.500 neuron termasuk yang sedang mendekati aktivasi netral." data-tooltip-pos="top">All</button>
+                </div>
+              </div>
+
+              <div class="brain3d-control-labeled">
+                <span class="toolbar-label tooltip-trigger" data-tooltip="Mode pemetaan posisi 3D neuron di dalam anatomi otak Drosophila." data-tooltip-pos="top">Position</span>
+                <div class="brain3d-control-group" role="group" aria-label="Neuron 3D Layout">
+                  <button class="seg-btn is-active" type="button" data-brain3d-layout="neuropil" aria-pressed="true" data-tooltip="Menempatkan titik di dalam volume neuropil dominannya (wilayah sinaptik tempat koneksi berlangsung)." data-tooltip-pos="top">Neuropil</button>
+                  <button class="seg-btn" type="button" data-brain3d-layout="soma" aria-pressed="false" data-tooltip="Memindahkan titik ke koordinat badan sel (soma) asli neuron pada ruang FlyWire FAFB14.1." data-tooltip-pos="top">Soma</button>
+                </div>
+              </div>
+
+              <div class="brain3d-control-labeled">
+                <span class="toolbar-label tooltip-trigger" data-tooltip="Fokus wilayah sirkuit otak yang ditampilkan pada model 3D." data-tooltip-pos="top">Circuit</span>
+                <div class="brain3d-control-group" role="group" aria-label="Circuit Region Focus">
+                  <button class="seg-btn is-active" type="button" data-brain3d-focus="-1" aria-pressed="true" data-tooltip="Menampilkan gabungan kedua sirkuit: Central Complex (1.800) dan Mushroom Body (700)." data-tooltip-pos="left">All</button>
+                  <button class="seg-btn" type="button" data-brain3d-focus="0" aria-pressed="false" data-tooltip="Fokus ke Central Complex (PB, FB, EB, NO): sirkuit orientasi arah dan pemilihan aksi." data-tooltip-pos="left">CX</button>
+                  <button class="seg-btn" type="button" data-brain3d-focus="1" aria-pressed="false" data-tooltip="Fokus ke Mushroom Body (CA, PED, ML, VL): sirkuit memori asosiatif dan konteks." data-tooltip-pos="left">MB</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="brain3d-toolbar-actions">
+              <div class="brain3d-action-cluster">
+                <span class="toolbar-label">View</span>
+                <div class="view-preset-group" role="group" aria-label="Camera View">
+                  <button class="view-btn" type="button" data-brain3d-view="front" data-tooltip="Kamera tampak depan (anterior) menghadap wajah otak." data-tooltip-pos="top">Front</button>
+                  <button class="view-btn" type="button" data-brain3d-view="top" data-tooltip="Kamera tampak atas (dorsal)." data-tooltip-pos="top">Top</button>
+                  <button class="view-btn" type="button" data-brain3d-view="side" data-tooltip="Kamera tampak samping (lateral)." data-tooltip-pos="top">Side</button>
+                </div>
+              </div>
+
+              <div class="brain3d-action-cluster">
+                <span class="toolbar-label">Layers</span>
+                <div class="toggle-pill-group" role="group" aria-label="3D Layers">
+                  <button id="btn-brain3d-edges" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Tampilkan pulsa aliran pada 3.000 sinapsis terkuat (oranye eksitatori, biru inhibitori)." data-tooltip-pos="top"><span class="toggle-dot" aria-hidden="true"></span>Synapses</button>
+                  <button id="btn-brain3d-labels" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Tampilkan atau sembunyikan label nama wilayah neuropil pada kanvas 3D." data-tooltip-pos="left"><span class="toggle-dot" aria-hidden="true"></span>Labels</button>
+                  <button id="btn-brain3d-rotate" class="toggle-pill is-active" type="button" aria-pressed="true" data-tooltip="Aktifkan atau hentikan rotasi kamera otomatis." data-tooltip-pos="left"><span class="toggle-dot" aria-hidden="true"></span>Rotate</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <details class="brain3d-regions-disclosure" open>
+            <summary><span class="tooltip-trigger" data-tooltip="Rata-rata magnitudo aktivasi |h_t| neuron aktif per wilayah neuropil pada Central Complex (CX) dan Mushroom Body (MB)." data-tooltip-pos="top">Mean |h_t| by Neuropil (CX &amp; MB)</span></summary>
+            <div class="brain3d-regions" data-brain3d="regions"></div>
+          </details>
+        </div>
+
+        <!-- 2D MATRIX VIEW + CIRCUIT READOUTS -->
+        <div class="heatmap-and-summary" id="connectome-summary-row">
+          <div class="heatmap-frame is-hidden" id="connectome-2d-frame">
+            <canvas id="connectome-canvas" width="320" height="320"></canvas>
+            <div class="heatmap-scale-row">
+              <span class="mono-value">-0.40 (Inhibitory)</span>
+              <span class="heatmap-gradient-bar" aria-hidden="true"></span>
+              <span class="mono-value">+0.40 (Excitatory)</span>
+            </div>
+          </div>
+
+          <div class="circuit-readout-stack circuit-readout-grid" id="circuit-readout-stack">
+            <div class="readout-row" data-tooltip="Jumlah neuron Drosophila FAFB v783 yang aktif beroperasi tanpa terkena lesi sirkuit (CX + MB)." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">Active Neurons</span>
+              <span id="brain-active-neurons" class="readout-val mono-value">2500 / 2500</span>
+            </div>
+            <div class="readout-row" data-tooltip="Tingkat disipasi memori membran neuron per langkah waktu. Mengontrol durasi retensi informasi temporal." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">Leak Rate (tau)</span>
+              <span id="brain-tau" class="readout-val mono-value">-</span>
+            </div>
+            <div class="readout-row" data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin (ACh). Mengatur sensitivitas depolarisasi membran." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">g_exc (ACh)</span>
+              <span id="brain-g-exc" class="readout-val mono-value">1.00</span>
+            </div>
+            <div class="readout-row" data-tooltip="Gain transmisi sinaptik inhibitori GABA dan glutamat. Mengatur stabilisasi dan peredaman aktivasi." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">g_inh (GABA/Glu)</span>
+              <span id="brain-g-inh" class="readout-val mono-value">1.00</span>
+            </div>
+            <div class="readout-row" data-tooltip="Rata-rata magnitudo aktivasi neuron Central Complex (PB, FB, EB, NO)." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">CX Mean |h|</span>
+              <span id="brain-cx-act" class="readout-val mono-value">0.0000</span>
+            </div>
+            <div class="readout-row" data-tooltip="Rata-rata magnitudo aktivasi neuron Mushroom Body (CA, PED, ML, VL)." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">MB Mean |h|</span>
+              <span id="brain-mb-act" class="readout-val mono-value">0.0000</span>
+            </div>
+            <div class="readout-row" data-tooltip="Estimasi nilai state V(s_t) oleh critic head untuk mengevaluasi return kumulatif." data-tooltip-pos="left">
+              <span class="readout-key tooltip-trigger">Critic V(s_t)</span>
+              <span id="brain-value-est" class="readout-val mono-value">0.000</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pharmacology-section">
+          <h3>In-Silico Pharmacology &amp; Circuit Lesioning</h3>
+
+          <div class="slider-control-group" data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin (ACh). Rentang 0.0 hingga 2.5." data-tooltip-pos="top">
+            <div class="slider-header">
+              <label for="slider-g-exc" class="tooltip-trigger">g_exc (ACh Excitatory Gain)</label>
+              <span id="val-g-exc" class="mono-value">1.00</span>
+            </div>
+            <input id="slider-g-exc" type="range" min="0.0" max="2.5" step="0.05" value="1.0" aria-label="g_exc Excitatory Gain">
+          </div>
+
+          <div class="slider-control-group" data-tooltip="Gain transmisi sinaptik inhibitori GABA/Glutamat. Rentang 0.0 hingga 2.5." data-tooltip-pos="top">
+            <div class="slider-header">
+              <label for="slider-g-inh" class="tooltip-trigger">g_inh (GABA / Glutamate Inhibitory Gain)</label>
+              <span id="val-g-inh" class="mono-value">1.00</span>
+            </div>
+            <input id="slider-g-inh" type="range" min="0.0" max="2.5" step="0.05" value="1.0" aria-label="g_inh Inhibitory Gain">
+          </div>
+
+          <div class="lesion-button-row">
+            <button id="btn-lesion-cx" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron Central Complex untuk menguji ketahanan sirkuit." data-tooltip-pos="top">
+              Lesion CX 25%
+            </button>
+            <button id="btn-lesion-mb" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron Mushroom Body untuk menguji ketahanan sirkuit." data-tooltip-pos="top">
+              Lesion MB 25%
+            </button>
+            <button id="btn-lesion-random" class="btn btn-secondary" type="button" data-tooltip="Menonaktifkan 25% neuron acak di seluruh jaringan konektom." data-tooltip-pos="top">
+              Random 25%
+            </button>
+            <button id="btn-reset-brain" class="btn btn-accent" type="button" data-tooltip="Mengembalikan seluruh neuron ke status aktif dan mereset gain sinaptik ke 1.00." data-tooltip-pos="top">
+              Reset Brain
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- NON-FLY BASELINE TELEMETRY BODY (PPO-GRU / PPO-MLP / FIXED TIMER) -->
+      <div id="baseline-panel-body" class="baseline-panel-body is-hidden" hidden>
+        <div id="baseline-canvas-wrap" class="baseline-canvas-wrap">
+          <canvas id="baseline-viz-canvas" width="480" height="262" aria-label="Live Neural Layer Activations"></canvas>
+          <div id="baseline-scale-row" class="heatmap-scale-row">
+            <span class="mono-value">-1.00</span>
+            <span class="heatmap-gradient-bar" aria-hidden="true"></span>
+            <span class="mono-value">+1.00 (Tanh)</span>
+          </div>
+        </div>
+
+        <div id="baseline-timer-view" class="baseline-timer-view is-hidden" hidden></div>
+
+        <div id="baseline-readout-grid" class="circuit-readout-stack circuit-readout-grid"></div>
+      </div>
+
+      <!-- SHARED: ACTION POLICY OUTPUT -->
+      <div class="policy-probs-section">
+        <div class="subpanel-title-row">
+          <h3 id="policy-output-heading">Action Policy Output (4 Phases)</h3>
+          <span id="policy-chosen-label" class="mono-value">Selected: NS Straight</span>
+        </div>
+        <div class="prob-bars-list">
+          <div class="prob-row" data-phase="0" data-tooltip="Fase lampu hijau lajur lurus Utara-Selatan (North-South Straight)." data-tooltip-pos="left">
+            <span class="prob-name tooltip-trigger">0: NS Straight</span>
+            <div class="prob-track"><div id="prob-bar-0" class="prob-fill"></div></div>
+            <span id="prob-val-0" class="prob-pct mono-value">25%</span>
+          </div>
+          <div class="prob-row" data-phase="1" data-tooltip="Fase lampu hijau lajur belok kiri Utara-Selatan (North-South Turn terproteksi)." data-tooltip-pos="left">
+            <span class="prob-name tooltip-trigger">1: NS Turn</span>
+            <div class="prob-track"><div id="prob-bar-1" class="prob-fill"></div></div>
+            <span id="prob-val-1" class="prob-pct mono-value">25%</span>
+          </div>
+          <div class="prob-row" data-phase="2" data-tooltip="Fase lampu hijau lajur lurus Timur-Barat (East-West Straight)." data-tooltip-pos="left">
+            <span class="prob-name tooltip-trigger">2: EW Straight</span>
+            <div class="prob-track"><div id="prob-bar-2" class="prob-fill"></div></div>
+            <span id="prob-val-2" class="prob-pct mono-value">25%</span>
+          </div>
+          <div class="prob-row" data-phase="3" data-tooltip="Fase lampu hijau lajur belok kiri Timur-Barat (East-West Turn terproteksi)." data-tooltip-pos="left">
+            <span class="prob-name tooltip-trigger">3: EW Turn</span>
+            <div class="prob-track"><div id="prob-bar-3" class="prob-fill"></div></div>
+            <span id="prob-val-3" class="prob-pct mono-value">25%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHARED: RECENT EPISODES LOG -->
+      <div class="episode-history-section">
+        <div class="episode-history-header">
+          <h3>Recent Episodes Log</h3>
+          <span id="episode-history-summary" class="mono-value episode-summary-badge">0 episodes</span>
+        </div>
+        <div class="table-container episode-table-container">
+          <table class="data-table episode-history-table">
+            <thead>
+              <tr>
+                <th>Ep</th>
+                <th>Model</th>
+                <th>Regime</th>
+                <th>Coll</th>
+                <th>Red.</th>
+                <th>Thru</th>
+                <th>Rew</th>
+              </tr>
+            </thead>
+            <tbody id="episode-history-tbody">
+              <tr>
+                <td colspan="7" class="empty-cell">
+                  Belum ada episode simulasi yang selesai (berlaku pada mode 300-Step).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

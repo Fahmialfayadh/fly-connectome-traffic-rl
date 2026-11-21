@@ -28,6 +28,7 @@ class TrafficProfileFactory:
         "asymmetric_ew",
         "rush_hour",
         "mixed",
+        'stress_test',
     )
 
     @classmethod
@@ -69,6 +70,9 @@ class TrafficProfileFactory:
         if name == "mixed":
             return cls._build_mixed_profile(rng=rng)
 
+        if name == "stress_test":
+            return cls._build_stress_test_profile()
+        
         raise ValueError(
             f"Unknown traffic profile '{name}'. Expected one of {cls.AVAILABLE_PROFILES}."
         )
@@ -163,4 +167,16 @@ class TrafficProfileFactory:
             name=f"mixed({chosen_name})",
             description=base_profile.description,
             arrival_rates_fn=base_profile.arrival_rates_fn,
+        )
+
+    @classmethod
+    def _build_stress_test_profile(cls) -> TrafficProfile:
+        """Create a high-volume profile for stress testing."""
+        return cls._build_constant_profile(
+            name="stress_test",
+            description="Extreme traffic volume to test agent robustness",
+            ns_straight=0.5,
+            ns_turn=0.5,
+            ew_straight=0.5,
+            ew_turn=0.5,
         )

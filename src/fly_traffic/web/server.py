@@ -4,6 +4,7 @@ import asyncio
 from contextlib import suppress
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from aiohttp import WSMsgType, web
@@ -30,6 +31,19 @@ from fly_traffic.web.training_service import TrainingJobManager
 
 class TrafficLabServer:
     """HTTP + WebSocket server hosting the Light Instrument Lab frontend."""
+
+    SPA_ROUTES: tuple[str, ...] = (
+        "/",
+        "/simulation",
+        "/training",
+        "/benchmark",
+        "/architecture",
+        "/docs",
+        "/documentation",
+    )
+    _INCLUDE_PATTERN: re.Pattern[str] = re.compile(
+        r"<!--\s*@include\s+([a-zA-Z0-9_./-]+)\s*-->"
+    )
 
     def __init__(
         self,
@@ -65,7 +79,8 @@ class TrafficLabServer:
         app.on_startup.append(self._on_startup)
         app.on_cleanup.append(self._on_cleanup)
 
-        app.router.add_get("/", self._handle_index)
+        for route_path in self.SPA_ROUTES:
+            app.router.add_get(route_path, self._handle_index)
         app.router.add_get("/api/overview", self._handle_overview)
         app.router.add_post("/api/simulation/control", self._handle_simulation_control)
         app.router.add_post("/api/training/start", self._handle_training_start)
@@ -86,6 +101,8 @@ class TrafficLabServer:
             app.router.add_static("/assets", assets_dir)
         if vendor_dir.exists():
             app.router.add_static("/vendor", vendor_dir)
+        if self.benchmarks_dir.exists():
+            app.router.add_static("/artifacts/benchmarks", self.benchmarks_dir)
 
         return app
 
@@ -107,8 +124,31 @@ class TrafficLabServer:
             with suppress(Exception):
                 await ws.close()
 
-    async def _handle_index(self, _request: web.Request) -> web.FileResponse:
-        return web.FileResponse(self.frontend_dir / "index.html")
+    def _render_index_html(self) -> str:
+        """Assemble frontend/index.html by expanding <!-- @include partials/... --> markers."""
+        index_path = self.frontend_dir / "index.html"
+        root_resolved = self.frontend_dir.resolve()
+        template = index_path.read_text(encoding="utf-8")
+
+        def _replace_include(match: re.Match[str]) -> str:
+            rel_path = match.group(1).strip()
+            candidate = (self.frontend_dir / rel_path).resolve()
+            if root_resolved not in candidate.parents or not candidate.is_file():
+                raise FileNotFoundError(
+                    f"Invalid or missing HTML partial '{rel_path}'."
+                )
+            return candidate.read_text(encoding="utf-8")
+
+        return self._INCLUDE_PATTERN.sub(_replace_include, template)
+
+    async def _handle_index(self, _request: web.Request) -> web.Response:
+        html = self._render_index_html()
+        return web.Response(
+            text=html,
+            content_type="text/html",
+            charset="utf-8",
+            headers={"Cache-Control": "no-cache"},
+        )
 
     async def _handle_overview(self, _request: web.Request) -> web.Response:
         benchmark_json_path = self.benchmarks_dir / "benchmark_summary.json"

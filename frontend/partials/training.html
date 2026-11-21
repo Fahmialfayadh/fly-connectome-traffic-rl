@@ -1,0 +1,358 @@
+<!-- TAB 2: PPO CPU TRAINING STUDIO -->
+<section
+  id="panel-training"
+  class="tab-panel"
+  role="tabpanel"
+  aria-labelledby="tab-btn-training"
+  hidden
+>
+  <div class="training-layout">
+    <aside class="panel-surface training-config-panel">
+      <h2>PPO CPU Training Studio</h2>
+      <p class="panel-caption">
+        Pelatihan PPO pada 8 environment CPU paralel dengan pembaruan metrik per update.
+      </p>
+
+      <form id="training-form" class="training-form">
+        <div class="field-group">
+          <label for="train-model-type">Policy Architecture</label>
+          <select id="train-model-type" class="control-select">
+            <option value="fly">Fly Connectome PPO (70,006 trainable params)</option>
+            <option value="fly_shuffled">Shuffled Connectome PPO — Null Model (70,006 trainable params)</option>
+            <option value="mlp">PPO-MLP Baseline (69,755 trainable params)</option>
+            <option value="gru">PPO-GRU Baseline (69,725 trainable params)</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="train-timesteps">Total Timesteps</label>
+          <select id="train-timesteps" class="control-select">
+            <option value="8192">8,192 steps (8 updates)</option>
+            <option value="40960" selected>40,960 steps (40 updates)</option>
+            <option value="163840">163,840 steps (160 updates)</option>
+            <option value="524288">524,288 steps (512 updates)</option>
+            <option value="custom">Custom Timesteps (1,024 – 2,000,000)</option>
+          </select>
+        </div>
+
+        <div class="field-group is-hidden" id="custom-timesteps-group">
+          <label for="train-custom-timesteps">Custom Total Timesteps (1,024 - 2,000,000)</label>
+          <input
+            id="train-custom-timesteps"
+            class="control-input mono-value"
+            type="number"
+            min="1024"
+            max="2000000"
+            step="1024"
+            value="262144"
+          >
+        </div>
+
+        <div class="field-row-2">
+          <div class="field-group">
+            <label for="train-lr">Learning Rate</label>
+            <input
+              id="train-lr"
+              class="control-input mono-value"
+              type="number"
+              step="0.0001"
+              min="0.00001"
+              max="0.01"
+              value="0.0008"
+            >
+          </div>
+          <div class="field-group">
+            <label for="train-seed">Random Seed</label>
+            <input
+              id="train-seed"
+              class="control-input mono-value"
+              type="number"
+              step="1"
+              min="0"
+              value="42"
+            >
+          </div>
+        </div>
+
+        <details class="advanced-params-disclosure" id="train-custom-params-box">
+          <summary>Custom PPO Hyperparameters</summary>
+          <div class="advanced-params-body">
+            <div class="field-row-2">
+              <div class="field-group" data-tooltip="Faktor diskon imbalan masa depan pada estimasi return kumulatif." data-tooltip-pos="top">
+                <label for="train-gamma" class="tooltip-trigger">Discount (gamma)</label>
+                <input
+                  id="train-gamma"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.001"
+                  min="0.80"
+                  max="0.999"
+                  value="0.99"
+                >
+              </div>
+              <div class="field-group" data-tooltip="Koefisien Generalized Advantage Estimation untuk menyeimbangkan bias dan varians." data-tooltip-pos="top">
+                <label for="train-gae-lambda" class="tooltip-trigger">GAE Lambda</label>
+                <input
+                  id="train-gae-lambda"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.01"
+                  min="0.50"
+                  max="0.99"
+                  value="0.95"
+                >
+              </div>
+            </div>
+
+            <div class="field-row-2">
+              <div class="field-group" data-tooltip="Batas pemotongan rasio probabilitas kebijakan (clipping) untuk kestabilan update." data-tooltip-pos="top">
+                <label for="train-clip-coef" class="tooltip-trigger">PPO Clip (clip_coef)</label>
+                <input
+                  id="train-clip-coef"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.01"
+                  min="0.05"
+                  max="0.50"
+                  value="0.20"
+                >
+              </div>
+              <div class="field-group" data-tooltip="Bobot bonus entropi dalam fungsi loss untuk menjaga eksplorasi aksi." data-tooltip-pos="top">
+                <label for="train-ent-coef" class="tooltip-trigger">Entropy Coef (ent_coef)</label>
+                <input
+                  id="train-ent-coef"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.001"
+                  min="0.0"
+                  max="0.10"
+                  value="0.005"
+                >
+              </div>
+            </div>
+
+            <div class="field-row-2">
+              <div class="field-group" data-tooltip="Bobot kuadratik error critic value network dalam total loss objektif." data-tooltip-pos="top">
+                <label for="train-vf-coef" class="tooltip-trigger">Value Loss Coef (vf_coef)</label>
+                <input
+                  id="train-vf-coef"
+                  class="control-input mono-value"
+                  type="number"
+                  step="0.05"
+                  min="0.05"
+                  max="2.0"
+                  value="0.25"
+                >
+              </div>
+              <div class="field-group" data-tooltip="Jumlah iterasi optimasi gradien per minibatch pada setiap update PPO." data-tooltip-pos="top">
+                <label for="train-update-epochs" class="tooltip-trigger">Update Epochs</label>
+                <input
+                  id="train-update-epochs"
+                  class="control-input mono-value"
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="10"
+                  value="4"
+                >
+              </div>
+            </div>
+
+            <div class="field-row-2">
+              <div class="field-group" data-tooltip="Jumlah langkah simulasi per environment sebelum pembaruan bobot dilakukan." data-tooltip-pos="top">
+                <label for="train-rollout-steps" class="tooltip-trigger">Rollout Steps</label>
+                <select id="train-rollout-steps" class="control-select mono-value">
+                  <option value="32">32</option>
+                  <option value="64">64</option>
+                  <option value="128" selected>128</option>
+                  <option value="256">256</option>
+                </select>
+              </div>
+              <div class="field-group" data-tooltip="Panjang potongan sekuens waktu BPTT untuk unrolling state rekuren." data-tooltip-pos="top">
+                <label for="train-chunk-len" class="tooltip-trigger">Sequence Chunk Len</label>
+                <select id="train-chunk-len" class="control-select mono-value">
+                  <option value="8">8</option>
+                  <option value="16" selected>16</option>
+                  <option value="32">32</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field-group" data-tooltip="Jumlah partisi mini-batch untuk optimasi stokastik gradien." data-tooltip-pos="top">
+              <label for="train-num-minibatches" class="tooltip-trigger">Number of Minibatches</label>
+              <select id="train-num-minibatches" class="control-select mono-value">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+                <option value="8">8</option>
+              </select>
+            </div>
+
+            <p id="train-batch-constraint-hint" class="panel-caption mono-value">
+              Rollout batch: 8 envs x 128 = 1,024 steps/update (64 seq chunks)
+            </p>
+
+            <label class="checkbox-field" for="train-anneal-lr">
+              <input id="train-anneal-lr" type="checkbox" checked>
+              <span>Anneal learning rate linearly across updates</span>
+            </label>
+
+            <label class="checkbox-field" for="train-save-on-cancel">
+              <input id="train-save-on-cancel" type="checkbox" checked>
+              <span>Simpan progres bobot saat Stop ditekan</span>
+            </label>
+          </div>
+        </details>
+
+        <div class="field-group">
+          <label for="train-save-mode">Model File Save Mode</label>
+          <select id="train-save-mode" class="control-select">
+            <option value="new_file" selected>Create a new model file (.pt)</option>
+            <option value="overwrite_default">Overwrite default checkpoint (&lt;model&gt;_ppo.pt)</option>
+            <option value="none">Do not save (dry run in memory)</option>
+          </select>
+        </div>
+        <div class="field-group" id="custom-filename-group">
+          <label for="train-custom-filename">New Model File Name (optional)</label>
+          <input
+            id="train-custom-filename"
+            class="control-input mono-value"
+            type="text"
+            placeholder="fly_experiment_v2 (blank = auto timestamp)"
+          >
+        </div>
+        <p id="train-save-path-preview" class="panel-caption mono-value">Local save path: artifacts/checkpoints/fly_ppo_&lt;timestamp&gt;.pt</p>
+
+        <div class="training-action-buttons">
+          <button id="btn-start-training" class="btn btn-primary" type="submit">
+            Start Training
+          </button>
+          <button id="btn-stop-training" class="btn btn-secondary" type="button" disabled>
+            Stop Training
+          </button>
+        </div>
+      </form>
+
+      <div class="training-progress-block">
+        <div class="slider-header">
+          <span>Training Status</span>
+          <span id="train-status-label" class="mono-value">idle</span>
+        </div>
+        <div class="progress-track">
+          <div id="train-progress-bar" class="progress-fill"></div>
+        </div>
+        <p id="train-progress-detail" class="panel-caption mono-value">
+          0 / 0 updates (0%)
+        </p>
+      </div>
+
+      <div class="checkpoint-inventory-block">
+        <h3>Saved Checkpoints Inventory</h3>
+        <div id="checkpoint-inventory-list" class="inventory-list"></div>
+      </div>
+    </aside>
+
+    <div class="panel-surface training-telemetry-panel">
+      <h2>PPO Optimization Telemetry</h2>
+
+      <div class="metrics-strip">
+        <div class="metric-cell" data-tooltip="Rata-rata return kumulatif per episode dalam batch rollout PPO." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Episode Reward</span>
+          <span id="tmetric-reward" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Rata-rata kendaraan lolos persimpangan per episode selama rollout." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Mean Throughput</span>
+          <span id="tmetric-throughput" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" data-tooltip="PPO clipped surrogate objective loss untuk pembaruan actor network." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Policy Loss</span>
+          <span id="tmetric-pg-loss" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Mean squared error loss antara estimasi critic V(s) dan target return." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Value Loss</span>
+          <span id="tmetric-v-loss" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Tingkat keacakan distribusi probabilitas aksi kebijakan (eksplorasi)." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Policy Entropy</span>
+          <span id="tmetric-entropy" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" data-tooltip="Kecepatan komputasi langkah per detik (steps/s) dan nilai leak rate tau aktif." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Speed / Leak tau</span>
+          <span id="tmetric-sps-tau" class="metric-number mono-value">-</span>
+        </div>
+        <div class="metric-cell" id="tmetric-collisions-cell" data-tooltip="Rata-rata benturan kendaraan per episode dalam rollout terbaru beserta perubahannya." data-tooltip-pos="top">
+          <span class="metric-label tooltip-trigger">Mean Collisions</span>
+          <span id="tmetric-collisions" class="metric-number mono-value">-</span>
+        </div>
+      </div>
+
+      <div class="lifecycle-strip" aria-label="1-Episode Lifecycle">
+        <div class="lifecycle-strip-title">1-Episode Lifecycle (300 steps, dt = 2.0 s)</div>
+        <div class="lifecycle-stages">
+          <span class="lifecycle-stage">1. Reset &amp; Sample Regime</span>
+          <span class="lifecycle-arrow" aria-hidden="true">&rarr;</span>
+          <span class="lifecycle-stage">2. Observe 22-dim State</span>
+          <span class="lifecycle-arrow" aria-hidden="true">&rarr;</span>
+          <span class="lifecycle-stage">3. Policy Step</span>
+          <span class="lifecycle-arrow" aria-hidden="true">&rarr;</span>
+          <span class="lifecycle-stage">4. Signal Interlock &amp; Discharge</span>
+          <span class="lifecycle-arrow" aria-hidden="true">&rarr;</span>
+          <span class="lifecycle-stage">5. Collision Check &amp; Reward</span>
+        </div>
+      </div>
+
+      <div class="training-visuals-grid">
+        <div class="chart-box preview-box">
+          <h3>Live Policy Preview (rush_hour)</h3>
+          <div class="preview-canvas-stage">
+            <canvas id="training-preview-canvas" width="520" height="430"></canvas>
+          </div>
+          <p id="train-preview-caption" class="preview-caption mono-value">
+            Update - · Step - · Phase - · Queue - · Collisions -
+          </p>
+        </div>
+
+        <div class="training-charts-stack">
+          <div class="chart-box">
+            <h3>mean_episode_reward vs timesteps</h3>
+            <canvas id="train-reward-chart" width="540" height="180"></canvas>
+          </div>
+          <div class="chart-box">
+            <h3>mean_collisions per episode vs timesteps</h3>
+            <canvas id="train-collisions-chart" width="540" height="180"></canvas>
+          </div>
+          <div class="chart-box">
+            <h3>value_loss &amp; entropy vs timesteps</h3>
+            <canvas id="train-loss-chart" width="540" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <h3>Per-Update Log</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Update</th>
+              <th>Timesteps</th>
+              <th>Steps/s</th>
+              <th>Reward</th>
+              <th>Throughput</th>
+              <th>Collisions</th>
+              <th>Policy Loss</th>
+              <th>Value Loss</th>
+              <th>Entropy</th>
+            </tr>
+          </thead>
+          <tbody id="training-log-tbody">
+            <tr>
+              <td colspan="9" class="empty-cell">
+                Belum ada sesi training aktif. Pilih konfigurasi lalu klik Start Training.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

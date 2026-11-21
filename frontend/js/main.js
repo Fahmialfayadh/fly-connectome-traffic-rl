@@ -3,16 +3,42 @@
  * simulation/training WebSockets, and Light Instrument Lab UI state.
  */
 
-import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_12';
-import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_12';
-import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_12';
-import { DocumentationView } from './documentation_view.js?v=20261121_12';
-import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_12';
-import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261121_12';
-import { TrainingStudioView } from './training_studio.js?v=20261121_12';
-import { ArchitectureView } from './architecture_view.js?v=20261121_12';
+import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_13';
+import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_13';
+import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_13';
+import { DocumentationView } from './documentation_view.js?v=20261121_13';
+import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_13';
+import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261121_13';
+import { TrainingStudioView } from './training_studio.js?v=20261121_13';
+import { ArchitectureView } from './architecture_view.js?v=20261121_13';
 
 const PHASE_NAMES = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
+
+const TAB_ROUTES = {
+  simulation: '/simulation',
+  training: '/training',
+  benchmark: '/benchmark',
+  architecture: '/architecture',
+  docs: '/docs',
+};
+
+const ROUTE_TO_TAB = {
+  '/': 'simulation',
+  '/simulation': 'simulation',
+  '/training': 'training',
+  '/benchmark': 'benchmark',
+  '/architecture': 'architecture',
+  '/docs': 'docs',
+  '/documentation': 'docs',
+};
+
+const TAB_TITLES = {
+  simulation: 'Live Simulation — Drosophila Connectome Traffic Lab',
+  training: 'Training Studio — Drosophila Connectome Traffic Lab',
+  benchmark: 'Benchmark & Connectome — Drosophila Connectome Traffic Lab',
+  architecture: '3D Architecture — Drosophila Connectome Traffic Lab',
+  docs: 'Documentation — Drosophila Connectome Traffic Lab',
+};
 
 class TrafficLabApp {
   constructor() {
@@ -59,6 +85,15 @@ class TrafficLabApp {
   }
 
   async init() {
+    const initialTab = this._tabFromPathname(window.location.pathname);
+    this._activateTab(initialTab, { updateHistory: false });
+    if (window.location.hash) {
+      const hashTarget = document.getElementById(window.location.hash.slice(1));
+      if (hashTarget) {
+        requestAnimationFrame(() => hashTarget.scrollIntoView({ behavior: 'auto', block: 'start' }));
+      }
+    }
+
     this._setConnectomeViewMode(this.connectomeViewMode);
     if (this.brain3dRenderer) {
       this.brain3dRenderer
@@ -253,39 +288,61 @@ class TrafficLabApp {
     }
   }
 
-  _activateTab(targetTabName) {
+  _tabFromPathname(pathname) {
+    const normalized = String(pathname || '/').replace(/\/+$/, '') || '/';
+    return ROUTE_TO_TAB[normalized] || 'simulation';
+  }
+
+  _activateTab(targetTabName, { updateHistory = true, replaceHistory = false } = {}) {
+    const resolvedTab = TAB_ROUTES[targetTabName] ? targetTabName : 'simulation';
     const tabButtons = Array.from(document.querySelectorAll('[role="tab"]'));
     const tabPanels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
 
-    this.activeTab = targetTabName;
+    this.activeTab = resolvedTab;
     tabButtons.forEach((btn) => {
-      const selected = btn.dataset.tab === targetTabName;
+      const selected = btn.dataset.tab === resolvedTab;
       btn.classList.toggle('is-active', selected);
       btn.setAttribute('aria-selected', selected ? 'true' : 'false');
       btn.setAttribute('tabindex', selected ? '0' : '-1');
     });
 
     tabPanels.forEach((panel) => {
-      const matches = panel.id === `panel-${targetTabName}`;
+      const matches = panel.id === `panel-${resolvedTab}`;
       panel.classList.toggle('is-active', matches);
       panel.hidden = !matches;
     });
 
-    this.trainingStudio.setVisible(targetTabName === 'training');
+    if (TAB_TITLES[resolvedTab]) {
+      document.title = TAB_TITLES[resolvedTab];
+    }
+
+    if (updateHistory && window.history && typeof window.history.pushState === 'function') {
+      const targetRoute = TAB_ROUTES[resolvedTab];
+      const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+      if (currentPath !== targetRoute) {
+        if (replaceHistory) {
+          window.history.replaceState({ tab: resolvedTab }, '', targetRoute);
+        } else {
+          window.history.pushState({ tab: resolvedTab }, '', targetRoute);
+        }
+      }
+    }
+
+    this.trainingStudio.setVisible(resolvedTab === 'training');
     if (this.architectureView) {
-      this.architectureView.setVisible(targetTabName === 'architecture');
+      this.architectureView.setVisible(resolvedTab === 'architecture');
     }
     if (this.documentationView) {
-      this.documentationView.setVisible(targetTabName === 'docs');
+      this.documentationView.setVisible(resolvedTab === 'docs');
     }
     if (this.brain3dRenderer) {
       this.brain3dRenderer.setVisible(
-        targetTabName === 'simulation' &&
+        resolvedTab === 'simulation' &&
           this.connectomeViewMode === '3d' &&
           this.isFlyModelActive
       );
     }
-    if (targetTabName === 'simulation') {
+    if (resolvedTab === 'simulation') {
       this.intersectionRenderer.renderFrame(performance.now());
     }
   }
@@ -294,18 +351,32 @@ class TrafficLabApp {
     const tabButtons = Array.from(document.querySelectorAll('[role="tab"]'));
 
     tabButtons.forEach((btn, idx) => {
-      btn.addEventListener('click', () => this._activateTab(btn.dataset.tab));
+      btn.addEventListener('click', (event) => {
+        // Preserve standard open-in-new-tab browser shortcuts (Ctrl/Cmd/Shift/Middle click).
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+          return;
+        }
+        event.preventDefault();
+        this._activateTab(btn.dataset.tab, { updateHistory: true });
+      });
       btn.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowRight') {
+          event.preventDefault();
           const next = tabButtons[(idx + 1) % tabButtons.length];
           next.focus();
-          this._activateTab(next.dataset.tab);
+          this._activateTab(next.dataset.tab, { updateHistory: true });
         } else if (event.key === 'ArrowLeft') {
+          event.preventDefault();
           const prev = tabButtons[(idx - 1 + tabButtons.length) % tabButtons.length];
           prev.focus();
-          this._activateTab(prev.dataset.tab);
+          this._activateTab(prev.dataset.tab, { updateHistory: true });
         }
       });
+    });
+
+    window.addEventListener('popstate', () => {
+      const tab = this._tabFromPathname(window.location.pathname);
+      this._activateTab(tab, { updateHistory: false });
     });
   }
 

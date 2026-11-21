@@ -88,7 +88,7 @@ class PPOConfig:
 class BenchmarkConfig:
     """Configuration for multi-scenario evaluation and pharmacology sweeps."""
 
-    scenarios: tuple[str, ...] = ("normal", "asymmetric", "rush_hour")
+    scenarios: tuple[str, ...] = ("normal", "asymmetric", "rush_hour", "stress_test")
     eval_seeds: tuple[int, ...] = field(
         default_factory=lambda: tuple(range(1000, 1010))
     )

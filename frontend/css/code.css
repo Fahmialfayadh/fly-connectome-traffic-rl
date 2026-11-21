@@ -1,0 +1,86 @@
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+pre[class*="language-"] {
+    background: #171a21;
+    color: #d4d8e0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    font-weight: 400;
+    line-height: 1.8;
+    padding: 24px;
+    border: 1px solid #292e39;
+    border-radius: 12px;
+    overflow-x: auto;
+    tab-size: 4;
+}
+
+code[class*="language-"] {
+    font-family: 'JetBrains Mono', monospace;
+    text-shadow: none;
+}
+
+/* Comments */
+.token.comment,
+.token.prolog {
+    color: #747f91;
+    font-style: italic;
+}
+
+/* Keywords: if, else, return, import */
+.token.keyword {
+    color: #c792ea;
+}
+
+/* Functions */
+.token.function {
+    color: #82aaff;
+}
+
+/* Strings */
+.token.string {
+    color: #c3e88d;
+}
+
+/* Numbers */
+.token.number,
+.token.boolean {
+    color: #f78c6c;
+}
+
+/* Variables and identifiers */
+.token.variable {
+    color: #d4d8e0;
+}
+
+/* Built-in classes and types */
+.token.class-name,
+.token.builtin {
+    color: #ffcb6b;
+}
+
+/* Operators */
+.token.operator {
+    color: #89ddff;
+}
+
+/* Punctuation */
+.token.punctuation {
+    color: #a6accd;
+}
+
+/* Decorators */
+.token.decorator,
+.token.annotation {
+    color: #f07178;
+}
+
+/* Important names */
+.token.constant {
+    color: #f78c6c;
+}
+
+pre[class*="language-"]::selection,
+pre[class*="language-"] *::selection {
+    background: #39465e;
+}

@@ -161,9 +161,9 @@ dengan komponen bawaan:
 
 Ketika `enable_collisions = True`, `TrafficIntersectionEnv._evaluate_collisions` (baris 430–567) memodelkan dua jenis pelanggaran/konflik di persimpangan:
 
-1. **Konflik Lampu Merah (`red_light_conflict`)** — terjadi ketika suatu lajur merah menunggu lebih lama dari `red_light_wait_threshold_s = 36,0` detik (*queue starvation*) sementara ada lajur hijau yang berkonflik sedang melepas kendaraan. Probabilitas pelanggaran meningkat linear hingga batas `red_light_max_prob = 0,14`:
+1. **Konflik Lampu Merah (`red_light_conflict`)** — terjadi ketika suatu lajur merah menunggu lebih lama dari `red_light_wait_threshold_s = 120,0` detik (*queue starvation*) sementara ada lajur hijau yang berkonflik sedang melepas kendaraan. Probabilitas pelanggaran meningkat linear hingga batas `red_light_max_prob = 0,14`:
 
-   $$p_{\text{red}} = \min\left(0,14,\ \frac{\text{head\_wait\_s} - 36,0}{140,0} \cdot 0,14\right)$$
+   $$p_{\text{red}} = \min\left(0,14,\ \frac{\text{head\_wait\_s} - 120,0}{140,0} \cdot 0,14\right)$$
 
 2. **Konflik Pengosongan Kotak Persimpangan (`box_clearance_conflict`)** — saat fasa berpindah (`phase_switched = True`), lajur yang baru saja melepas berpeluang `dilemma_zone_prob = 0,18` menyisakan kendaraan tertinggal (*straggler*) di tengah persimpangan dengan sisa umur `2` langkah.
 
@@ -345,11 +345,12 @@ Seluruh siklus inferensi, manipulasi farmakologis, pelatihan CPU, dan evaluasi d
 
 ## Bagian VI: Evaluasi dan Hasil
 
-Evaluasi dilakukan secara deterministik menggunakan `AgentEvaluator` (`src/fly_traffic/evaluation/evaluator.py`) pada tiga skenario dengan **10 seed identik** (`1000` sampai `1009`), masing-masing berdurasi `300` langkah (`600` detik simulasi):
+Evaluasi dilakukan secara deterministik menggunakan `AgentEvaluator` (`src/fly_traffic/evaluation/evaluator.py`) pada empat skenario dengan **10 seed identik** (`1000` sampai `1009`), masing-masing berdurasi `300` langkah (`600` detik simulasi):
 
 1. **`normal`** — kedatangan kendaraan seimbang ringan–sedang di keempat arah.
 2. **`asymmetric`** — koridor Utara–Selatan padat berkelanjutan, Timur–Barat ringan.
 3. **`rush_hour`** — tiga fase berurutan: moderat (langkah `0–99`), lonjakan Utara–Selatan (`100–199`), dan lonjakan Timur–Barat (`200–299`).
+4. **`stress_test`** — kondisi beban ekstrem di mana seluruh lajur mengalami laju kedatangan tinggi simultan (`high_arrival_rate = 0,90` kend/langkah di seluruh lajur NS dan EW) untuk menguji perilaku antrean panjang, saturasi kapasitas, dan batas resistensi pelanggaran lampu merah (`red_light_wait_threshold_s = 120,0` detik).
 
 ### Perbandingan Multi-Skenario (10 Seed, Checkpoint 163.840 Steps)
 
@@ -357,20 +358,24 @@ Angka di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.
 
 | Skenario | Agen | Mean Reward | Mean Queue | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions | Latency (ms/step) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `normal` | Fixed Timer | -17.908 | 8.22 | 22.47 | 209.9 | 37.0 | 0.10 | 0.002 |
-| `normal` | PPO-MLP | -10.582 | 4.97 | 13.79 | 211.0 | 70.7 | 0.00 | 0.097 |
-| `normal` | PPO-GRU | -12.341 | 5.78 | 15.83 | 213.3 | 74.2 | 0.00 | 0.184 |
-| `normal` | Fly Connectome PPO | -11.427 | 5.27 | 14.48 | 213.6 | 67.6 | 0.00 | 0.542 |
-| `asymmetric` | Fixed Timer | -30.564 | 15.56 | 27.09 | 329.3 | 37.0 | 1.70 | 0.005 |
-| `asymmetric` | PPO-MLP | -16.787 | 8.35 | 14.65 | 332.4 | 71.9 | 0.10 | 0.167 |
-| `asymmetric` | PPO-GRU | -21.074 | 9.67 | 16.78 | 331.4 | 68.0 | 2.00 | 0.221 |
-| `asymmetric` | Fly Connectome PPO | -16.585 | 8.44 | 14.70 | 335.4 | 61.9 | 0.10 | 0.599 |
-| `rush_hour` | Fixed Timer | -30.049 | 15.39 | 26.26 | 323.5 | 37.0 | 1.30 | 0.005 |
-| `rush_hour` | PPO-MLP | -18.594 | 9.40 | 16.11 | 338.7 | 71.4 | 0.20 | 0.121 |
-| `rush_hour` | PPO-GRU | -20.442 | 9.87 | 17.31 | 327.3 | 71.2 | 0.70 | 0.135 |
-| `rush_hour` | Fly Connectome PPO | -18.483 | 9.19 | 16.26 | 328.5 | 66.8 | 0.10 | 0.608 |
+| `normal` | Fixed Timer | -17.688 | 8.06 | 22.33 | 208.2 | 37.0 | 0.00 | 0.002 |
+| `normal` | PPO-MLP | -10.731 | 5.03 | 13.90 | 211.9 | 71.0 | 0.00 | 0.075 |
+| `normal` | PPO-GRU | -12.010 | 5.62 | 15.50 | 212.7 | 74.0 | 0.00 | 0.165 |
+| `normal` | Fly Connectome PPO | -11.477 | 5.29 | 14.50 | 213.6 | 68.0 | 0.00 | 0.189 |
+| `asymmetric` | Fixed Timer | -31.220 | 15.93 | 28.14 | 328.0 | 37.0 | 0.00 | 0.001 |
+| `asymmetric` | PPO-MLP | -16.544 | 8.27 | 14.30 | 337.3 | 72.2 | 0.00 | 0.068 |
+| `asymmetric` | PPO-GRU | -19.962 | 9.21 | 15.88 | 338.5 | 69.0 | 0.00 | 0.077 |
+| `asymmetric` | Fly Connectome PPO | -16.792 | 8.55 | 15.09 | 332.5 | 62.8 | 0.00 | 0.198 |
+| `rush_hour` | Fixed Timer | -29.838 | 15.26 | 26.29 | 324.7 | 37.0 | 0.00 | 0.001 |
+| `rush_hour` | PPO-MLP | -18.950 | 9.55 | 16.65 | 329.8 | 71.5 | 0.00 | 0.065 |
+| `rush_hour` | PPO-GRU | -22.309 | 10.85 | 18.35 | 339.5 | 70.3 | 0.00 | 0.106 |
+| `rush_hour` | Fly Connectome PPO | -18.269 | 9.16 | 16.02 | 332.3 | 67.1 | 0.00 | 0.473 |
+| `stress_test` | Fixed Timer | -241.743 | 140.88 | 85.60 | 770.6 | 37.0 | 42.50 | 0.005 |
+| `stress_test` | PPO-MLP | -317.427 | 185.54 | 136.41 | 546.7 | 73.2 | 41.90 | 0.182 |
+| `stress_test` | PPO-GRU | -272.365 | 150.45 | 116.43 | 544.7 | 59.6 | 55.60 | 0.299 |
+| `stress_test` | Fly Connectome PPO | -320.557 | 191.08 | 143.97 | 521.5 | 71.3 | 42.80 | 0.486 |
 
-Pada dataset evaluasi 10 seed ini, seluruh pengendali berbasis RL menghasilkan antrean dan waktu tunggu lebih rendah dibandingkan Fixed Timer di ketiga skenario. Di antara model neural, selisih reward antara `Fly Connectome PPO` dan `PPO-MLP` relatif tipis dan bergantung pada skenario, sementara `Fly Connectome PPO` menunjukkan jumlah pergantian fasa dan kolisi terendah atau setara pada `asymmetric` dan `rush_hour`.
+Pada skenario `normal`, `asymmetric`, dan `rush_hour` dengan ambang batas kesabaran lampu merah `120,0` detik, seluruh agen menghasilkan rata-rata `0,00` kolisi karena waktu tunggu antrean tidak pernah menembus batas 120 detik pada beban standar. Pada profil beban ekstrem `stress_test`, antrean terakumulasi melampaui 120 detik sehingga memicu pelanggaran `red_light_conflict` di seluruh model, dengan Fixed Timer menghasilkan 42,50 kolisi, PPO-MLP 41,90, Fly Connectome PPO 42,80, dan PPO-GRU 55,60.
 
 ### Uji Farmakologi dan Lesi Sirkuit (`rush_hour`, 10 Seed)
 
@@ -378,13 +383,13 @@ Pengukuran ketahanan `Fly Connectome PPO` ketika gain sinaptik atau sebagian neu
 
 | Kondisi | `g_exc` | `g_inh` | Neuron Aktif | Mean Reward | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Baseline (`g_exc=1.0, g_inh=1.0`) | 1.00 | 1.00 | 2500 | -18.483 | 16.26 | 328.5 | 66.8 | 0.10 |
-| High Excitation (`g_exc=1.8`) | 1.80 | 1.00 | 2500 | -18.282 | 15.88 | 333.8 | 64.4 | 0.30 |
-| Low Inhibition (`g_inh=0.2`) | 1.00 | 0.20 | 2500 | -18.333 | 16.03 | 334.8 | 67.2 | 0.30 |
-| High Inhibition (`g_inh=2.0`) | 1.00 | 2.00 | 2500 | -18.822 | 16.54 | 331.8 | 67.9 | 0.30 |
-| CX Lesion 25% | 1.00 | 1.00 | 2050 | -18.915 | 16.38 | 339.1 | 66.8 | 0.30 |
-| MB Lesion 25% | 1.00 | 1.00 | 2325 | -18.753 | 16.47 | 331.7 | 67.4 | 0.20 |
-| Random Lesion 25% | 1.00 | 1.00 | 1875 | -18.021 | 15.85 | 330.4 | 66.5 | 0.20 |
+| Baseline (`g_exc=1.0, g_inh=1.0`) | 1.00 | 1.00 | 2500 | -18.269 | 16.02 | 332.3 | 67.1 | 0.00 |
+| High Excitation (`g_exc=1.8`) | 1.80 | 1.00 | 2500 | -18.635 | 15.99 | 338.6 | 65.0 | 0.00 |
+| Low Inhibition (`g_inh=0.2`) | 1.00 | 0.20 | 2500 | -18.763 | 16.43 | 331.1 | 67.4 | 0.00 |
+| High Inhibition (`g_inh=2.0`) | 1.00 | 2.00 | 2500 | -18.365 | 16.29 | 331.8 | 67.3 | 0.00 |
+| CX Lesion 25% | 1.00 | 1.00 | 2050 | -19.169 | 16.50 | 340.7 | 67.6 | 0.00 |
+| MB Lesion 25% | 1.00 | 1.00 | 2325 | -18.656 | 16.49 | 330.2 | 67.6 | 0.00 |
+| Random Lesion 25% | 1.00 | 1.00 | 1875 | -18.264 | 16.17 | 330.2 | 66.8 | 0.00 |
 
 ### Uji Tekanan *Safety Buffer* (`rush_hour`, 10 Seed)
 
@@ -439,7 +444,7 @@ Berdasarkan pengukuran di workspace ini, sub-konektom *Drosophila melanogaster* 
 - *All-red steps*: langkah jeda saat seluruh arah menyala merah di antara tahap kuning dan fase hijau berikutnya guna mengosongkan kotak persimpangan.
 - *Dilemma-zone straggler*: kendaraan yang berpeluang tertinggal di tengah persimpangan ketika fasa berganti (`box_clearance_conflict`).
 - *Latency*: waktu komputasi satu langkah inferensi model pada CPU (milidetik per langkah).
-- *Queue starvation*: kondisi ketika lajur yang terus mendapat lampu merah melebihi ambang tunggu `36,0` detik sehingga memicu peluang pelanggaran (`red_light_conflict`).
+- *Queue starvation*: kondisi ketika lajur yang terus mendapat lampu merah melebihi ambang tunggu `120,0` detik sehingga memicu peluang pelanggaran (`red_light_conflict`).
 - *Throughput*: jumlah total kendaraan yang berhasil melewati persimpangan dalam satu episode.
 
 ---

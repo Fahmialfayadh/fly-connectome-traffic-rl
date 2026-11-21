@@ -1,0 +1,80 @@
+<!-- TAB 4: 3D POLICY ARCHITECTURE EXPLORER (PURE INTERACTIVE 3D VIEW) -->
+<section
+  id="panel-architecture"
+  class="tab-panel"
+  role="tabpanel"
+  aria-labelledby="tab-btn-architecture"
+  hidden
+>
+  <div class="arch-control-bar">
+    <div class="arch-bar-left">
+      <h2 class="arch-page-title">FlyConnectomePolicy — 3D Pipeline Explorer</h2>
+      <p class="arch-mode-caption" data-arch="mode-caption">
+        Forward pass: x_t &rarr; input_projection &rarr; h_t &rarr; actor_head / critic_head &rarr; aksi &rarr; environment
+      </p>
+    </div>
+
+    <div class="arch-bar-controls">
+      <div class="arch-control-group">
+        <span class="control-bar-label">Aliran</span>
+        <div class="segmented-control" role="group" aria-label="Signal Direction Mode">
+          <button class="seg-btn is-active" type="button" data-arch-mode="forward" aria-pressed="true">Forward Pass</button>
+          <button class="seg-btn" type="button" data-arch-mode="backward" aria-pressed="false">Backward Gradient</button>
+        </div>
+      </div>
+
+      <div class="arch-control-group">
+        <span class="control-bar-label">Filter</span>
+        <div class="arch-filter-group" role="group" aria-label="Component Filter">
+          <button class="arch-filter-chip is-active" type="button" data-arch-filter="all" aria-pressed="true">Semua</button>
+          <button class="arch-filter-chip" type="button" data-arch-filter="trainable" aria-pressed="false">Trainable</button>
+          <button class="arch-filter-chip" type="button" data-arch-filter="frozen" aria-pressed="false">Frozen Bio</button>
+          <button class="arch-filter-chip" type="button" data-arch-filter="runtime" aria-pressed="false">Runtime</button>
+        </div>
+      </div>
+
+      <div class="arch-control-actions">
+        <button class="action-button secondary-action compact-btn is-active" type="button" data-arch-action="labels" aria-pressed="true">Labels</button>
+        <button class="action-button secondary-action compact-btn" type="button" data-arch-action="reset">Reset View</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="architecture-layout">
+    <div class="arch3d-stage-wrapper">
+      <div id="arch3d-viewport" class="arch3d-stage" data-arch="stage">
+        <canvas id="arch3d-canvas" class="arch3d-canvas" data-arch="canvas" aria-label="3D Fly Brain Policy Architecture Interactive Stage"></canvas>
+
+        <div id="arch3d-labels-layer" class="arch3d-labels-layer" data-arch="labels" aria-hidden="true"></div>
+        <div id="arch3d-hover-tag" class="arch-hover-tag" data-arch="hover" hidden></div>
+
+        <div class="arch3d-status-bar">
+          <div class="arch3d-legend-group">
+            <span class="arch3d-stat-chip"><span class="chip-dot dot-trainable"></span>Trainable (70.006)</span>
+            <span class="arch3d-stat-chip"><span class="chip-dot dot-frozen"></span>Frozen FAFB (87.171)</span>
+            <span class="arch3d-stat-chip"><span class="chip-dot dot-runtime"></span>Runtime (3)</span>
+          </div>
+          <div class="arch3d-stat-hint">Drag: Orbit &middot; Klik kanan: Pan &middot; Scroll: Zoom &middot; Klik objek: Inspeksi</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="arch-inspector-card" data-arch="detail" aria-label="Component Inspector"></aside>
+  </div>
+
+  <div class="arch-pipeline-strip">
+    <div class="arch-pipeline-strip-header">
+      <h3 class="arch-strip-title">Peta Komponen Arsitektur</h3>
+      <span class="arch-strip-hint">Pilih modul untuk mengarahkan kamera 3D dan membaca spesifikasinya</span>
+    </div>
+    <div class="arch-pipeline-groups" data-arch="index"></div>
+    <div class="arch-footer-bar">
+      <span class="dataset-attribution-line">
+        Koordinat 2.500 neuron dan 87.171 sinapsis bersumber dari FlyWire FAFB v783 (Dorkenwald et al., 2024; Schlegel et al., 2024).
+      </span>
+      <button id="btn-open-docs-from-arch" class="btn btn-secondary btn-compact" type="button">
+        Buka Dokumentasi &amp; Rumus Matematis &rarr;
+      </button>
+    </div>
+  </div>
+</section>

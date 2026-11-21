@@ -102,6 +102,9 @@ p {
 
 .tab-button {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
   border: 1px solid transparent;
   background: transparent;
   color: var(--ink-secondary);
@@ -3769,35 +3772,40 @@ input[type="range"]:active::-moz-range-thumb {
   color: var(--ink-secondary);
 }
 
-/* Dataset References List */
+/* Dataset References List (Clean Academic Bibliography, Flat) */
 .doc-ref-list {
   list-style: decimal;
-  padding-left: 1.35rem;
-  margin: 16px 0 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding-left: 1.4rem;
+  margin: 14px 0 0 0;
 }
 
 .doc-ref-item {
-  padding: 14px 16px;
-  background-color: var(--bg-canvas);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.doc-ref-item:last-child {
+  border-bottom: none;
+}
+
+.doc-ref-item::marker {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
 }
 
 .doc-ref-title {
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--ink-primary);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .doc-ref-cite {
   font-size: 0.84rem;
-  line-height: 1.58;
+  line-height: 1.6;
   color: var(--ink-primary);
-  margin-bottom: 6px;
+  margin: 0 0 4px 0;
 }
 
 .doc-ref-cite a {
@@ -3807,56 +3815,171 @@ input[type="range"]:active::-moz-range-thumb {
 }
 
 .doc-ref-cite a:hover {
-  color: var(--color-accent);
-}
-
-.doc-ref-usage {
-  font-size: 0.73rem;
   color: var(--ink-secondary);
 }
 
-/* Glossary Grid */
-.doc-glossary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 16px;
+.doc-ref-usage {
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
 }
 
-.doc-glossary-group {
-  padding: 16px;
-  background-color: var(--bg-canvas);
+/* Documentation Interactive Charts (Full-Width Crisp Canvas) */
+.doc-chart-card {
+  margin: 16px 0 18px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  overflow: hidden;
 }
 
-.doc-glossary-group h4 {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--ink-primary);
-  padding-bottom: 8px;
-  margin-bottom: 10px;
+.doc-chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-canvas);
 }
 
-.doc-dl {
-  margin: 0;
+.doc-chart-heading {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
 }
 
-.doc-dl dt {
-  font-size: 0.8rem;
+.doc-chart-title {
+  font-size: 0.84rem;
   font-weight: 600;
   color: var(--ink-primary);
 }
 
-.doc-dl dd {
-  margin: 2px 0 0 0;
-  font-size: 0.78rem;
-  line-height: 1.55;
+.doc-chart-sub {
+  font-size: 0.72rem;
   color: var(--ink-secondary);
+}
+
+.doc-chart-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.doc-chart-tab {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.73rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.doc-chart-tab:hover {
+  color: var(--ink-primary);
+  border-color: var(--border-medium);
+}
+
+.doc-chart-tab.is-active {
+  background-color: var(--ink-primary);
+  border-color: var(--ink-primary);
+  color: #ffffff;
+}
+
+.doc-chart-canvas-wrap {
+  padding: 14px 16px 12px;
+  background-color: var(--bg-surface);
+}
+
+.doc-chart-canvas-wrap canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.doc-figure-links {
+  margin: -6px 0 22px;
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+}
+
+.doc-figure-links a {
+  color: var(--ink-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Dictionary List (Clean, Natural Lexicon/Glossary) */
+.doc-dict-list {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 18px;
+}
+
+.doc-dict-category {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-dict-cat-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-secondary);
+  margin: 0 0 6px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.doc-dict-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-dict-row {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  align-items: baseline;
+  gap: 20px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.doc-dict-row:last-child {
+  border-bottom: none;
+}
+
+.doc-dict-term {
+  font-size: 0.825rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--ink-primary);
+}
+
+.doc-dict-def {
+  font-size: 0.815rem;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+@media (max-width: 768px) {
+  .doc-figures-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doc-dict-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding: 8px 0;
+  }
 }
 
 @media (max-width: 1020px) {
@@ -3893,10 +4016,6 @@ input[type="range"]:active::-moz-range-thumb {
   .doc-fact-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .doc-glossary-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -3912,3 +4031,4 @@ input[type="range"]:active::-moz-range-thumb {
     grid-template-columns: 1fr;
   }
 }
+

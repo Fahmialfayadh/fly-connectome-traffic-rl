@@ -1,0 +1,109 @@
+<!-- TAB 3: BENCHMARK & CONNECTOME -->
+<section
+  id="panel-benchmark"
+  class="tab-panel"
+  role="tabpanel"
+  aria-labelledby="tab-btn-benchmark"
+  hidden
+>
+  <div class="benchmark-layout">
+    <div class="panel-surface">
+      <div class="panel-header-row">
+        <div>
+          <h2>Sub-Connectome FAFB v783 &amp; Multi-Scenario Benchmark</h2>
+          <p class="panel-caption">
+            Evaluasi deterministik 10 seed per skenario (normal, asymmetric, rush_hour, stress_test) serta uji farmakologi dan lesi.
+          </p>
+        </div>
+        <button id="btn-run-benchmark" class="btn btn-primary" type="button">
+          Re-Run Benchmark
+        </button>
+      </div>
+
+      <div class="benchmark-selector-box">
+        <div class="benchmark-selector-header">
+          <div>
+            <h3 class="benchmark-selector-title">Pilih Model untuk Dibandingkan</h3>
+            <span id="benchmark-selection-count" class="benchmark-selector-count">0 model dipilih</span>
+          </div>
+          <div class="benchmark-selector-actions">
+            <button id="btn-bench-select-default" class="btn btn-secondary btn-xs" type="button">Default</button>
+            <button id="btn-bench-select-all" class="btn btn-secondary btn-xs" type="button">Pilih Semua</button>
+          </div>
+        </div>
+        <div id="benchmark-model-selector" class="benchmark-model-grid" role="group" aria-label="Pilih model benchmark"></div>
+        <p id="benchmark-run-error" class="benchmark-error-note" hidden></p>
+      </div>
+
+      <div id="connectome-facts-strip" class="metrics-strip"></div>
+
+      <div class="benchmark-charts-grid benchmark-charts-grid-3">
+        <div class="chart-box">
+          <h3>mean_reward by scenario &amp; agent</h3>
+          <canvas id="bench-reward-chart" width="520" height="250"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>mean_wait_time_s (s) by scenario &amp; agent</h3>
+          <canvas id="bench-wait-chart" width="520" height="250"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>mean_collisions by scenario &amp; agent</h3>
+          <canvas id="bench-collisions-chart" width="520" height="250"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <h3>Scenario Comparison Table</h3>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-tooltip="Profil skenario pola kedatangan arus kendaraan" data-tooltip-pos="bottom"><span class="tooltip-trigger">Scenario</span></th>
+              <th data-tooltip="Arsitektur model/agen pengambil keputusan sinyal" data-tooltip-pos="bottom"><span class="tooltip-trigger">Agent</span></th>
+              <th data-tooltip="Rata-rata return reward kumulatif per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Reward</span></th>
+              <th data-tooltip="Rata-rata panjang antrean kendaraan per langkah simulasi" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Queue</span></th>
+              <th data-tooltip="Rata-rata lama waktu tunggu kendaraan sejak tiba di antrean (detik)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Wait (s)</span></th>
+              <th data-tooltip="Rata-rata jumlah kendaraan lolos persimpangan per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Throughput</span></th>
+              <th data-tooltip="Rata-rata frekuensi pergantian fase sinyal per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Switches</span></th>
+              <th data-tooltip="Rata-rata jumlah benturan kendaraan akibat konflik fase sinyal" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Collisions</span></th>
+              <th data-tooltip="Waktu komputasi satu langkah inferensi model di CPU (milidetik per step)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Latency (ms/step)</span></th>
+            </tr>
+          </thead>
+          <tbody id="benchmark-scenario-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel-surface">
+      <h3>Pharmacology &amp; Lesioning Results (rush_hour)</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-tooltip="Kondisi uji neuro-farmakologi atau lesi sirkuit" data-tooltip-pos="bottom"><span class="tooltip-trigger">Condition</span></th>
+              <th data-tooltip="Gain transmisi sinaptik eksitatori asetilkolin (ACh)" data-tooltip-pos="bottom"><span class="tooltip-trigger">g_exc</span></th>
+              <th data-tooltip="Gain transmisi sinaptik inhibitori GABA/Glutamat" data-tooltip-pos="bottom"><span class="tooltip-trigger">g_inh</span></th>
+              <th data-tooltip="Jumlah neuron aktif tanpa lesi (dari total 2.500)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Active Neurons</span></th>
+              <th data-tooltip="Rata-rata reward kumulatif per episode" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Reward</span></th>
+              <th data-tooltip="Rata-rata waktu tunggu kendaraan (detik)" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Wait (s)</span></th>
+              <th data-tooltip="Rata-rata kendaraan yang berhasil melintasi persimpangan" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Throughput</span></th>
+              <th data-tooltip="Rata-rata benturan kendaraan di zona konflik" data-tooltip-pos="bottom"><span class="tooltip-trigger">Mean Collisions</span></th>
+            </tr>
+          </thead>
+          <tbody id="benchmark-pharma-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="benchmark-dataset-footer">
+        <span class="benchmark-dataset-label">Sumber Dataset Konektom</span>
+        <p class="benchmark-dataset-text">
+          Sub-graf CX/MB diekstrak dari <strong>FlyWire FAFB v783</strong> (<span class="mono-value">connections_princeton.csv</span>, FlyWire Codex):
+          Dorkenwald et al. (2024), <em>Nature</em> 634, 124&ndash;138;
+          Zheng et al. (2018), <em>Cell</em> 174, 730&ndash;743;
+          Eckstein et al. (2024), <em>Cell</em> 187, 2574&ndash;2594;
+          Schlegel et al. (2024), <em>Nature</em> 634, 139&ndash;152.
+          Daftar sitasi dan DOI lengkap tersedia di tab <strong>Documentation</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>

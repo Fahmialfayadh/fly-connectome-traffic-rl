@@ -66,7 +66,7 @@ Lingkungan memodelkan dua jenis konflik lalu lintas ketika `enable_collisions = 
 | Parameter / Variabel | Nilai Default / Tipe | Lokasi File & Metode | Keterangan Fungsional |
 |---|---|---|---|
 | `collision_penalty` | `15.0` | `TrafficEnvConfig` / `_compute_reward` | Penalti per event kolisi sebelum dikalikan `reward_scale = 0.005` (setara pengurangan `-0.075` pada reward langkah per kolisi). |
-| `red_light_wait_threshold_s` | `36.0` (detik) | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Ambang `head_wait_s` pada lajur merah sebelum probabilitas pelanggaran lampu merah mulai naik di atas `0.0`. |
+| `red_light_wait_threshold_s` | `120.0` (detik) | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Ambang `head_wait_s` pada lajur merah sebelum probabilitas pelanggaran lampu merah mulai naik di atas `0.0`. |
 | `red_light_max_prob` | `0.14` | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Batas atas probabilitas per langkah per lajur merah untuk memicu `red_light_conflict`. |
 | `dilemma_zone_prob` | `0.18` | `TrafficEnvConfig` / `_evaluate_box_clearance_conflicts` | Probabilitas per lajur pelepas sebelumnya menyisakan *straggler* kotak persimpangan saat terjadi perpindahan fase. |
 | `enable_collisions` | `True` | `TrafficEnvConfig` / `_evaluate_collisions` | Sakelar pengaktif atau penonaktif evaluasi kedua jenis kolisi. |

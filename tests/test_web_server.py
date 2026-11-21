@@ -38,14 +38,28 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
         app = server.create_app()
 
         async with TestClient(TestServer(app)) as client:
-            # 1. Static HTML shell & 3D brain assets
-            resp_index = await client.get("/")
-            assert resp_index.status == 200
-            html = await resp_index.text()
-            assert "Drosophila Connectome Traffic Lab" in html
-            assert 'id="panel-docs"' in html
-            assert "Dorkenwald" in html
-            assert "Schlegel" in html
+            # 1. Static HTML shell, modular partials via SPA routes, & 3D brain assets
+            for route in (
+                "/",
+                "/simulation",
+                "/training",
+                "/benchmark",
+                "/architecture",
+                "/docs",
+                "/documentation",
+            ):
+                resp_route = await client.get(route)
+                assert resp_route.status == 200
+                html = await resp_route.text()
+                assert "Fly Control Traffic" in html
+                assert 'id="panel-simulation"' in html
+                assert 'id="panel-training"' in html
+                assert 'id="panel-benchmark"' in html
+                assert 'id="panel-architecture"' in html
+                assert 'id="panel-docs"' in html
+                assert "@include" not in html
+                assert "Dorkenwald" in html
+                assert "Schlegel" in html
 
             resp_neurons = await client.get("/assets/brain/fly_brain_neurons.json")
             assert resp_neurons.status == 200
