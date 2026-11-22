@@ -149,6 +149,11 @@ class TrafficIntersectionEnv(gym.Env):
         self._last_step_collisions: list[dict[str, Any]] = []
         self._last_executed_phase: SignalPhase = SignalPhase.NS_STRAIGHT
         self._last_executed_stage: SignalStage = SignalStage.GREEN
+        self._lane_signal_colors: list[str] = self._compute_lane_signal_colors(
+            self._last_executed_phase,
+            self._last_executed_stage,
+        )
+        self._lane_signal_steps: list[int] = [0] * self.NUM_LANES
 
     def reset(
         self,
@@ -192,6 +197,11 @@ class TrafficIntersectionEnv(gym.Env):
         self._last_step_collisions = []
         self._last_executed_phase = initial_phase
         self._last_executed_stage = self._signal.stage
+        self._lane_signal_colors = self._compute_lane_signal_colors(
+            self._last_executed_phase,
+            self._last_executed_stage,
+        )
+        self._lane_signal_steps = [0] * self.NUM_LANES
 
         obs = self._build_observation()
         info = self._build_info(
@@ -226,6 +236,13 @@ class TrafficIntersectionEnv(gym.Env):
 
         self._last_executed_phase = executed_phase
         self._last_executed_stage = executed_stage
+        next_colors = self._compute_lane_signal_colors(executed_phase, executed_stage)
+        for lane_id, next_color in enumerate(next_colors):
+            if next_color == self._lane_signal_colors[lane_id]:
+                self._lane_signal_steps[lane_id] += 1
+            else:
+                self._lane_signal_colors[lane_id] = next_color
+                self._lane_signal_steps[lane_id] = 1
         self._last_step_departures = departures_per_lane
         self._last_step_arrivals = arrivals_per_lane
         self._last_manual_spawns = [0] * self.NUM_LANES
@@ -366,6 +383,10 @@ class TrafficIntersectionEnv(gym.Env):
             "mean_wait_time_s": mean_wait,
             "episode_reward": float(self._episode_reward),
             "dt_seconds": float(self.config.dt_seconds),
+            "lane_signal_durations_s": [
+                float(steps * self.config.dt_seconds)
+                for steps in self._lane_signal_steps
+            ],
             "all_red_steps": int(self._all_red_steps),
             "step_collisions": int(len(self._last_step_collisions)),
             "total_collisions": int(self._total_collisions),
@@ -378,6 +399,25 @@ class TrafficIntersectionEnv(gym.Env):
     def _apply_signal_control(self, target_phase: SignalPhase) -> bool:
         """Forward phase command to the safety-interlocked signal controller."""
         return self._signal.request_phase(target_phase)
+
+    @classmethod
+    def _compute_lane_signal_colors(
+        cls,
+        phase: SignalPhase,
+        stage: SignalStage,
+    ) -> list[str]:
+        """Return per-lane signal color ('GREEN', 'YELLOW', or 'RED') for all 8 lanes."""
+        phase_lanes = PHASE_GREEN_LANES[phase]
+        if stage is SignalStage.GREEN:
+            active_color = "GREEN"
+        elif stage is SignalStage.YELLOW:
+            active_color = "YELLOW"
+        else:
+            active_color = "RED"
+        return [
+            active_color if lane_id in phase_lanes else "RED"
+            for lane_id in range(cls.NUM_LANES)
+        ]
 
     def _step_departures(self) -> tuple[int, list[float], list[int]]:
         """Discharge queued vehicles from lanes currently receiving a GREEN signal."""

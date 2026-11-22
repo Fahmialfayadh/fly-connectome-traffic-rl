@@ -4,23 +4,27 @@
 
 | Scenario | Agent | Mean Reward | Mean Queue | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions | Inference (ms/step) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| normal | Fly Connectome PPO (Fly__1) | -10.150 +/- 1.041 | 4.77 | 13.08 +/- 0.84 | 212.5 +/- 16.5 | 72.2 | 0.00 | 0.390 |
-| normal | Fly Connectome PPO (fly_ppo_withstress) | -11.048 +/- 0.953 | 5.06 | 13.82 +/- 0.70 | 214.8 +/- 19.5 | 66.9 | 0.00 | 0.568 |
-| asymmetric | Fly Connectome PPO (Fly__1) | -16.751 +/- 1.823 | 7.91 | 13.93 +/- 0.82 | 333.2 +/- 20.9 | 68.3 | 0.00 | 0.514 |
-| asymmetric | Fly Connectome PPO (fly_ppo_withstress) | -15.926 +/- 1.568 | 7.81 | 13.54 +/- 0.68 | 338.2 +/- 22.5 | 67.9 | 0.00 | 0.427 |
-| rush_hour | Fly Connectome PPO (Fly__1) | -17.751 +/- 2.692 | 8.87 | 15.18 +/- 1.39 | 339.1 +/- 23.6 | 69.9 | 0.00 | 0.500 |
-| rush_hour | Fly Connectome PPO (fly_ppo_withstress) | -17.514 +/- 2.556 | 8.57 | 14.94 +/- 1.54 | 332.5 +/- 15.5 | 68.2 | 0.00 | 0.802 |
-| stress_test | Fly Connectome PPO (Fly__1) | -313.567 +/- 6.742 | 182.61 | 133.45 +/- 3.26 | 551.8 +/- 11.7 | 68.1 | 46.90 | 0.869 |
-| stress_test | Fly Connectome PPO (fly_ppo_withstress) | -301.109 +/- 5.376 | 172.15 | 120.59 +/- 2.10 | 594.7 +/- 10.3 | 69.4 | 45.00 | 0.432 |
+| normal | Fly Connectome PPO (fly_ppo_new_env) | -35.432 +/- 1.534 | 9.32 | 25.83 +/- 1.23 | 351.8 +/- 22.7 | 54.8 | 0.00 | 0.177 |
+| normal | Fly Connectome PPO (fly_ppo_withstress) | -35.199 +/- 1.824 | 9.27 | 25.75 +/- 1.12 | 352.5 +/- 22.6 | 55.0 | 0.00 | 0.199 |
+| normal | Fixed Timer | -40.626 +/- 2.134 | 11.01 | 30.69 +/- 1.72 | 348.8 +/- 22.4 | 45.0 | 0.00 | 0.004 |
+| asymmetric | Fly Connectome PPO (fly_ppo_new_env) | -48.835 +/- 2.570 | 13.95 | 23.68 +/- 0.92 | 574.9 +/- 29.8 | 55.0 | 0.00 | 0.199 |
+| asymmetric | Fly Connectome PPO (fly_ppo_withstress) | -47.862 +/- 3.112 | 13.51 | 23.14 +/- 0.89 | 571.4 +/- 31.6 | 55.0 | 0.00 | 0.454 |
+| asymmetric | Fixed Timer | -61.537 +/- 3.308 | 19.12 | 32.92 +/- 0.77 | 569.5 +/- 27.7 | 45.0 | 0.00 | 0.004 |
+| rush_hour | Fly Connectome PPO (fly_ppo_new_env) | -77.955 +/- 3.780 | 25.00 | 27.40 +/- 0.85 | 881.6 +/- 28.7 | 54.7 | 0.00 | 0.585 |
+| rush_hour | Fly Connectome PPO (fly_ppo_withstress) | -79.080 +/- 2.880 | 25.30 | 27.74 +/- 0.67 | 882.2 +/- 34.6 | 54.9 | 0.00 | 0.416 |
+| rush_hour | Fixed Timer | -104.742 +/- 8.067 | 35.43 | 38.61 +/- 2.18 | 855.9 +/- 25.3 | 45.0 | 0.00 | 0.003 |
+| stress_test | Fly Connectome PPO (fly_ppo_new_env) | -395.780 +/- 22.556 | 143.67 | 87.39 +/- 4.77 | 1451.7 +/- 11.0 | 55.0 | 5.70 | 0.399 |
+| stress_test | Fly Connectome PPO (fly_ppo_withstress) | -386.363 +/- 21.059 | 132.14 | 80.47 +/- 3.84 | 1455.0 +/- 16.3 | 55.0 | 26.50 | 0.489 |
+| stress_test | Fixed Timer | -365.067 +/- 17.968 | 126.19 | 76.47 +/- 3.09 | 1482.8 +/- 31.6 | 45.0 | 20.90 | 0.007 |
 
 ## Pharmacology and Lesioning Results (rush_hour)
 
 | Condition | g_exc | g_inh | Active Neurons | Mean Reward | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| Baseline (g_exc=1.0, g_inh=1.0) | 1.00 | 1.00 | 2500 | -17.751 | 15.18 | 339.1 | 69.9 | 0.00 |
-| High Excitation (g_exc=1.8, g_inh=1.0) | 1.80 | 1.00 | 2500 | -18.257 | 15.54 | 337.1 | 68.4 | 0.00 |
-| Low Inhibition (g_exc=1.0, g_inh=0.2) | 1.00 | 0.20 | 2500 | -18.221 | 15.46 | 340.7 | 69.4 | 0.00 |
-| High Inhibition (g_exc=1.0, g_inh=2.0) | 1.00 | 2.00 | 2500 | -18.305 | 15.80 | 332.5 | 70.6 | 0.00 |
-| CX Lesion 25% | 1.00 | 1.00 | 2050 | -18.668 | 16.00 | 333.6 | 70.5 | 0.00 |
-| MB Lesion 25% | 1.00 | 1.00 | 2325 | -17.890 | 15.17 | 339.5 | 69.8 | 0.00 |
-| Random Lesion 25% | 1.00 | 1.00 | 1875 | -18.175 | 15.39 | 341.9 | 69.6 | 0.00 |
+| Baseline (g_exc=1.0, g_inh=1.0) | 1.00 | 1.00 | 2500 | -77.955 | 27.40 | 881.6 | 54.7 | 0.00 |
+| High Excitation (g_exc=1.8, g_inh=1.0) | 1.80 | 1.00 | 2500 | -78.566 | 27.81 | 878.4 | 54.3 | 0.00 |
+| Low Inhibition (g_exc=1.0, g_inh=0.2) | 1.00 | 0.20 | 2500 | -78.450 | 27.73 | 880.5 | 54.6 | 0.00 |
+| High Inhibition (g_exc=1.0, g_inh=2.0) | 1.00 | 2.00 | 2500 | -79.248 | 27.96 | 880.8 | 54.8 | 0.00 |
+| CX Lesion 25% | 1.00 | 1.00 | 2050 | -77.205 | 27.39 | 876.9 | 54.8 | 0.00 |
+| MB Lesion 25% | 1.00 | 1.00 | 2325 | -79.101 | 27.65 | 887.3 | 54.6 | 0.00 |
+| Random Lesion 25% | 1.00 | 1.00 | 1875 | -79.659 | 28.22 | 878.9 | 54.6 | 0.00 |

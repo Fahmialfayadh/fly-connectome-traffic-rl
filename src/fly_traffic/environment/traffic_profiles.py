@@ -114,13 +114,13 @@ class TrafficProfileFactory:
     def _build_rush_hour_profile(rate_scale: float = 1.0) -> TrafficProfile:
         """Create a 3-regime profile: baseline -> NS surge -> EW surge."""
         regime_moderate = np.array(
-            [0.14, 0.07, 0.14, 0.07, 0.14, 0.07, 0.14, 0.07], dtype=np.float64
+            [0.22, 0.10, 0.22, 0.10, 0.22, 0.10, 0.22, 0.10], dtype=np.float64
         ) * rate_scale
         regime_ns_surge = np.array(
-            [0.38, 0.16, 0.38, 0.16, 0.08, 0.04, 0.08, 0.04], dtype=np.float64
+            [0.56, 0.24, 0.56, 0.24, 0.16, 0.08, 0.16, 0.08], dtype=np.float64
         ) * rate_scale
         regime_ew_surge = np.array(
-            [0.08, 0.04, 0.08, 0.04, 0.38, 0.16, 0.38, 0.16], dtype=np.float64
+            [0.16, 0.08, 0.16, 0.08, 0.56, 0.24, 0.56, 0.24], dtype=np.float64
         ) * rate_scale
 
         def arrival_fn(step: int, max_steps: int) -> np.ndarray:
@@ -186,21 +186,23 @@ class TrafficProfileFactory:
             name="stress_test",
             description="Extreme traffic volume to test agent robustness",
             ns_straight=0.5,
-            ns_turn=0.5,
+            ns_turn=0.4,
             ew_straight=0.5,
-            ew_turn=0.5,
+            ew_turn=0.4,
         )
 
     @classmethod
-    def _build_stress_train_profile(cls, rng: np.random.Generator | None = None) -> TrafficProfile:
-        """Create a high-volume profile for stress testing."""
+    def _build_stress_train_profile(
+        cls, rng: np.random.Generator | None = None
+    ) -> TrafficProfile:
+        """Create a randomized high-volume profile for stress training."""
         generator = rng or np.random.default_rng()
 
         return cls._build_constant_profile(
             name="stress_train",
-            description="Extreme traffic volume to test agent robustness",
-            ns_straight=generator.uniform(0.35, 0.4),
-            ns_turn=generator.uniform(0.35, 0.4),
-            ew_straight=generator.uniform(0.35, 0.4),
-            ew_turn=generator.uniform(0.35, 0.4),
+            description="High-volume randomized traffic for robustness training",
+            ns_straight=generator.uniform(0.38, 0.46),
+            ns_turn=generator.uniform(0.22, 0.28),
+            ew_straight=generator.uniform(0.38, 0.46),
+            ew_turn=generator.uniform(0.22, 0.28),
         )

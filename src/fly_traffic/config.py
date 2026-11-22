@@ -39,23 +39,23 @@ class TrafficEnvConfig:
     """Configuration for the 4-way, 2-lane Gymnasium traffic environment."""
 
     dt_seconds: float = 2.0
-    max_steps: int = 300
+    max_steps: int = 500
     max_lane_capacity: int = 30
     queue_obs_norm_capacity: float = 30.0
     hard_max_lane_capacity: int = 80
-    straight_discharge_rate: float = 2.0
-    turn_discharge_rate: float = 1.5
-    min_green_steps: int = 2
-    yellow_steps: int = 1
+    straight_discharge_rate: float = 2.5
+    turn_discharge_rate: float = 2.0
+    min_green_steps: int = 6
+    yellow_steps: int = 2
     all_red_steps: int = 1
     wait_penalty_alpha: float = 0.1
     switch_penalty_beta: float = 1.0
     reward_scale: float = 0.005
-    max_wait_norm_seconds: float = 120.0
+    max_wait_norm_seconds: float = 150.0
     max_elapsed_norm_steps: float = 20.0
     profile_name: str = "mixed"
-    collision_penalty: float = 15.0
-    red_light_wait_threshold_s: float = 120.0
+    collision_penalty: float = 80.0
+    red_light_wait_threshold_s: float = 150.0
     red_light_max_prob: float = 0.14
     dilemma_zone_prob: float = 0.18
     enable_collisions: bool = True

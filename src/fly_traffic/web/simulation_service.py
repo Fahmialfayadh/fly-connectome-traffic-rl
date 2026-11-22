@@ -851,16 +851,17 @@ class SimulationService:
         phase_durations = (
             list(active_agent.phase_durations)
             if isinstance(active_agent, FixedTimerAgent)
-            else [8, 4, 8, 4]
+            else [10, 6, 10, 6]
         )
         active_phase = int(snapshot.get("active_phase", 0))
         phase_elapsed = int(snapshot.get("phase_elapsed", 0))
         signal_stage = str(snapshot.get("signal_stage", "GREEN"))
         target_steps = int(phase_durations[active_phase % len(phase_durations)])
         remaining_steps = max(0, target_steps - phase_elapsed)
+        schedule_label = "-".join(str(d) for d in phase_durations)
         return {
             "kind": "fixed_timer",
-            "architecture": "FixedTimerAgent (8-4-8-4 cyclic schedule)",
+            "architecture": f"FixedTimerAgent ({schedule_label} cyclic schedule)",
             "recurrent": False,
             "trainable_params": 0,
             "trained_timesteps": 0,

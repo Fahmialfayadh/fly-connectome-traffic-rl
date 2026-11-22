@@ -112,7 +112,7 @@ def test_web_server_rest_and_websockets(tmp_path: Path) -> None:
             assert timer_data["agent_key"] == "fixed_timer"
             assert timer_data["connectome_telemetry"]["is_fly_active"] is False
             assert timer_data["model_telemetry"]["kind"] == "fixed_timer"
-            assert timer_data["model_telemetry"]["phase_durations"] == [8, 4, 8, 4]
+            assert timer_data["model_telemetry"]["phase_durations"] == [10, 6, 10, 6]
 
             resp_buffer = await client.post(
                 "/api/simulation/control",

@@ -10,7 +10,7 @@ class FixedTimerAgent(BaseTrafficAgent):
 
     def __init__(
         self,
-        phase_durations: tuple[int, int, int, int] = (8, 4, 8, 4),
+        phase_durations: tuple[int, int, int, int] = (10, 6, 10, 6),
         max_elapsed_norm_steps: float = 20.0,
         agent_name: str = "Fixed Timer",
     ) -> None:

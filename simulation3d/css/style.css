@@ -1,0 +1,438 @@
+/* Style matching the exact 4-Way Intersection Simulation UI */
+:root {
+  --bg-panel: #ffffff;
+  --bg-viewport: #181c24;
+  --border-color: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --color-straight: #3b82f6;
+  --color-turn: #f59e0b;
+  --color-green: #22c55e;
+  --color-amber: #eab308;
+  --color-red: #ef4444;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #f1f5f9;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.simulation-container {
+  width: 760px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Row */
+.panel-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: #fafafa;
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-title-group h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.conn-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.conn-pill.connected {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.conn-pill.connecting {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.conn-pill.offline {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Transport Buttons */
+.sim-transport-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #1e293b;
+}
+
+.btn-secondary {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* 3D Viewport Stage */
+.viewport-stage {
+  position: relative;
+  width: 100%;
+  height: 580px;
+  background: var(--bg-viewport);
+  overflow: hidden;
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Approach Signal Overlays matching the 2D layout */
+.approach-overlay {
+  position: absolute;
+  padding: 8px 10px;
+  background: rgba(248, 250, 252, 0.94);
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.approach-overlay-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.approach-overlay-signals {
+  display: flex;
+  gap: 12px;
+}
+
+.signal-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sig-housing {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+  background: #1e293b;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.sig-lens {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #334155;
+  transition: all 0.2s ease;
+}
+
+.sig-lens.red.active {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.sig-lens.yellow.active {
+  background: #eab308;
+  box-shadow: 0 0 8px #eab308;
+}
+
+.sig-lens.green.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.sig-tag-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.sig-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sig-timer-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fee2e2;
+  color: #b91c1c;
+  min-width: 28px;
+  text-align: center;
+}
+
+.sig-timer-pill.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sig-timer-pill.yellow {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+/* Positioning the 4 overlays in the 4 corners matching RHT incoming approaches */
+.approach-north {
+  top: 14px;
+  left: 18px;
+}
+
+.approach-east {
+  top: 14px;
+  right: 18px;
+}
+
+.approach-south {
+  bottom: 14px;
+  right: 18px;
+}
+
+.approach-west {
+  bottom: 14px;
+  left: 18px;
+}
+
+/* Queue Badges on the 8 Lanes */
+.queue-badge-anchor {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: #0f172a;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 12;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Camera controls floating bar */
+.camera-controls-floating {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  border-radius: 6px;
+  z-index: 15;
+}
+
+.cam-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cam-btn:hover {
+  color: #ffffff;
+}
+
+.cam-btn.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+/* Spawn hint pill */
+.spawn-hint-pill {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #e2e8f0;
+  font-size: 11px;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Collision Alert Banner */
+.collision-alert {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.95);
+  color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+  z-index: 20;
+  transition: opacity 0.3s ease;
+}
+
+.collision-alert.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.alert-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #ef4444;
+  font-weight: 800;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-text strong {
+  display: block;
+  font-size: 11px;
+}
+
+.alert-text span {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+/* Legend Bar matching screenshot */
+.sim-legend-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.swatch-straight { background: var(--color-straight); }
+.swatch-turn { background: var(--color-turn); }
+.swatch-green { background: var(--color-green); }
+.swatch-amber { background: var(--color-amber); }
+.swatch-red { background: var(--color-red); }
+
+/* Footer Meta Bar */
+.sim-footer-bar {
+  padding: 8px 16px;
+  background: #ffffff;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.footer-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.footer-divider {
+  color: #cbd5e1;
+}
+
+.mono-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}

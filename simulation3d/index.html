@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D 4-Way Intersection Simulation</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/vendor/three/three.module.min.js",
+        "three/addons/": "/vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="simulation-container">
+    <!-- Top Header Bar matching the 2D panel -->
+    <header class="panel-header-row">
+      <div class="header-title-group">
+        <h2>4-Way Intersection Simulation (3D)</h2>
+        <span id="conn-pill" class="conn-pill connecting">Connecting...</span>
+      </div>
+      <div class="sim-transport-controls">
+        <button id="btn-sim-play-pause" class="btn btn-primary" type="button">Pause</button>
+        <button id="btn-sim-step" class="btn btn-secondary" type="button">Step +1</button>
+        <button id="btn-sim-reset" class="btn btn-secondary" type="button">Reset Sim</button>
+      </div>
+    </header>
+
+    <!-- 3D Canvas Viewport -->
+    <div id="viewport-stage" class="viewport-stage">
+      <div id="canvas-container"></div>
+
+      <!-- Approach Signal Heads with Timers (floating 2D overlays synced to 3D approaches) -->
+      <!-- North Approach -->
+      <div class="approach-overlay approach-north" id="overlay-approach-n">
+        <div class="approach-overlay-title">NORTH APPROACH</div>
+        <div class="approach-overlay-signals">
+          <div class="signal-row" id="sig-row-n-str">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-0-r"></span>
+              <span class="sig-lens yellow" id="lens-0-y"></span>
+              <span class="sig-lens green" id="lens-0-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">N-STR</span>
+              <span class="sig-timer-pill" id="timer-pill-0">0s</span>
+            </div>
+          </div>
+          <div class="signal-row" id="sig-row-n-trn">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-1-r"></span>
+              <span class="sig-lens yellow" id="lens-1-y"></span>
+              <span class="sig-lens green" id="lens-1-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">N-TRN</span>
+              <span class="sig-timer-pill" id="timer-pill-1">0s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- South Approach -->
+      <div class="approach-overlay approach-south" id="overlay-approach-s">
+        <div class="approach-overlay-title">SOUTH APPROACH</div>
+        <div class="approach-overlay-signals">
+          <div class="signal-row" id="sig-row-s-str">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-2-r"></span>
+              <span class="sig-lens yellow" id="lens-2-y"></span>
+              <span class="sig-lens green" id="lens-2-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">S-STR</span>
+              <span class="sig-timer-pill" id="timer-pill-2">0s</span>
+            </div>
+          </div>
+          <div class="signal-row" id="sig-row-s-trn">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-3-r"></span>
+              <span class="sig-lens yellow" id="lens-3-y"></span>
+              <span class="sig-lens green" id="lens-3-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">S-TRN</span>
+              <span class="sig-timer-pill" id="timer-pill-3">0s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- East Approach -->
+      <div class="approach-overlay approach-east" id="overlay-approach-e">
+        <div class="approach-overlay-title">EAST APPROACH</div>
+        <div class="approach-overlay-signals">
+          <div class="signal-row" id="sig-row-e-str">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-4-r"></span>
+              <span class="sig-lens yellow" id="lens-4-y"></span>
+              <span class="sig-lens green" id="lens-4-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">E-STR</span>
+              <span class="sig-timer-pill" id="timer-pill-4">0s</span>
+            </div>
+          </div>
+          <div class="signal-row" id="sig-row-e-trn">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-5-r"></span>
+              <span class="sig-lens yellow" id="lens-5-y"></span>
+              <span class="sig-lens green" id="lens-5-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">E-TRN</span>
+              <span class="sig-timer-pill" id="timer-pill-5">0s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- West Approach -->
+      <div class="approach-overlay approach-west" id="overlay-approach-w">
+        <div class="approach-overlay-title">WEST APPROACH</div>
+        <div class="approach-overlay-signals">
+          <div class="signal-row" id="sig-row-w-str">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-6-r"></span>
+              <span class="sig-lens yellow" id="lens-6-y"></span>
+              <span class="sig-lens green" id="lens-6-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">W-STR</span>
+              <span class="sig-timer-pill" id="timer-pill-6">0s</span>
+            </div>
+          </div>
+          <div class="signal-row" id="sig-row-w-trn">
+            <div class="sig-housing">
+              <span class="sig-lens red active" id="lens-7-r"></span>
+              <span class="sig-lens yellow" id="lens-7-y"></span>
+              <span class="sig-lens green" id="lens-7-g"></span>
+            </div>
+            <div class="sig-tag-timer">
+              <span class="sig-tag">W-TRN</span>
+              <span class="sig-timer-pill" id="timer-pill-7">0s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lane Queue Badges (positioned over the 8 incoming lanes) -->
+      <div class="queue-badge-anchor" id="qbadge-0">0</div>
+      <div class="queue-badge-anchor" id="qbadge-1">0</div>
+      <div class="queue-badge-anchor" id="qbadge-2">0</div>
+      <div class="queue-badge-anchor" id="qbadge-3">0</div>
+      <div class="queue-badge-anchor" id="qbadge-4">0</div>
+      <div class="queue-badge-anchor" id="qbadge-5">0</div>
+      <div class="queue-badge-anchor" id="qbadge-6">0</div>
+      <div class="queue-badge-anchor" id="qbadge-7">0</div>
+
+      <!-- Collision Alert Banner -->
+      <div id="collision-alert" class="collision-alert hidden">
+        <span class="alert-icon">!</span>
+        <div class="alert-text">
+          <strong id="alert-title">COLLISION EVENT</strong>
+          <span id="alert-subtitle">Conflict in intersection box</span>
+        </div>
+      </div>
+
+      <!-- Camera View Angle Controls -->
+      <div class="camera-controls-floating">
+        <button id="btn-cam-top" class="cam-btn active" type="button" title="Top-down orthographic perspective">Top View</button>
+        <button id="btn-cam-angle" class="cam-btn" type="button" title="Perspective 3D orbit angle">3D Angle</button>
+        <button id="btn-cam-street" class="cam-btn" type="button" title="Driver street-level view">Street</button>
+      </div>
+
+      <!-- Click to spawn hint -->
+      <div class="spawn-hint-pill">
+        Klik lajur jalan untuk menambah mobil (+1 car)
+      </div>
+    </div>
+
+    <!-- Legend bar matching the exact 2D panel -->
+    <div class="sim-legend-bar">
+      <span class="legend-chip"><span class="swatch swatch-straight"></span><span>Lajur Lurus</span></span>
+      <span class="legend-chip"><span class="swatch swatch-turn"></span><span>Lajur Belok Kiri</span></span>
+      <span class="legend-chip"><span class="swatch swatch-green"></span><span>Hijau</span></span>
+      <span class="legend-chip"><span class="swatch swatch-amber"></span><span>Kuning</span></span>
+      <span class="legend-chip"><span class="swatch swatch-red"></span><span>Merah / All-Red</span></span>
+    </div>
+
+    <!-- Quick info footer -->
+    <div class="sim-footer-bar">
+      <div class="footer-meta">
+        <span class="footer-label">Step:</span>
+        <strong id="meta-step" class="mono-val">0</strong>
+        <span class="footer-divider">|</span>
+        <span class="footer-label">Phase:</span>
+        <strong id="meta-phase" class="mono-val">NS Straight · GREEN</strong>
+        <span class="footer-divider">|</span>
+        <span class="footer-label">Queue:</span>
+        <strong id="meta-queue" class="mono-val">0 veh</strong>
+        <span class="footer-divider">|</span>
+        <span class="footer-label">Throughput:</span>
+        <strong id="meta-throughput" class="mono-val">0 veh</strong>
+        <span class="footer-divider">|</span>
+        <span class="footer-label">Collisions:</span>
+        <strong id="meta-collisions" class="mono-val">0</strong>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

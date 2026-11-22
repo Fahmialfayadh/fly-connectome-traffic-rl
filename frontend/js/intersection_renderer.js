@@ -1492,7 +1492,13 @@ export class IntersectionRenderer {
       { x: cx - 166, y: cy + 142, vertical: false, laneId: 6, tag: 'W-STR', labelPos: 'left' },
     ];
 
+    const durations =
+      this.latestSnapshot && Array.isArray(this.latestSnapshot.lane_signal_durations_s)
+        ? this.latestSnapshot.lane_signal_durations_s
+        : null;
+
     for (const head of headSpecs) {
+      const durationSec = durations ? Number(durations[head.laneId] ?? 0) : null;
       this._drawThreeLensHousing(
         ctx,
         head.x,
@@ -1500,12 +1506,22 @@ export class IntersectionRenderer {
         head.vertical,
         this._getLaneSignalColor(head.laneId),
         head.tag,
-        head.labelPos
+        head.labelPos,
+        durationSec
       );
     }
   }
 
-  _drawThreeLensHousing(ctx, x, y, vertical, activeState, labelText, labelPos = 'bottom') {
+  _drawThreeLensHousing(
+    ctx,
+    x,
+    y,
+    vertical,
+    activeState,
+    labelText,
+    labelPos = 'bottom',
+    durationSec = null
+  ) {
     const w = vertical ? 20 : 50;
     const h = vertical ? 50 : 20;
 
@@ -1555,6 +1571,46 @@ export class IntersectionRenderer {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(labelText, x + w / 2, y + h + 4);
+    }
+
+    if (durationSec !== null && Number.isFinite(durationSec)) {
+      const timerText = `${Math.round(durationSec)}s`;
+      const palette =
+        activeState === 'GREEN'
+          ? { bg: '#dcfce7', border: '#86efac', text: '#166534' }
+          : activeState === 'YELLOW'
+          ? { bg: '#fef3c7', border: '#fcd34d', text: '#92400e' }
+          : { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b' };
+
+      ctx.font = '700 9.5px "IBM Plex Mono", monospace';
+      const padX = 5;
+      const pillW = Math.max(24, Math.ceil(ctx.measureText(timerText).width) + padX * 2);
+      const pillH = 14;
+
+      let pillX;
+      let pillY;
+      if (labelPos === 'right') {
+        pillX = x + w + 40;
+        pillY = y + h / 2 - pillH / 2;
+      } else if (labelPos === 'left') {
+        pillX = x - 40 - pillW;
+        pillY = y + h / 2 - pillH / 2;
+      } else {
+        pillX = x + w / 2 - pillW / 2;
+        pillY = y + h + 16;
+      }
+
+      ctx.fillStyle = palette.bg;
+      ctx.strokeStyle = palette.border;
+      ctx.lineWidth = 1;
+      this._roundRect(ctx, pillX, pillY, pillW, pillH, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = palette.text;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(timerText, pillX + pillW / 2, pillY + pillH / 2 + 0.5);
     }
     ctx.restore();
   }
