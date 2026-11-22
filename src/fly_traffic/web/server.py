@@ -219,6 +219,7 @@ class TrafficLabServer:
                 ),
                 anneal_lr=self._body_value(body, "anneal_lr", PPOConfig.anneal_lr),
                 save_on_cancel=self._body_value(body, "save_on_cancel", True),
+                resume_checkpoint=body.get("resume_checkpoint"),
             )
             return web.json_response(state)
         except RuntimeError as exc:

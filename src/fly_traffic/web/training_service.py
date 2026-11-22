@@ -27,7 +27,12 @@ from fly_traffic.web.simulation_service import SimulationService
 class TrainingJobManager:
     """Executes PPO training on a worker thread and streams per-update metrics."""
 
-    VALID_SAVE_MODES: tuple[str, ...] = ("new_file", "overwrite_default", "none")
+    VALID_SAVE_MODES: tuple[str, ...] = (
+        "new_file",
+        "overwrite_default",
+        "overwrite_resumed",
+        "none",
+    )
     VALID_ROLLOUT_STEPS: tuple[int, ...] = (32, 64, 128, 256)
     VALID_SEQUENCE_CHUNK_LENS: tuple[int, ...] = (8, 16, 32)
     VALID_NUM_MINIBATCHES: tuple[int, ...] = (1, 2, 4, 8)
@@ -106,6 +111,7 @@ class TrainingJobManager:
         num_minibatches: int = 4,
         anneal_lr: bool = True,
         save_on_cancel: bool = True,
+        resume_checkpoint: str | None = None,
     ) -> dict[str, Any]:
         """Launch a non-blocking CPU PPO training job on a background thread."""
         normalized_model = model_type.lower().strip()
@@ -176,6 +182,44 @@ class TrainingJobManager:
         parsed_anneal_lr = self._parse_bool(anneal_lr, "anneal_lr")
         parsed_save_on_cancel = self._parse_bool(save_on_cancel, "save_on_cancel")
 
+        resolved_resume_name: str | None = None
+        resume_from_timesteps = 0
+        if resume_checkpoint is not None and str(resume_checkpoint).strip() != "":
+            candidate_name = Path(str(resume_checkpoint).strip().replace("\\", "/")).name
+            resolved_dir = self._checkpoints_dir.resolve()
+            candidate_path = (self._checkpoints_dir / candidate_name).resolve()
+            if candidate_path.parent != resolved_dir or not candidate_path.is_file():
+                raise ValueError(
+                    f"Resume checkpoint '{candidate_name}' not found in checkpoints directory."
+                )
+            resume_payload = torch.load(candidate_path, map_location="cpu", weights_only=True)
+            ckpt_model_type = str(resume_payload.get("model_type", ""))
+            if ckpt_model_type != normalized_model:
+                raise ValueError(
+                    f"Resume checkpoint '{candidate_name}' has model_type '{ckpt_model_type}', "
+                    f"expected '{normalized_model}'."
+                )
+            prev_hist = resume_payload.get("history")
+            fallback_steps = (
+                int(prev_hist["timesteps"][-1])
+                if isinstance(prev_hist, dict) and prev_hist.get("timesteps")
+                else 0
+            )
+            resume_from_timesteps = int(
+                resume_payload.get("trained_timesteps") or fallback_steps
+            )
+            if parsed_total_timesteps <= resume_from_timesteps:
+                raise ValueError(
+                    f"Target total_timesteps ({parsed_total_timesteps}) must be greater than "
+                    f"checkpoint trained_timesteps ({resume_from_timesteps})."
+                )
+            resolved_resume_name = candidate_name
+
+        if effective_save_mode == "overwrite_resumed" and resolved_resume_name is None:
+            raise ValueError(
+                "save_mode 'overwrite_resumed' requires selecting a resume_checkpoint."
+            )
+
         if parsed_rollout_steps % parsed_chunk_len != 0:
             raise ValueError(
                 f"rollout_steps ({parsed_rollout_steps}) must be divisible by "
@@ -196,6 +240,7 @@ class TrainingJobManager:
                 normalized_model=normalized_model,
                 save_mode=effective_save_mode,
                 custom_filename=custom_filename,
+                resume_checkpoint=resolved_resume_name,
             )
 
             self._status = "running"
@@ -208,6 +253,9 @@ class TrainingJobManager:
             self._active_config = {
                 "model_type": normalized_model,
                 "total_timesteps": parsed_total_timesteps,
+                "resume_checkpoint": resolved_resume_name,
+                "resume_from_timesteps": resume_from_timesteps,
+                "remaining_timesteps": parsed_total_timesteps - resume_from_timesteps,
                 "learning_rate": parsed_learning_rate,
                 "seed": parsed_seed,
                 "gamma": parsed_gamma,
@@ -256,12 +304,15 @@ class TrainingJobManager:
         normalized_model: str,
         save_mode: str,
         custom_filename: str | None,
+        resume_checkpoint: str | None = None,
     ) -> str | None:
         """Compute safe checkpoint filename inside checkpoints_dir for the requested mode."""
         if save_mode == "none":
             return None
         if save_mode == "overwrite_default":
             return f"{normalized_model}_ppo.pt"
+        if save_mode == "overwrite_resumed" and resume_checkpoint:
+            return resume_checkpoint
 
         raw_name = str(custom_filename or "").strip()
         normalized_slashes = raw_name.replace("\\", "/")
@@ -361,6 +412,13 @@ class TrainingJobManager:
                     }
                 )
 
+            resume_ckpt_name = job_config.get("resume_checkpoint")
+            resume_from_path = (
+                self._checkpoints_dir / str(resume_ckpt_name)
+                if resume_ckpt_name
+                else None
+            )
+
             try:
                 trainer.train(
                     model_type=model_type,
@@ -371,6 +429,7 @@ class TrainingJobManager:
                     save_checkpoint=(effective_save_mode != "none"),
                     checkpoint_filename=target_filename,
                     save_on_cancel=save_on_cancel,
+                    resume_from=resume_from_path,
                 )
             finally:
                 preview_env.close()

@@ -183,6 +183,7 @@ def save_policy_checkpoint(
     history: dict[str, list[float]] | None = None,
     connectome_path: Path | None = None,
     trained_timesteps: int | None = None,
+    optimizer_state_dict: dict[str, Any] | None = None,
 ) -> None:
     """Save trained policy state dict and metadata for reproducible reload."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,6 +213,7 @@ def save_policy_checkpoint(
         "state_dict": policy.state_dict(),
         "history": history_dict,
         "connectome_path": str(connectome_path) if connectome_path else None,
+        "optimizer_state_dict": optimizer_state_dict,
     }
     torch.save(payload, path)
 

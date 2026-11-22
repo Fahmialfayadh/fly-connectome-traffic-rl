@@ -801,3 +801,99 @@ def test_save_on_cancel_persists_partial_checkpoint(tmp_path: Path) -> None:
                 assert saw_frame
 
     asyncio.run(_run_web_cancel_checks())
+
+
+def test_web_resume_checkpoint_subtracts_steps(tmp_path: Path) -> None:
+    """Verify web training API supports resuming a checkpoint and subtracting prior steps."""
+
+    async def _run_resume_checks() -> None:
+        conn_path = tmp_path / "connectome.pt"
+        ckpt_dir = tmp_path / "checkpoints"
+        bench_dir = tmp_path / "benchmarks"
+        artifact = _make_mock_artifact(num_neurons=100)
+        artifact.save(conn_path)
+
+        # Pre-seed an MLP checkpoint trained for 1,024 steps
+        policy = build_policy("mlp", obs_dim=22, act_dim=4)
+        save_policy_checkpoint(
+            path=ckpt_dir / "mlp_seed.pt",
+            model_type="mlp",
+            policy=policy,
+            obs_dim=22,
+            act_dim=4,
+            trained_timesteps=1024,
+            history={"updates": [1, 2, 3, 4], "timesteps": [256, 512, 768, 1024]},
+        )
+
+        server = TrafficLabServer(
+            frontend_dir=PROJECT_ROOT / "frontend",
+            connectome_path=conn_path,
+            checkpoints_dir=ckpt_dir,
+            benchmarks_dir=bench_dir,
+        )
+        app = server.create_app()
+
+        async with TestClient(TestServer(app)) as client:
+            # Target <= checkpoint steps should fail with 400
+            bad_resp = await client.post(
+                "/api/training/start",
+                json={
+                    "model_type": "mlp",
+                    "total_timesteps": 1024,
+                    "resume_checkpoint": "mlp_seed.pt",
+                    "save_mode": "overwrite_resumed",
+                },
+            )
+            assert bad_resp.status == 400
+
+            async with client.ws_connect("/ws/training") as train_ws:
+                _ = await train_ws.receive_json()  # initial state
+
+                ok_resp = await client.post(
+                    "/api/training/start",
+                    json={
+                        "model_type": "mlp",
+                        "total_timesteps": 1280,
+                        "rollout_steps": 32,
+                        "sequence_chunk_len": 8,
+                        "num_minibatches": 4,
+                        "update_epochs": 1,
+                        "resume_checkpoint": "mlp_seed.pt",
+                        "save_mode": "overwrite_resumed",
+                    },
+                )
+                assert ok_resp.status == 200
+                start_state = await ok_resp.json()
+                assert start_state["config"]["resume_from_timesteps"] == 1024
+                assert start_state["config"]["remaining_timesteps"] == 256
+                assert start_state["config"]["target_checkpoint_file"] == "mlp_seed.pt"
+
+                completed_event: dict | None = None
+                for _ in range(30):
+                    ev = await asyncio.wait_for(train_ws.receive_json(), timeout=15.0)
+                    if ev.get("type") == "training_completed":
+                        completed_event = ev
+                        break
+                assert completed_event is not None
+                assert completed_event["saved_checkpoint_file"] == "mlp_seed.pt"
+                assert completed_event["latest_metrics"]["timesteps"] == 1280.0
+
+            # External CLI overwrite on disk should sync into /api/overview via mtime
+            save_policy_checkpoint(
+                path=ckpt_dir / "mlp_seed.pt",
+                model_type="mlp",
+                policy=policy,
+                obs_dim=22,
+                act_dim=4,
+                trained_timesteps=4000000,
+                history={"updates": [1], "timesteps": [4000000]},
+            )
+            ov_resp = await client.get("/api/overview")
+            assert ov_resp.status == 200
+            ov_data = await ov_resp.json()
+            assert (
+                ov_data["overview"]["checkpoints"]["ckpt:mlp_seed"]["trained_timesteps"]
+                == 4000000
+            )
+
+    asyncio.run(_run_resume_checks())

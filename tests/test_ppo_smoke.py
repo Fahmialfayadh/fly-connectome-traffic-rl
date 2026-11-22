@@ -55,3 +55,39 @@ def test_ppo_smoke_train_and_reload(tmp_path: Path) -> None:
         )
         assert payload["model_type"] == model_type
         assert reloaded.count_trainable_parameters() == policy.count_trainable_parameters()
+
+    # Verify resume subtracts previous timesteps (384 - 256 = 128 => 1 extra update)
+    fly_ckpt = ckpt_dir / "fly_ppo.pt"
+    resume_trainer = PPOTrainer(
+        ppo_config=PPOConfig(
+            total_timesteps=384,
+            num_envs=4,
+            rollout_steps=32,
+            sequence_chunk_len=8,
+            num_minibatches=4,
+            update_epochs=2,
+            checkpoints_dir=ckpt_dir,
+            num_cpu_threads=2,
+        ),
+        env_config=env_cfg,
+        connectome_config=conn_cfg,
+    )
+    _, resumed_history = resume_trainer.train(
+        model_type="fly",
+        artifact=artifact,
+        verbose=False,
+        resume_from=fly_ckpt,
+    )
+    assert resumed_history.updates == [1, 2, 3]
+    assert resumed_history.timesteps == [128, 256, 384]
+    _, resumed_payload = load_policy_checkpoint(fly_ckpt, artifact=artifact)
+    assert resumed_payload["trained_timesteps"] == 384
+
+    # Resuming when target <= trained_timesteps skips updates cleanly
+    _, noop_history = resume_trainer.train(
+        model_type="fly",
+        artifact=artifact,
+        verbose=False,
+        resume_from=fly_ckpt,
+    )
+    assert noop_history.updates == [1, 2, 3]

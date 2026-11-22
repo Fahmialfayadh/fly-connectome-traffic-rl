@@ -82,6 +82,7 @@ class SimulationService:
 
         self._agents: dict[str, BaseTrafficAgent] = {}
         self._checkpoint_inventory: dict[str, dict[str, Any]] = {}
+        self._checkpoint_mtimes: dict[str, int] = {}
         self._active_agent_key: str = ""
         self._load_all_agents()
 
@@ -344,6 +345,7 @@ class SimulationService:
     def get_overview_payload(self) -> dict[str, Any]:
         """Return connectome summary and checkpoint inventory for UI provenance."""
         with self._lock:
+            self._sync_checkpoints_with_disk_unlocked()
             connectome_summary = (
                 self._artifact.metadata.to_dict() if self._artifact is not None else None
             )
@@ -353,6 +355,58 @@ class SimulationService:
                 "checkpoints": dict(self._checkpoint_inventory),
                 "active_agent_key": self._active_agent_key,
             }
+
+    def _sync_checkpoints_with_disk_unlocked(self) -> None:
+        """Reload any default or custom .pt checkpoints created/updated on disk."""
+        changed = False
+        for model_key in self.DEFAULT_MODEL_KEYS:
+            default_path = self.checkpoints_dir / f"{model_key}_ppo.pt"
+            if default_path.is_file():
+                mtime_ns = int(default_path.stat().st_mtime_ns)
+                if self._checkpoint_mtimes.get(model_key) != mtime_ns:
+                    try:
+                        self._load_single_neural_agent_unlocked(model_key)
+                        changed = True
+                    except Exception:
+                        continue
+            elif self._checkpoint_inventory.get(model_key, {}).get("exists"):
+                self._checkpoint_mtimes.pop(model_key, None)
+                self._load_single_neural_agent_unlocked(model_key)
+                changed = True
+
+        seen_custom_keys: set[str] = set()
+        if self.checkpoints_dir.exists():
+            for checkpoint_path in sorted(self.checkpoints_dir.glob("*.pt")):
+                if (
+                    not checkpoint_path.is_file()
+                    or checkpoint_path.name in self.DEFAULT_CHECKPOINT_FILES
+                ):
+                    continue
+                agent_key = f"ckpt:{checkpoint_path.stem}"
+                seen_custom_keys.add(agent_key)
+                mtime_ns = int(checkpoint_path.stat().st_mtime_ns)
+                if self._checkpoint_mtimes.get(agent_key) != mtime_ns:
+                    try:
+                        self._load_custom_checkpoint_unlocked(checkpoint_path)
+                        changed = True
+                    except Exception:
+                        continue
+
+        stale_custom_keys = [
+            key
+            for key in list(self._checkpoint_inventory.keys())
+            if key.startswith("ckpt:")
+            and key not in seen_custom_keys
+            and key != self._active_agent_key
+        ]
+        for stale_key in stale_custom_keys:
+            self._checkpoint_inventory.pop(stale_key, None)
+            self._checkpoint_mtimes.pop(stale_key, None)
+            self._agents.pop(stale_key, None)
+            changed = True
+
+        if changed:
+            self._refresh_inventory_order_unlocked()
 
     def _load_all_agents(self) -> None:
         """Load default checkpoints, custom .pt policies, and the rule-based Fixed Timer."""
@@ -421,6 +475,7 @@ class SimulationService:
                 "trained_timesteps": trained_steps,
                 "saved_at_iso": saved_at,
             }
+            self._checkpoint_mtimes[model_key] = int(resolved_path.stat().st_mtime_ns)
             return
 
         if model_key in ("fly", "fly_shuffled"):
@@ -513,6 +568,7 @@ class SimulationService:
             "trained_timesteps": trained_steps,
             "saved_at_iso": saved_at,
         }
+        self._checkpoint_mtimes[agent_key] = int(checkpoint_path.stat().st_mtime_ns)
         return agent_key
 
     @staticmethod

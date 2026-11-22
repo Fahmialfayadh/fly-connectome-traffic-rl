@@ -24,6 +24,13 @@
           </select>
         </div>
 
+        <div class="field-group is-hidden" id="resume-checkpoint-group">
+          <label for="train-resume-checkpoint">Resume from Checkpoint</label>
+          <select id="train-resume-checkpoint" class="control-select mono-value">
+            <option value="">Start fresh (0 steps)</option>
+          </select>
+        </div>
+
         <div class="field-group">
           <label for="train-timesteps">Total Timesteps</label>
           <select id="train-timesteps" class="control-select">
@@ -47,6 +54,8 @@
             value="262144"
           >
         </div>
+
+        <p id="train-resume-hint" class="panel-caption mono-value is-hidden"></p>
 
         <div class="field-row-2">
           <div class="field-group">
@@ -209,6 +218,7 @@
           <select id="train-save-mode" class="control-select">
             <option value="new_file" selected>Create a new model file (.pt)</option>
             <option value="overwrite_default">Overwrite default checkpoint (&lt;model&gt;_ppo.pt)</option>
+            <option value="overwrite_resumed" hidden>Overwrite resumed checkpoint</option>
             <option value="none">Do not save (dry run in memory)</option>
           </select>
         </div>

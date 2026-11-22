@@ -9,6 +9,9 @@ export class TrainingStudioView {
   constructor() {
     this.form = document.getElementById('training-form');
     this.modelSelect = document.getElementById('train-model-type');
+    this.resumeGroup = document.getElementById('resume-checkpoint-group');
+    this.resumeSelect = document.getElementById('train-resume-checkpoint');
+    this.resumeHint = document.getElementById('train-resume-hint');
     this.timestepsSelect = document.getElementById('train-timesteps');
     this.customTimestepsGroup = document.getElementById('custom-timesteps-group');
     this.customTimestepsInput = document.getElementById('train-custom-timesteps');
@@ -50,6 +53,8 @@ export class TrainingStudioView {
       : null;
 
     this.history = [];
+    this.checkpointsMap = {};
+    this.isJobActive = false;
     this.previewQueue = [];
     this.isVisible = false;
     this.previewAnimationFrameId = null;
@@ -80,6 +85,27 @@ export class TrainingStudioView {
     if (this.timestepsSelect) {
       this.timestepsSelect.addEventListener('change', () => {
         this._updateTimestepsVisibility();
+        this._updateResumeHint();
+      });
+    }
+
+    if (this.customTimestepsInput) {
+      this.customTimestepsInput.addEventListener('input', () => {
+        this._updateResumeHint();
+      });
+    }
+
+    if (this.modelSelect) {
+      this.modelSelect.addEventListener('change', () => {
+        this._refreshResumeOptions();
+      });
+    }
+
+    if (this.resumeSelect) {
+      this.resumeSelect.addEventListener('change', () => {
+        this._syncOverwriteResumedOption();
+        this._updateResumeHint();
+        this._updateSavePathPreview();
       });
     }
 
@@ -171,6 +197,10 @@ export class TrainingStudioView {
 
     return {
       model_type: this.modelSelect ? this.modelSelect.value : 'fly',
+      resume_checkpoint:
+        this.resumeSelect && this.resumeSelect.value
+          ? this.resumeSelect.value
+          : null,
       total_timesteps: totalTimesteps,
       learning_rate: Number.isFinite(learningRate) ? learningRate : 0.0008,
       seed: Number.isFinite(seed) ? seed : 42,
@@ -227,8 +257,129 @@ export class TrainingStudioView {
       this.savePathPreview.textContent = `Local save path: artifacts/checkpoints/${filename}`;
     } else if (saveMode === 'overwrite_default') {
       this.savePathPreview.textContent = `Local save path: artifacts/checkpoints/${modelType}_ppo.pt`;
+    } else if (saveMode === 'overwrite_resumed') {
+      const resumedFile =
+        this.resumeSelect && this.resumeSelect.value
+          ? this.resumeSelect.value
+          : `${modelType}_ppo.pt`;
+      this.savePathPreview.textContent = `Local save path (resume overwrite): artifacts/checkpoints/${resumedFile}`;
     } else {
       this.savePathPreview.textContent = 'In-memory dry run (not saved to local disk)';
+    }
+  }
+
+  _getSelectedTargetTimesteps() {
+    if (this.timestepsSelect && this.timestepsSelect.value === 'custom') {
+      const rawCustom = this.customTimestepsInput
+        ? Number(this.customTimestepsInput.value)
+        : 262144;
+      const safeCustom = Number.isFinite(rawCustom) ? rawCustom : 262144;
+      return Math.min(2000000, Math.max(1024, Math.round(safeCustom)));
+    }
+    return Number((this.timestepsSelect && this.timestepsSelect.value) || 40960);
+  }
+
+  _getMatchingResumeCheckpoints(modelType) {
+    const entries = Object.values(this.checkpointsMap || {});
+    return entries.filter(
+      (info) =>
+        info &&
+        info.exists &&
+        info.key !== 'fixed_timer' &&
+        info.model_type === modelType &&
+        info.checkpoint_file
+    );
+  }
+
+  _refreshResumeOptions(preferredFile = null) {
+    if (!this.resumeSelect || !this.resumeGroup) {
+      return;
+    }
+    const modelType = (this.modelSelect && this.modelSelect.value) || 'fly';
+    const matches = this._getMatchingResumeCheckpoints(modelType);
+    const previousValue = preferredFile !== null ? preferredFile : this.resumeSelect.value;
+
+    this.resumeSelect.innerHTML = '<option value="">Start fresh (0 steps)</option>';
+    for (const info of matches) {
+      const opt = document.createElement('option');
+      opt.value = info.checkpoint_file;
+      opt.dataset.steps = String(Number(info.trained_timesteps || 0));
+      const stepsLabel = Number(info.trained_timesteps || 0).toLocaleString();
+      opt.textContent = `Resume: ${info.checkpoint_file} (${stepsLabel} steps)`;
+      this.resumeSelect.appendChild(opt);
+    }
+
+    const hasMatches = matches.length > 0;
+    this.resumeGroup.classList.toggle('is-hidden', !hasMatches);
+
+    if (
+      previousValue &&
+      matches.some((m) => m.checkpoint_file === previousValue)
+    ) {
+      this.resumeSelect.value = previousValue;
+    } else {
+      this.resumeSelect.value = '';
+    }
+
+    this._syncOverwriteResumedOption();
+    this._updateResumeHint();
+    this._updateSavePathPreview();
+  }
+
+  _syncOverwriteResumedOption() {
+    if (!this.saveModeSelect) {
+      return;
+    }
+    const resumedFile = this.resumeSelect ? this.resumeSelect.value : '';
+    const overwriteOpt = this.saveModeSelect.querySelector('option[value="overwrite_resumed"]');
+    if (!overwriteOpt) {
+      return;
+    }
+    if (resumedFile) {
+      overwriteOpt.hidden = false;
+      overwriteOpt.textContent = `Overwrite resumed checkpoint (${resumedFile})`;
+    } else {
+      overwriteOpt.hidden = true;
+      if (this.saveModeSelect.value === 'overwrite_resumed') {
+        this.saveModeSelect.value = 'new_file';
+      }
+    }
+  }
+
+  _updateResumeHint() {
+    if (!this.resumeHint) {
+      return;
+    }
+    const selectedOpt =
+      this.resumeSelect && this.resumeSelect.selectedOptions
+        ? this.resumeSelect.selectedOptions[0]
+        : null;
+    const resumedFile = this.resumeSelect ? this.resumeSelect.value : '';
+    if (!resumedFile || !selectedOpt) {
+      this.resumeHint.classList.add('is-hidden');
+      this.resumeHint.textContent = '';
+      if (!this.isJobActive && this.startBtn) {
+        this.startBtn.disabled = false;
+      }
+      return;
+    }
+
+    const lastSteps = Number(selectedOpt.dataset.steps || 0);
+    const targetSteps = this._getSelectedTargetTimesteps();
+    const remaining = targetSteps - lastSteps;
+    this.resumeHint.classList.remove('is-hidden');
+    if (remaining <= 0) {
+      this.resumeHint.textContent =
+        `Target (${targetSteps.toLocaleString()}) <= checkpoint steps (${lastSteps.toLocaleString()}). Naikkan Total Timesteps untuk resume.`;
+      if (!this.isJobActive && this.startBtn) {
+        this.startBtn.disabled = true;
+      }
+    } else {
+      this.resumeHint.textContent =
+        `Resume: ${targetSteps.toLocaleString()} - ${lastSteps.toLocaleString()} = ${remaining.toLocaleString()} remaining steps`;
+      if (!this.isJobActive && this.startBtn) {
+        this.startBtn.disabled = false;
+      }
     }
   }
 
@@ -236,6 +387,8 @@ export class TrainingStudioView {
     if (!checkpointsMap) {
       return;
     }
+    this.checkpointsMap = checkpointsMap;
+    this._refreshResumeOptions();
 
     this.inventoryList.innerHTML = '';
 
@@ -304,6 +457,27 @@ export class TrainingStudioView {
           }
         });
         actionsRow.appendChild(loadBtn);
+
+        if (modelKey !== 'fixed_timer' && info.checkpoint_file && info.model_type) {
+          const resumeBtn = document.createElement('button');
+          resumeBtn.type = 'button';
+          resumeBtn.className = 'btn btn-secondary btn-compact';
+          resumeBtn.textContent = 'Resume';
+          resumeBtn.addEventListener('click', () => {
+            if (this.modelSelect) {
+              this.modelSelect.value = info.model_type;
+            }
+            this._refreshResumeOptions(info.checkpoint_file);
+            if (this.saveModeSelect) {
+              this.saveModeSelect.value = 'overwrite_resumed';
+              this._updateSavePathPreview();
+            }
+            if (this.form && typeof this.form.scrollIntoView === 'function') {
+              this.form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          });
+          actionsRow.appendChild(resumeBtn);
+        }
       }
 
       row.appendChild(titleRow);
@@ -407,6 +581,7 @@ export class TrainingStudioView {
   applyTrainingSnapshot(statePayload) {
     const status = statePayload.status || 'idle';
     const isRunning = status === 'running' || status === 'stopping';
+    this.isJobActive = isRunning;
 
     this.statusLabel.textContent =
       status === 'cancelled' && statePayload.saved_checkpoint_file
@@ -414,6 +589,9 @@ export class TrainingStudioView {
         : status;
     this.startBtn.disabled = isRunning;
     this.stopBtn.disabled = !isRunning;
+    if (!isRunning) {
+      this._updateResumeHint();
+    }
 
     if (Array.isArray(statePayload.history)) {
       this.history = statePayload.history.slice();
@@ -477,6 +655,7 @@ export class TrainingStudioView {
   }
 
   appendTrainingUpdate(updatePayload) {
+    this.isJobActive = true;
     this.statusLabel.textContent = updatePayload.status || 'running';
     this.startBtn.disabled = true;
     this.stopBtn.disabled = false;

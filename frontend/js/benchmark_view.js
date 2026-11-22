@@ -137,7 +137,7 @@ export class BenchmarkInspectorView {
             ? 'Rule-based (0 params)'
             : !info.exists
               ? 'Belum dilatih (untrained weights)'
-              : `${info.checkpoint_file} · ${Number(info.trained_timesteps || 0).toLocaleString()} steps`;
+              : `${Number(info.trained_timesteps || 0).toLocaleString()} steps`;
         return `
           <label class="benchmark-model-option ${checked ? 'is-selected' : ''}" data-bench-key="${info.key}">
             <input type="checkbox" value="${info.key}" ${checked ? 'checked' : ''}>
