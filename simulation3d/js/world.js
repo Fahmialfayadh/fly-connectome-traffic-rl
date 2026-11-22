@@ -50,6 +50,7 @@ export class IntersectionWorld {
     this._createGround();
     this._createRoadCorridors();
     this._createIntersectionBox();
+    this._createCompassRose();
     this._createRoadMarkings();
     this._createLaneArrows();
     this._createSidewalksAndCurbs();
@@ -131,6 +132,169 @@ export class IntersectionWorld {
     box.position.y = 0.008;
     box.receiveShadow = true;
     this.group.add(box);
+  }
+
+  _createCompassRose() {
+    const compassSize = 8.0;
+
+    if (typeof document === 'undefined') {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(8.0, 8.25, 32),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.011;
+      ring.name = 'compass_rose_fallback';
+      this.group.add(ring);
+      return;
+    }
+
+    const size = 1000;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const c = size / 2;
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Outer & inner black-and-white compass rings
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(10, 10, 12, 0.9)';
+    ctx.beginPath();
+    ctx.arc(c, c, 316, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.beginPath();
+    ctx.arc(c, c, 310, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.beginPath();
+    ctx.arc(c, c, 232, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const drawSplitArm = (angleRad, outerR, sideR, lightColor, darkColor) => {
+      const tipX = c + Math.sin(angleRad) * outerR;
+      const tipY = c - Math.cos(angleRad) * outerR;
+      const leftX = c + Math.sin(angleRad - Math.PI / 4) * sideR;
+      const leftY = c - Math.cos(angleRad - Math.PI / 4) * sideR;
+      const rightX = c + Math.sin(angleRad + Math.PI / 4) * sideR;
+      const rightY = c - Math.cos(angleRad + Math.PI / 4) * sideR;
+
+      // Left half
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(leftX, leftY);
+      ctx.closePath();
+      ctx.fillStyle = lightColor;
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      // Right half
+      ctx.beginPath();
+      ctx.moveTo(c, c);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(rightX, rightY);
+      ctx.closePath();
+      ctx.fillStyle = darkColor;
+      ctx.fill();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+    };
+
+    // Minor diagonal points (NE, SE, SW, NW)
+    for (let i = 0; i < 4; i++) {
+      const ang = (Math.PI / 4) + i * (Math.PI / 2);
+      drawSplitArm(ang, 205, 42, '#e2e8f0', '#0b0b0d');
+    }
+
+    // Major cardinal points (N, E, S, W)
+    for (let i = 0; i < 4; i++) {
+      const ang = i * (Math.PI / 2);
+      drawSplitArm(ang, 292, 60, '#ffffff', '#09090b');
+    }
+
+    // Center hub
+    ctx.beginPath();
+    ctx.arc(c, c, 24, 0, Math.PI * 2);
+    ctx.fillStyle = '#09090b';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    // Cardinal direction badges (N inverted white-on-black contrast, E/S/W crisp white-on-black)
+    const cardinals = [
+      { label: 'N', x: c, y: c - 395, isNorth: true },
+      { label: 'E', x: c + 395, y: c, isNorth: false },
+      { label: 'S', x: c, y: c + 395, isNorth: false },
+      { label: 'W', x: c - 395, y: c, isNorth: false },
+    ];
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const item of cardinals) {
+      const r = item.isNorth ? 56 : 48;
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = item.isNorth ? '#ffffff' : '#09090b';
+      ctx.fill();
+      ctx.lineWidth = item.isNorth ? 5 : 4;
+      ctx.strokeStyle = item.isNorth ? '#09090b' : '#ffffff';
+      ctx.stroke();
+
+      ctx.font = `800 ${item.isNorth ? 70 : 58}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+      ctx.fillStyle = item.isNorth ? '#09090b' : '#ffffff';
+      ctx.fillText(item.label, item.x, item.y + 3);
+    }
+
+    // Intercardinal labels (NE, SE, SW, NW)
+    const inters = [
+      { label: 'NE', ang: Math.PI / 4 },
+      { label: 'SE', ang: (3 * Math.PI) / 4 },
+      { label: 'SW', ang: (5 * Math.PI) / 4 },
+      { label: 'NW', ang: (7 * Math.PI) / 4 },
+    ];
+    ctx.font = '700 38px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    for (const item of inters) {
+      const lx = c + Math.sin(item.ang) * 282;
+      const ly = c - Math.cos(item.ang) * 282;
+      ctx.lineWidth = 7;
+      ctx.strokeStyle = '#09090b';
+      ctx.strokeText(item.label, lx, ly + 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(item.label, lx, ly + 2);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+
+    const compassMat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      opacity: 0.86,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    const compassMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(compassSize, compassSize),
+      compassMat
+    );
+    compassMesh.rotation.x = -Math.PI / 2;
+    compassMesh.position.y = 0.011;
+    compassMesh.name = 'compass_rose';
+    this.group.add(compassMesh);
   }
 
   _createRoadMarkings() {
