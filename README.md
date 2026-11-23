@@ -170,23 +170,23 @@ Tabel di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `normal` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.265 |
 | `normal` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.289 |
-| `normal` | PPO-GRU (`gru_ppo_new_env`) | 70.041 | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.176 |
-| `normal` | PPO-MLP (`mlp_ppo_new_env`) | 69.506 | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.128 |
+| `normal` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.176 |
+| `normal` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.128 |
 | `normal` | Fixed Timer (`10-6-10-6`) | - | -40.626 | 11.01 | 30.69 | 348.8 | 45.0 | 0.00 | 0.002 |
 | `asymmetric` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.282 |
 | `asymmetric` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.264 |
-| `asymmetric` | PPO-GRU (`gru_ppo_new_env`) | 70.041 | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.132 |
-| `asymmetric` | PPO-MLP (`mlp_ppo_new_env`) | 69.506 | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
+| `asymmetric` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.132 |
+| `asymmetric` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
 | `asymmetric` | Fixed Timer (`10-6-10-6`) | - | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.004 |
 | `rush_hour` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.393 |
 | `rush_hour` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.262 |
-| `rush_hour` | PPO-GRU (`gru_ppo_new_env`) | 70.041 | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.098 |
-| `rush_hour` | PPO-MLP (`mlp_ppo_new_env`) | 69.506 | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.079 |
+| `rush_hour` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.098 |
+| `rush_hour` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.079 |
 | `rush_hour` | Fixed Timer (`10-6-10-6`) | - | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.005 |
 | `stress_test` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.266 |
 | `stress_test` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.264 |
-| `stress_test` | PPO-GRU (`gru_ppo_new_env`) | 70.041 | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.099 |
-| `stress_test` | PPO-MLP (`mlp_ppo_new_env`) | 69.506 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.085 |
+| `stress_test` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.099 |
+| `stress_test` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.085 |
 | `stress_test` | Fixed Timer (`10-6-10-6`) | - | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
 
 Figur hasil eksperimen tersedia di `artifacts/benchmarks/`: `scenario_comparison.png`, `training_curves.png`, `pharmacology_ablation.png`, dan `experiment_evolution_comparison.png`.
@@ -198,3 +198,22 @@ Figur hasil eksperimen tersedia di `artifacts/benchmarks/`: `scenario_comparison
 - [Laporan Teknis Utama](docs/MASTER_DOC.md): Pembahasan menyeluruh konstruksi sub-konektom FAFB v783, *Shuffled Null Model*, lingkungan lalu lintas, paradigma reservoir biologis & adapter, PPO, serta hasil evaluasi.
 - [Panduan Training & Siklus Episode](docs/TRAINING_AND_EPISODE_GUIDE.md): Diagram Mermaid siklus 1 episode (`500` langkah), alur loop PPO CPU + Live Policy Preview, serta referensi jejak episode historis.
 - [Kamus Variabel & Matematika](docs/VARIABLES_AND_MATH.md): Pemetaan simbol persamaan biologis, observasi, reward, kolisi, *safety buffer*, dan hyperparameter PPO ke nama variabel kode.
+
+---
+
+## Sumber Dataset & Referensi
+
+Berkas mentah berukuran besar (`dataset/`, `>333 MiB`) tidak disertakan ke dalam Git karena sudah tersedia dalam bentuk matriks hasil ekstraksi (`artifacts/fly_subconnectome*.pt`). Apabila ingin mengekstrak ulang dari sumber mentahnya, dataset dapat diunduh dari tautan terbuka berikut:
+
+1. **FlyWire FAFB v783 Whole-Brain Connectome (`dataset/connections_princeton.csv`):**
+   - Portal & unduhan data: [codex.flywire.ai](https://codex.flywire.ai)
+   - Publikasi: Dorkenwald, S., Matsliah, A., Yu, S.-C., et al. (2024). *Neuronal wiring diagram of an adult brain.* Nature, 634, 124–138. [doi:10.1038/s41586-024-07558-y](https://doi.org/10.1038/s41586-024-07558-y)
+2. **Prediksi Neurotransmiter Sinaptik (`ACH`, `GABA`, `GLUT`):**
+   - Eckstein, N., Bates, A. S., Champion, A., et al. (2024). *Neurotransmitter classification from electron microscopy images at synaptic sites in Drosophila melanogaster.* Cell, 187(10), 2574–2594. [doi:10.1016/j.cell.2024.03.016](https://doi.org/10.1016/j.cell.2024.03.016)
+3. **Anotasi Neuron & Koordinat Soma (`dataset/brain3d/neuron_annotations.tsv`):**
+   - Repositori & berkas: [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations) ([Supplemental_file1_neuron_annotations.tsv](https://raw.githubusercontent.com/flyconnectome/flywire_annotations/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv))
+   - Publikasi: Schlegel, P., Yin, Y., Bates, A. S., et al. (2024). *Whole-brain annotation and multi-connectome cell typing of Drosophila.* Nature, 634, 139–152. [doi:10.1038/s41586-024-07686-5](https://doi.org/10.1038/s41586-024-07686-5)
+4. **Mesh Neuropil & Permukaan Otak 3D (`dataset/brain3d/`):**
+   - Neuropil meshes: [JFRC2NP.surf.fw.zip](https://github.com/navis-org/fafbseg-py/raw/master/fafbseg/data/JFRC2NP.surf.fw.zip) (nomenklatur: Ito et al., 2014, [doi:10.1016/j.neuron.2013.12.017](https://doi.org/10.1016/j.neuron.2013.12.017))
+   - Whole-brain mesh: [brain_mesh_v3 (`1:0:0`)](https://storage.googleapis.com/flywire_neuropil_meshes/whole_neuropil/brain_mesh_v3/mesh/1:0:0)
+   - FAFB v14 EM Volume: Zheng, Z., Lauritzen, J. S., Perlman, E., et al. (2018). *A complete electron microscopy volume of the brain of adult Drosophila melanogaster.* Cell, 174(3), 730–743. [doi:10.1016/j.cell.2018.06.019](https://doi.org/10.1016/j.cell.2018.06.019)

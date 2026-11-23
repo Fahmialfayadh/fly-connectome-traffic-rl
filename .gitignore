@@ -235,4 +235,4 @@ artifacts/checkpoints/*
 # Local experiment archives & personal recording/presentation files
 artifacts/checkpoints_archive/
 demo_note.md
-fly_connectome_traffic_presentation.pptx
+*.pptx
