@@ -4,7 +4,7 @@ Laporan teknis tentang pengujian kelayakan sub-konektom *Drosophila melanogaster
 
 ---
 
-## Pendahuluan: Pertanyaan Penelitian
+## Pendahuluan: Pertanyaan Experiment
 
 Proyek ini berangkat dari pertanyaan mendasar:
 

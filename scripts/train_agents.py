@@ -194,13 +194,11 @@ def train_agent_worker(
 def copy_checkpoints(
     agents: list[str],
     checkpoints_dir: Path,
-    suffix: str,
+    suffix: str | None,
     backup_dir: Path,
     timestamp: str,
 ) -> None:
     """Copy existing checkpoints to a new directory with a suffix."""
-    if not suffix:
-        raise ValueError("`--suffix` must be provided when using `--copy-checkpoints`.")
 
     for model_type in agents:
         model_key = model_type.lower()
@@ -339,6 +337,7 @@ def main() -> None:
                 args.checkpoints_dir,
                 args.suffix,
                 args.resume,
+                args.lr,
             ): model_type
             for model_type in args.agents
         }

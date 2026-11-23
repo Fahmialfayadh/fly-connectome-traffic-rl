@@ -1,6 +1,6 @@
 # Kamus Variabel, Arsitektur OOP, dan Pemetaan Matematika
 
-Dokumen ini memetakan seluruh simbol persamaan di `PLAN.md` beserta parameter algoritma PPO, mekanisme kolisi, dan *safety buffer* ke nama file, kelas, dan variabel aktual di dalam kode Python. Untuk diagram alur visual dan penelusuran 1 episode penuh, lihat [TRAINING_AND_EPISODE_GUIDE.md](TRAINING_AND_EPISODE_GUIDE.md).
+Dokumen ini memetakan seluruh simbol persamaan beserta parameter algoritma PPO, mekanisme kolisi, dan *safety buffer* ke nama file, kelas, dan variabel aktual di dalam kode Python. Untuk diagram alur visual dan penelusuran 1 episode penuh, lihat [TRAINING_AND_EPISODE_GUIDE.md](TRAINING_AND_EPISODE_GUIDE.md).
 
 ---
 
@@ -8,7 +8,7 @@ Dokumen ini memetakan seluruh simbol persamaan di `PLAN.md` beserta parameter al
 
 ### A. Modul Connectome (`src/fly_traffic/connectome/`)
 
-| Simbol / Konsep di `PLAN.md` | Nama Variabel / Atribut di Kode | Lokasi File & Kelas | Keterangan Fungsional |
+| Simbol / Konsep | Nama Variabel / Atribut di Kode | Lokasi File & Kelas | Keterangan Fungsional |
 |---|---|---|---|
 | Sirkuit Central Complex | `ConnectomeConfig.cx_neuropils` | `src/fly_traffic/config.py` | Tuple neuropil target: `("PB", "FB", "EB", "NO")`, kuota `1.800` neuron (`cx_neuron_quota`). |
 | Sirkuit Mushroom Body | `ConnectomeConfig.mb_neuropils` | `src/fly_traffic/config.py` | Tuple 8 lobus/kaliks MB (`MB_CA_*`, `MB_ML_*`, `MB_PED_*`, `MB_VL_*`), kuota `700` neuron (`mb_neuron_quota`). |

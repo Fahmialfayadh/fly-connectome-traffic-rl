@@ -47,13 +47,17 @@ Lalu buka `http://127.0.0.1:8080` di browser untuk mengakses:
 ### 2. Perintah CLI Opsional (Ekstraksi, Training, Benchmark, Tes)
 
 ```bash
-# Fase 1 (opsional, jika menyediakan dataset/connections_princeton.csv): Ekstrak ulang sub-connectome
-python scripts/extract_connectome.py
+# Fase 1 (opsional, jika menyediakan dataset/connections_princeton.csv): Ekstrak ulang sub-connectome (hapus komen jika butuh)
+# python scripts/extract_connectome.py
 
-# Fase 2-3: Latih agen dari CLI
-python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --parallel-models 4
+# Fase 2-3: Latih agen dari CLI (ganti parameter sesuai kebutuhan)
+python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --parallel-models 1 --suffix "from_cli"
 
-# Resume training atau simpan dengan suffix khusus
+# Alternatif: Training via Jupyter Notebook untuk eksplorasi interaktif di
+
+"scripts/train_agents.ipynb"
+
+# Resume training
 python scripts/train_agents.py --agents fly --total-timesteps 327680 --resume
 
 # Fase 4: Evaluasi komparatif 10 seed per skenario (normal, asymmetric, rush_hour, stress_test)
@@ -106,6 +110,7 @@ python -m pytest tests/ -q
 ├── scripts/                        # CLI entrypoints
 │   ├── extract_connectome.py
 │   ├── train_agents.py
+│   ├── train_agents.ipynb          # Jupyter Notebook alternatif untuk training agen PPO
 │   ├── run_benchmark.py
 │   ├── launch_web_lab.py
 │   └── launch_sandbox.py           # Utilitas headless Pygame opsional

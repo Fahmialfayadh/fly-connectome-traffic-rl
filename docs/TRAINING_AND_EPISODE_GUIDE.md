@@ -1,6 +1,6 @@
 # Panduan Lengkap Siklus Episode, Loop Training PPO, dan Penelusuran Simulasi
 
-Dokumen ini menjelaskan secara faktual alur lengkap satu episode simulasi lalu lintas (`500` langkah pada konfigurasi terkini), mekanisme training PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI, serta referensi penelusuran nyata episode.
+Dokumen ini menjelaskan alur lengkap satu episode simulasi lalu lintas (`500` langkah pada konfigurasi terkini : Perhatikan `src/fly_traffic/config.py`), mekanisme training PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI, serta referensi penelusuran nyata episode.
 
 Untuk daftar lengkap simbol persamaan dan pemetaan nama variabel kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md).
 
