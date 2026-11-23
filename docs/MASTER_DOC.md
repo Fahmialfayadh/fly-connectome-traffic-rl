@@ -219,9 +219,17 @@ $$h_{t+1} = (1 - \tau) h_t + \tau \tanh\Big((g_{\text{exc}} W_{\text{exc}} - g_{
 
 Keterangan komponennya:
 
-- $W_{\text{exc}}$ dan $W_{\text{inh}}$ **dibekukan (*frozen*)** selama training (`requires_grad = False`, didaftarkan melalui `register_buffer`) agar struktur topologi konektom FAFB v783 tetap utuh. Pada saat *backward pass* (BPTT), *autograd* PyTorch tidak menghitung turunan untuk bobot sinapsis biologis, melainkan hanya meneruskan gradien melalui matriks transpose $W_{\text{exc}}^T$ dan $W_{\text{inh}}^T$ agar pembaruan dapat mencapai `input_projection` dan `tau_logit`.
-- **Parameter yang dilatih** (`70.006` total) hanya proyeksi masukan `input_projection` (`55.000` bobot $W_{\text{in}}$ + `2.500` bias = `57.500`), `actor_head` (`2.500 × 4 + 4 = 10.004`), `critic_head` (`2.500 × 1 + 1 = 2.501`) untuk mengestimasi nilai keadaan (*state value*) $V(s_t)$, serta `tau_logit` (`1` parameter) yang memetakan *leak rate* $\tau$ ke rentang `(0,05, 0,95)`.
-- **Kontrol *in-silico* langsung**: pengali gain $g_{\text{exc}}$ (ACh) dan $g_{\text{inh}}$ (GABA/Glu) dapat digeser secara *real-time* pada rentang `[0,0, 2,5]`, sementara buffer biner `lesion_mask` dapat menonaktifkan (*lesion*) sebagian neuron CX, MB, atau acak tanpa membangun ulang matriks sparse.
+| Komponen | Status | Detail |
+|---|---|---|
+| $W_{\text{exc}}$, $W_{\text{inh}}$ | **Frozen** (`requires_grad=False`) | `register_buffer`; 36.908 sisi eksitatori, 50.263 sisi inhibitori; gradien lewat $W^T$ saat BPTT |
+| `input_projection` (`nn.Linear(22, 2500)`) | **Trainable** | 55.000 bobot + 2.500 bias = **57.500** parameter |
+| `actor_head` (`2500 → 4`) | **Trainable** | 2.500 × 4 + 4 = **10.004** parameter |
+| `critic_head` (`2500 → 1`) | **Trainable** | 2.500 × 1 + 1 = **2.501** parameter |
+| `tau_logit` (skalar) | **Trainable** | 1 parameter; memetakan $\tau \in (0.05, 0.95)$ via sigmoid |
+| **Total parameter terlatih** | | **70.006** |
+| $g_{\text{exc}}$ (ACh gain) | Runtime control | Slider `[0.0, 2.5]` di Web UI |
+| $g_{\text{inh}}$ (GABA/Glu gain) | Runtime control | Slider `[0.0, 2.5]` di Web UI |
+| `lesion_mask` (biner) | Runtime control | Nonaktifkan subset neuron CX/MB/acak tanpa rebuild sparse matrix |
 
 ```python
 # File: src/fly_traffic/agents/connectome_cell.py
