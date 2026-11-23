@@ -170,6 +170,37 @@ export class VehicleManager3D {
   }
 
   /**
+   * Immediately reconcile scene queues & signals to a snapshot without animating old exiting cars.
+   * Useful when a hidden 3D viewport becomes visible again.
+   */
+  syncImmediate(framePayload) {
+    if (!framePayload) return;
+    const snapshot = framePayload.snapshot ? framePayload.snapshot : framePayload;
+    if (!snapshot || typeof snapshot !== 'object') return;
+
+    if (
+      framePayload.steps_per_second !== undefined &&
+      framePayload.steps_per_second !== null
+    ) {
+      const parsedSps = Number(framePayload.steps_per_second);
+      if (Number.isFinite(parsedSps) && parsedSps > 0) {
+        this.currentStepsPerSecond = Math.min(Math.max(parsedSps, 0.5), 10.0);
+      }
+    }
+
+    const currentStep = Number(snapshot.step || 0);
+    const hasMutationSeq =
+      snapshot.mutation_seq !== undefined && snapshot.mutation_seq !== null;
+    const mutationSeq = hasMutationSeq ? Number(snapshot.mutation_seq) : -1;
+    const laneQueues = snapshot.lane_queues || new Array(8).fill(0);
+
+    this._resetScene(laneQueues, 0, []);
+    this.hasSyncedOnce = true;
+    this.lastStepSeen = currentStep;
+    this.lastMutationSeq = mutationSeq;
+  }
+
+  /**
    * Sync 3D vehicles from a WebSocket frame payload ({ snapshot, steps_per_second }).
    */
   updateFromFrame(framePayload) {

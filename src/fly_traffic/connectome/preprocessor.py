@@ -40,10 +40,11 @@ class ConnectomePreprocessor:
 
         central_complex_ids = self._select_top_neurons(
             lazy_edge_table=lazy_edge_table,
-            target_neuropils=self.config.cx_neuropils,
-            neuron_quota=self.config.cx_neuron_quota,
+            target_neuropils=self.config.cx_neuropils, 
+            neuron_quota=self.config.cx_neuron_quota, # 1800
             excluded_root_ids=set(),
         )
+
         central_complex_id_set = set(central_complex_ids)
 
         mushroom_body_ids = self._select_top_neurons(

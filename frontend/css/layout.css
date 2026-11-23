@@ -88,11 +88,15 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Primary Tabs */
 .primary-tabs {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: var(--space-1);
   padding: 3px;
   background-color: var(--bg-elevated);
@@ -322,9 +326,288 @@ input[type="checkbox"]:focus-visible {
   align-items: start;
 }
 
+.sim-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .sim-transport-controls {
   display: flex;
   gap: var(--space-2);
+}
+
+.sim3d-stage {
+  position: relative;
+  width: 100%;
+  height: 580px;
+  background-color: #181c24;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  user-select: none;
+}
+
+.sim3d-stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+}
+
+.sim3d-canvas-host {
+  width: 100%;
+  height: 100%;
+}
+
+.sim3d-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sim3d-camera-bar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  background-color: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-sm);
+  z-index: 14;
+}
+
+.sim3d-cam-btn {
+  appearance: none;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #cbd5e1;
+  font-family: var(--font-sans);
+  font-size: 0.71rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.sim3d-cam-btn:hover {
+  color: #ffffff;
+}
+
+.sim3d-cam-btn.is-active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.sim3d-stage-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  z-index: 14;
+}
+
+.sim3d-approach-overlay {
+  position: absolute;
+  padding: 6px 8px;
+  background-color: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.sim3d-approach-north {
+  top: 12px;
+  left: 12px;
+}
+
+.sim3d-approach-east {
+  top: 46px;
+  right: 12px;
+}
+
+.sim3d-approach-south {
+  bottom: 38px;
+  right: 12px;
+}
+
+.sim3d-approach-west {
+  bottom: 38px;
+  left: 12px;
+}
+
+.sim3d-approach-title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.sim3d-approach-signals {
+  display: flex;
+  gap: 8px;
+}
+
+.sim3d-signal-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sim3d-housing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px;
+  background-color: #1e293b;
+  border-radius: 9px;
+}
+
+.sim3d-lens {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #334155;
+}
+
+.sim3d-lens.red.active {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.sim3d-lens.yellow.active {
+  background-color: #eab308;
+  box-shadow: 0 0 6px #eab308;
+}
+
+.sim3d-lens.green.active {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.sim3d-tag-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.sim3d-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.sim3d-timer-pill {
+  font-size: 0.64rem;
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: #fee2e2;
+  color: #b91c1c;
+  min-width: 22px;
+  text-align: center;
+}
+
+.sim3d-timer-pill.green {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.sim3d-timer-pill.yellow {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+.sim3d-qbadge {
+  position: absolute;
+  width: 22px;
+  height: 20px;
+  border-radius: 4px;
+  background-color: #0f172a;
+  color: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+  z-index: 12;
+  transform: translate(-50%, -50%);
+}
+
+.sim3d-qbadge.is-high {
+  background-color: #dc2626;
+}
+
+.sim3d-collision-alert {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: rgba(220, 38, 38, 0.94);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.38);
+  pointer-events: none;
+  z-index: 18;
+}
+
+.sim3d-alert-icon {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #dc2626;
+  font-weight: 800;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sim3d-alert-text strong {
+  display: block;
+  font-size: 0.68rem;
+}
+
+.sim3d-alert-text span {
+  font-size: 0.64rem;
+  opacity: 0.92;
+}
+
+.sim3d-hint-pill {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  background-color: rgba(15, 23, 42, 0.76);
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 13;
 }
 
 .canvas-stage {
@@ -2070,6 +2353,20 @@ input[type="range"]:active::-moz-range-thumb {
   }
 }
 
+@media (max-width: 760px) {
+  .sim3d-stage {
+    height: 440px;
+  }
+
+  .sim3d-approach-overlay {
+    padding: 4px 6px;
+  }
+
+  .sim3d-approach-signals {
+    gap: 5px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2206,6 +2503,28 @@ input[type="range"]:active::-moz-range-thumb {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   overflow: hidden;
+}
+
+.arch3d-stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: none;
+  border-radius: 0;
+}
+
+.arch3d-stage-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 16;
+}
+
+.brain3d-overlay-btn.is-active {
+  background-color: #2563eb;
+  border-color: #60a5fa;
+  color: #ffffff;
 }
 
 .arch3d-canvas {
@@ -2485,7 +2804,7 @@ input[type="range"]:active::-moz-range-thumb {
 
 .arch-insp-kv-row {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  grid-template-columns: 108px minmax(0, 1fr);
   gap: 12px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border-subtle);
@@ -2711,7 +3030,7 @@ input[type="range"]:active::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   gap: 36px;
-  max-width: 920px;
+  max-width: 1080px;
 }
 
 .arch-step {
@@ -2853,10 +3172,10 @@ input[type="range"]:active::-moz-range-thumb {
 
 .arch-var-item {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 16px;
-  align-items: baseline;
-  padding: 11px 0;
+  grid-template-columns: 224px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -2867,7 +3186,7 @@ input[type="range"]:active::-moz-range-thumb {
 .arch-var-item dt {
   display: flex;
   align-items: baseline;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -2880,14 +3199,114 @@ input[type="range"]:active::-moz-range-thumb {
   margin: 0;
   font-size: 0.875rem;
   color: var(--ink-primary);
-  line-height: 1.6;
+  line-height: 1.65;
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 10px;
+}
+
+.arch-var-desc {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.65;
+}
+
+.arch-sublist {
+  margin: 8px 0 2px 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.84rem;
+  line-height: 1.6;
 }
 
 .arch-var-item dd .arch-tag {
   flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.arch-flow-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.arch-flow-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  color: var(--ink-primary);
+}
+
+.arch-flow-arrow {
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+}
+
+/* Top-level Anatomy & In-Silico Effects Sections inside .arch-guide */
+.arch-subsection {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border-medium);
+  max-width: 1080px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arch-anatomy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px;
+}
+
+.arch-anatomy-panel {
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.arch-anatomy-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.arch-anatomy-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  margin: 0;
+}
+
+.arch-anatomy-meta {
+  font-size: 0.78rem;
+  color: var(--ink-secondary);
+}
+
+.arch-bridge-note {
+  margin: 0;
+  padding: 12px 16px;
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: var(--ink-primary);
+  line-height: 1.6;
 }
 
 /* Bottom Summary Footer */
@@ -2895,7 +3314,7 @@ input[type="range"]:active::-moz-range-thumb {
   margin-top: 40px;
   padding-top: 32px;
   border-top: 1px solid var(--border-medium);
-  max-width: 920px;
+  max-width: 1080px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -3903,7 +4322,7 @@ input[type="range"]:active::-moz-range-thumb {
 }
 
 .doc-figure-links {
-  margin: -6px 0 22px;
+  margin: -6px 0 18px;
   font-size: 0.74rem;
   color: var(--ink-secondary);
 }
@@ -3912,6 +4331,57 @@ input[type="range"]:active::-moz-range-thumb {
   color: var(--ink-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.doc-figures-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 22px;
+}
+
+.doc-figure-card {
+  margin: 16px 0 20px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-surface);
+  overflow: hidden;
+}
+
+.doc-figures-grid .doc-figure-card {
+  margin: 0;
+}
+
+.doc-figure-card.is-wide {
+  grid-column: 1 / -1;
+}
+
+.doc-figure-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.doc-figure-caption {
+  padding: 10px 14px;
+  background-color: var(--bg-canvas);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.doc-figure-title {
+  font-size: 0.81rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.doc-figure-sub {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--ink-secondary);
 }
 
 /* Dictionary List (Clean, Natural Lexicon/Glossary) */

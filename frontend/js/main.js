@@ -3,14 +3,15 @@
  * simulation/training WebSockets, and Light Instrument Lab UI state.
  */
 
-import { BenchmarkInspectorView } from './benchmark_view.js?v=20261121_13';
-import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261121_13';
-import { ConnectomeRenderer } from './connectome_renderer.js?v=20261121_13';
-import { DocumentationView } from './documentation_view.js?v=20261121_13';
-import { IntersectionRenderer } from './intersection_renderer.js?v=20261121_13';
-import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261121_13';
-import { TrainingStudioView } from './training_studio.js?v=20261121_13';
-import { ArchitectureView } from './architecture_view.js?v=20261121_13';
+import { BenchmarkInspectorView } from './benchmark_view.js?v=20261122_01';
+import { Brain3DRenderer, webglAvailable } from './brain3d_renderer.js?v=20261122_01';
+import { ConnectomeRenderer } from './connectome_renderer.js?v=20261122_01';
+import { DocumentationView } from './documentation_view.js?v=20261122_01';
+import { IntersectionRenderer } from './intersection_renderer.js?v=20261122_01';
+import { Intersection3DRenderer } from './intersection3d_renderer.js?v=20261122_01';
+import { ModelTelemetryRenderer, resolveControllerKind } from './model_telemetry_renderer.js?v=20261122_01';
+import { TrainingStudioView } from './training_studio.js?v=20261122_01';
+import { ArchitectureView } from './architecture_view.js?v=20261122_01';
 
 const PHASE_NAMES = ['NS Straight', 'NS Turn', 'EW Straight', 'EW Turn'];
 
@@ -45,6 +46,17 @@ class TrafficLabApp {
     this.intersectionRenderer = new IntersectionRenderer(
       document.getElementById('intersection-canvas')
     );
+    this.intersection3dStage = document.getElementById('intersection-3d-stage');
+    this.intersection3dRenderer = null;
+    if (this.intersection3dStage && webglAvailable()) {
+      try {
+        this.intersection3dRenderer = new Intersection3DRenderer(this.intersection3dStage);
+      } catch (err) {
+        console.error('3D Intersection initialization failed, falling back to 2D:', err);
+        this.intersection3dRenderer = null;
+      }
+    }
+    this.simViewMode = this.intersection3dRenderer ? '3d' : '2d';
     this.connectomeRenderer = new ConnectomeRenderer(
       document.getElementById('connectome-canvas')
     );
@@ -94,6 +106,7 @@ class TrafficLabApp {
       }
     }
 
+    this._setSimViewMode(this.simViewMode);
     this._setConnectomeViewMode(this.connectomeViewMode);
     if (this.brain3dRenderer) {
       this.brain3dRenderer
@@ -115,10 +128,67 @@ class TrafficLabApp {
     this._connectTrainingSocket();
 
     const animate = (timestampMs) => {
-      this.intersectionRenderer.renderFrame(timestampMs, this.activeTab === 'simulation');
+      this.intersectionRenderer.renderFrame(
+        timestampMs,
+        this.activeTab === 'simulation' && this.simViewMode === '2d'
+      );
       this.animationFrameId = requestAnimationFrame(animate);
     };
     this.animationFrameId = requestAnimationFrame(animate);
+  }
+
+  _setSimViewMode(mode) {
+    const resolved = mode === '3d' && this.intersection3dRenderer ? '3d' : '2d';
+    const prevMode = this.simViewMode;
+    this.simViewMode = resolved;
+
+    const btn3d = document.getElementById('btn-sim-view-3d');
+    const btn2d = document.getElementById('btn-sim-view-2d');
+    const stage2d = document.getElementById('intersection-2d-stage');
+
+    if (btn3d) {
+      btn3d.classList.toggle('is-active', resolved === '3d');
+      btn3d.setAttribute('aria-pressed', resolved === '3d' ? 'true' : 'false');
+      btn3d.disabled = !this.intersection3dRenderer;
+    }
+    if (btn2d) {
+      btn2d.classList.toggle('is-active', resolved === '2d');
+      btn2d.setAttribute('aria-pressed', resolved === '2d' ? 'true' : 'false');
+    }
+    if (this.intersection3dStage) {
+      this.intersection3dStage.classList.toggle('is-hidden', resolved !== '3d');
+    }
+    if (stage2d) {
+      stage2d.classList.toggle('is-hidden', resolved !== '2d');
+    }
+    if (this.intersection3dRenderer) {
+      this.intersection3dRenderer.setVisible(
+        resolved === '3d' && this.activeTab === 'simulation'
+      );
+      if (resolved === '3d' && this.latestSimFrame) {
+        this.intersection3dRenderer.applyBackendFrame(this.latestSimFrame);
+      }
+    }
+    if (resolved === '2d') {
+      if (prevMode === '3d' && this.latestSimFrame && this.latestSimFrame.snapshot) {
+        const snap = this.latestSimFrame.snapshot;
+        this.intersectionRenderer._resetSceneQueues(
+          snap.lane_queues || [],
+          Number(snap.step || 0),
+          [],
+          snap
+        );
+      }
+      this.intersectionRenderer.renderFrame(performance.now(), true);
+      if (typeof this.intersectionRenderer.onZoomChange === 'function') {
+        this.intersectionRenderer.onZoomChange(this.intersectionRenderer.getZoom());
+      }
+    } else if (
+      this.intersection3dRenderer &&
+      typeof this.intersection3dRenderer.onZoomChange === 'function'
+    ) {
+      this.intersection3dRenderer.onZoomChange(this.intersection3dRenderer.getZoomRatio());
+    }
   }
 
   _setConnectomeViewMode(mode) {
@@ -335,6 +405,11 @@ class TrafficLabApp {
     if (this.documentationView) {
       this.documentationView.setVisible(resolvedTab === 'docs');
     }
+    if (this.intersection3dRenderer) {
+      this.intersection3dRenderer.setVisible(
+        resolvedTab === 'simulation' && this.simViewMode === '3d'
+      );
+    }
     if (this.brain3dRenderer) {
       this.brain3dRenderer.setVisible(
         resolvedTab === 'simulation' &&
@@ -342,8 +417,8 @@ class TrafficLabApp {
           this.isFlyModelActive
       );
     }
-    if (resolvedTab === 'simulation') {
-      this.intersectionRenderer.renderFrame(performance.now());
+    if (resolvedTab === 'simulation' && this.simViewMode === '2d') {
+      this.intersectionRenderer.renderFrame(performance.now(), true);
     }
   }
 
@@ -408,9 +483,20 @@ class TrafficLabApp {
     const spawnRandomBtn = document.getElementById('btn-spawn-random');
     const spawnSurgeBtn = document.getElementById('btn-spawn-surge');
 
+    const btnSim3d = document.getElementById('btn-sim-view-3d');
+    const btnSim2d = document.getElementById('btn-sim-view-2d');
+    if (btnSim3d) btnSim3d.addEventListener('click', () => this._setSimViewMode('3d'));
+    if (btnSim2d) btnSim2d.addEventListener('click', () => this._setSimViewMode('2d'));
+
     const syncZoomUi = (zoomLevel) => {
       if (zoomLevelLabel) {
         zoomLevelLabel.textContent = `${Math.round(zoomLevel * 100)}%`;
+      }
+      if (this.simViewMode === '3d') {
+        if (zoomOutBtn) zoomOutBtn.disabled = zoomLevel <= 0.36;
+        if (zoomInBtn) zoomInBtn.disabled = zoomLevel >= 2.95;
+        if (zoomResetBtn) zoomResetBtn.disabled = false;
+        return;
       }
       if (zoomOutBtn) {
         zoomOutBtn.disabled = zoomLevel <= this.intersectionRenderer.minZoom + 1e-4;
@@ -423,23 +509,46 @@ class TrafficLabApp {
       }
     };
 
-    this.intersectionRenderer.onZoomChange = syncZoomUi;
-    syncZoomUi(this.intersectionRenderer.getZoom());
+    this.intersectionRenderer.onZoomChange = (z) => {
+      if (this.simViewMode === '2d') syncZoomUi(z);
+    };
+    if (this.intersection3dRenderer) {
+      this.intersection3dRenderer.onZoomChange = (z) => {
+        if (this.simViewMode === '3d') syncZoomUi(z);
+      };
+    }
+    syncZoomUi(
+      this.simViewMode === '3d' && this.intersection3dRenderer
+        ? this.intersection3dRenderer.getZoomRatio()
+        : this.intersectionRenderer.getZoom()
+    );
 
     if (zoomOutBtn) {
       zoomOutBtn.addEventListener('click', () => {
+        if (this.simViewMode === '3d' && this.intersection3dRenderer) {
+          this.intersection3dRenderer.zoomBy(1.18);
+          return;
+        }
         const next = Math.round((this.intersectionRenderer.getZoom() - 0.1) * 100) / 100;
         this.intersectionRenderer.setZoom(next);
       });
     }
     if (zoomInBtn) {
       zoomInBtn.addEventListener('click', () => {
+        if (this.simViewMode === '3d' && this.intersection3dRenderer) {
+          this.intersection3dRenderer.zoomBy(0.85);
+          return;
+        }
         const next = Math.round((this.intersectionRenderer.getZoom() + 0.1) * 100) / 100;
         this.intersectionRenderer.setZoom(next);
       });
     }
     if (zoomResetBtn) {
       zoomResetBtn.addEventListener('click', () => {
+        if (this.simViewMode === '3d' && this.intersection3dRenderer) {
+          this.intersection3dRenderer.resetZoom();
+          return;
+        }
         this.intersectionRenderer.setZoom(1.0);
       });
     }
@@ -449,7 +558,7 @@ class TrafficLabApp {
       return Number.isFinite(parsed) && parsed > 0 ? Math.min(40, parsed) : 1;
     };
 
-    this.intersectionRenderer.onLaneClick = (laneId) => {
+    const handleLaneClick = (laneId) => {
       const normalizedLane = Number(laneId);
       if (spawnLaneSelect) {
         spawnLaneSelect.value = String(normalizedLane);
@@ -460,6 +569,11 @@ class TrafficLabApp {
         count: getSpawnBatch(),
       });
     };
+
+    this.intersectionRenderer.onLaneClick = handleLaneClick;
+    if (this.intersection3dRenderer) {
+      this.intersection3dRenderer.onLaneClick = handleLaneClick;
+    }
 
     if (spawnLaneBtn) {
       spawnLaneBtn.addEventListener('click', () => {
@@ -778,6 +892,9 @@ class TrafficLabApp {
   _applySimulationFrame(frame) {
     this.latestSimFrame = frame;
     this.intersectionRenderer.applyBackendFrame(frame);
+    if (this.intersection3dRenderer) {
+      this.intersection3dRenderer.applyBackendFrame(frame);
+    }
 
     const snapshot = frame.snapshot || {};
     const policy = frame.policy_telemetry || {};
@@ -805,7 +922,7 @@ class TrafficLabApp {
     if (regimeEl) {
       regimeEl.textContent = isContinuous
         ? `${snapshot.step ?? 0}`
-        : `${snapshot.step ?? 0} / ${snapshot.max_steps ?? 300}`;
+        : `${snapshot.step ?? 0} / ${snapshot.max_steps ?? 500}`;
     }
     const signalTextEl = document.getElementById('sim-signal-text');
     const signalDotEl = document.getElementById('sim-signal-dot');
@@ -1008,7 +1125,8 @@ class TrafficLabApp {
         captionEl.textContent = `2 lapis Tanh (${width} + ${width} unit) · tanpa memori rekuren · ${params.toLocaleString()} parameter`;
       } else {
         titleEl.textContent = 'Fixed Timer Schedule';
-        captionEl.textContent = 'Siklus aturan tetap (8, 4, 8, 4) langkah · 0 parameter terlatih';
+        const durations = Array.isArray(modelTel.phase_durations) ? modelTel.phase_durations : [10, 6, 10, 6];
+        captionEl.textContent = `Siklus aturan tetap (${durations.join(', ')}) langkah · 0 parameter terlatih`;
       }
     }
 

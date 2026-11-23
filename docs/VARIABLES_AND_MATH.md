@@ -42,7 +42,7 @@ $$r_t = \text{reward\_scale} \cdot \left(-\sum \text{queue\_length} - \alpha \cd
 |---|---|---|---|
 | $x_t$ (*Observation Space*) | `observation` (`Box(0, 2, shape=(22,))`) | 22 float32 | `traffic_env.py` (`_build_observation`) |
 | Indeks `obs[0:8]` | Panjang antrean ternormalisasi (`lane.length / 30`) | `[0.0 .. 1.0]` | `LaneId` (`N_STRAIGHT .. W_TURN`) |
-| Indeks `obs[8:16]` | Waktu tunggu terlama per lajur (`max_wait_s / 120.0`) | `[0.0 .. 2.0]` | `LaneQueue.max_wait_seconds` |
+| Indeks `obs[8:16]` | Waktu tunggu terlama per lajur (`max_wait_s / 150.0`) | `[0.0 .. 2.0]` | `LaneQueue.max_wait_seconds` |
 | Indeks `obs[16:20]` | *One-hot* fase lampu aktif | 4 bit | `SignalPhase` (`0: NS Straight, 1: NS Turn, 2: EW Straight, 3: EW Turn`) |
 | Indeks `obs[20]` | Flag transisi kuning / all-red (`is_transitioning`) | `0.0` atau `1.0` | `SignalController.is_transitioning` |
 | Indeks `obs[21]` | Durasi fase berjalan ternormalisasi (`phase_elapsed / 20.0`) | `[0.0 .. 2.0]` | `SignalController.phase_elapsed` |
@@ -50,7 +50,7 @@ $$r_t = \text{reward\_scale} \cdot \left(-\sum \text{queue\_length} - \alpha \cd
 | $\alpha$ | `wait_penalty_alpha` | `0.1` | `TrafficEnvConfig` |
 | $\beta$ | `switch_penalty_beta` | `1.0` | `TrafficEnvConfig` |
 | Skala reward | `reward_scale` | `0.005` | `TrafficEnvConfig` |
-| Batas keamanan sinyal | `min_green_steps`, `yellow_steps`, `all_red_steps` | `2`, `1`, `1` langkah (`dt=2.0s`) | `SignalController` (`intersection_state.py`) & `TrafficEnvConfig` |
+| Batas keamanan sinyal | `min_green_steps`, `yellow_steps`, `all_red_steps` | `6`, `2`, `1` langkah (`dt=2.0s`) | `SignalController` (`intersection_state.py`) & `TrafficEnvConfig` |
 
 ### D. Parameter Kolisi & *Safety Buffer* (`src/fly_traffic/environment/traffic_env.py` & `config.py`)
 
@@ -61,18 +61,18 @@ Lingkungan memodelkan dua jenis konflik lalu lintas ketika `enable_collisions = 
    $$p_{\text{red}} = \min\left(\text{red\_light\_max\_prob},\ \frac{\text{head\_wait\_s} - \text{red\_light\_wait\_threshold\_s}}{140.0} \cdot \text{red\_light\_max\_prob}\right)$$
    Jika terpicu, 1 kendaraan dikeluarkan dari lajur pelanggar dan tercatat sebagai `red_light_conflict`.
 2. **`box_clearance_conflict` (*Dilemma-Zone Intergreen Straggler*, `_evaluate_box_clearance_conflicts`)**:
-   Ketika `phase_switched = True`, tiap lajur yang baru melepas pada langkah sebelumnya (`previous_departures > 0`) berpeluang `dilemma_zone_prob` menyisakan kendaraan tertinggal di kotak persimpangan (`self._box_stragglers` dengan sisa umur `remaining_steps = 2`). Jika `remaining_steps > 0` bertepatan dengan lajur dari fase berbeda yang aktif melepas kendaraan (`discharging_lanes`), tercatat `box_clearance_conflict`. Dengan `yellow_steps = 1` dan `all_red_steps >= 1`, dua langkah jeda tanpa pelepasan menghabiskan sisa umur `2 -> 1 -> 0` sebelum fase baru mendapat `GREEN`; bila `all_red_steps = 0`, fase baru sudah aktif `GREEN` pada `remaining_steps = 1` sehingga berisiko memicu konflik kotak persimpangan.
+   Ketika `phase_switched = True`, tiap lajur yang baru melepas pada langkah sebelumnya (`previous_departures > 0`) berpeluang `dilemma_zone_prob` menyisakan kendaraan tertinggal di kotak persimpangan (`self._box_stragglers` dengan sisa umur `remaining_steps = 2`). Jika `remaining_steps > 0` bertepatan dengan lajur dari fase berbeda yang aktif melepas kendaraan (`discharging_lanes`), tercatat `box_clearance_conflict`. Dengan konfigurasi bawaan (`yellow_steps = 2`, `all_red_steps = 1`), 3 langkah jeda tanpa pelepasan menghabiskan sisa umur `2 -> 1 -> 0` sebelum fase baru mendapat `GREEN`; konflik muncul bila total jeda antar-hijau turun di bawah 2 langkah.
 
 | Parameter / Variabel | Nilai Default / Tipe | Lokasi File & Metode | Keterangan Fungsional |
 |---|---|---|---|
-| `collision_penalty` | `15.0` | `TrafficEnvConfig` / `_compute_reward` | Penalti per event kolisi sebelum dikalikan `reward_scale = 0.005` (setara pengurangan `-0.075` pada reward langkah per kolisi). |
-| `red_light_wait_threshold_s` | `120.0` (detik) | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Ambang `head_wait_s` pada lajur merah sebelum probabilitas pelanggaran lampu merah mulai naik di atas `0.0`. |
+| `collision_penalty` | `80.0` | `TrafficEnvConfig` / `_compute_reward` | Penalti per event kolisi sebelum dikalikan `reward_scale = 0.005` (setara pengurangan `-0.400` pada reward langkah per kolisi). |
+| `red_light_wait_threshold_s` | `150.0` (detik) | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Ambang `head_wait_s` pada lajur merah sebelum probabilitas pelanggaran lampu merah mulai naik di atas `0.0`. |
 | `red_light_max_prob` | `0.14` | `TrafficEnvConfig` / `_evaluate_red_light_conflicts` | Batas atas probabilitas per langkah per lajur merah untuk memicu `red_light_conflict`. |
 | `dilemma_zone_prob` | `0.18` | `TrafficEnvConfig` / `_evaluate_box_clearance_conflicts` | Probabilitas per lajur pelepas sebelumnya menyisakan *straggler* kotak persimpangan saat terjadi perpindahan fase. |
 | `enable_collisions` | `True` | `TrafficEnvConfig` / `_evaluate_collisions` | Sakelar pengaktif atau penonaktif evaluasi kedua jenis kolisi. |
-| `all_red_steps` / `set_safety_buffer` | `1` (dapat diubah `>= 0`) | `TrafficEnvConfig`, `TrafficIntersectionEnv.set_safety_buffer`, `SimulationService.set_safety_buffer` | Durasi tahap `SignalStage.ALL_RED` dalam langkah (`dt = 2.0` s); nilai `0` mengaktifkan skenario stres tanpa jeda *all-red*. |
+| `all_red_steps` / `set_safety_buffer` | `1` (dapat diubah `>= 0`) | `TrafficEnvConfig`, `TrafficIntersectionEnv.set_safety_buffer`, `SimulationService.set_safety_buffer` | Durasi tahap `SignalStage.ALL_RED` dalam langkah (`dt = 2.0` s) setelah `yellow_steps = 2`. |
 | `total_collisions` | `int` (`>= 0`) | `TrafficIntersectionEnv._total_collisions`, `info`, `get_render_snapshot`, `EpisodeMetrics` | Jumlah akumulatif event kolisi dalam 1 episode; diagregasi sebagai `mean_collisions` di `ScenarioBenchmarkResult` dan `PharmacologyResult` (`evaluator.py`). |
-| `step_collisions` & `step_collision_events` | `int` & `list[dict]` | `info` & `get_render_snapshot()` | Jumlah kolisi pada langkah berjalan dan daftar metadata `{step, kind, culprit_lane, victim_lane, culprit_wait_s}` untuk rendering peringatan 2D (`IntersectionRenderer._processCollisionEvents`). |
+| `step_collisions` & `step_collision_events` | `int` & `list[dict]` | `info` & `get_render_snapshot()` | Jumlah kolisi pada langkah berjalan dan daftar metadata `{step, kind, culprit_lane, victim_lane, culprit_wait_s}` untuk koreografi kolisi 3D (`Intersection3DRenderer`) dan rendering peringatan 2D (`IntersectionRenderer`). |
 
 ---
 

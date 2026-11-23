@@ -1,18 +1,18 @@
 # Panduan Lengkap Siklus Episode, Loop Training PPO, dan Penelusuran Simulasi
 
-Dokumen ini menjelaskan secara faktual alur lengkap satu episode simulasi lalu lintas (`300` langkah), mekanisme training PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI, serta penelusuran nyata satu episode penuh dari `step=0` hingga `step=300` menggunakan kode dan *checkpoint* aktual di repositori ini.
+Dokumen ini menjelaskan secara faktual alur lengkap satu episode simulasi lalu lintas (`500` langkah pada konfigurasi terkini), mekanisme training PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI, serta referensi penelusuran nyata episode.
 
 Untuk daftar lengkap simbol persamaan dan pemetaan nama variabel kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md).
 
 ---
 
-## 1. Gambaran Umum 1 Episode Penuh (300 Langkah = 10 Menit Simulasi)
+## 1. Gambaran Umum 1 Episode Penuh (500 Langkah = 1.000 Detik Simulasi)
 
-Setiap episode pada `TrafficIntersectionEnv` (`src/fly_traffic/environment/traffic_env.py`) berdurasi tetap `max_steps = 300` langkah diskrit dengan interval waktu `dt_seconds = 2.0` detik per langkah (`TrafficEnvConfig` di `src/fly_traffic/config.py`). Total durasi simulasi dalam 1 episode adalah:
+Setiap episode pada `TrafficIntersectionEnv` (`src/fly_traffic/environment/traffic_env.py`) berdurasi tetap `max_steps = 500` langkah diskrit dengan interval waktu `dt_seconds = 2.0` detik per langkah (`TrafficEnvConfig` di `src/fly_traffic/config.py`). Total durasi simulasi dalam 1 episode adalah:
 
-$$300 \text{ langkah} \times 2.0 \text{ s/langkah} = 600 \text{ detik} = 10 \text{ menit simulasi}$$
+$$500 \text{ langkah} \times 2.0 \text{ s/langkah} = 1.000 \text{ detik} \approx 16 \text{ menit } 40 \text{ detik simulasi}$$
 
-Persimpangan memiliki 4 arah dengan 2 lajur per arah (`NUM_LANES = 8`, indeks `0..7` pada `LaneId` di `src/fly_traffic/environment/intersection_state.py`), yaitu `N_STRAIGHT (0)`, `N_TURN (1)`, `S_STRAIGHT (2)`, `S_TURN (3)`, `E_STRAIGHT (4)`, `E_TURN (5)`, `W_STRAIGHT (6)`, dan `W_TURN (7)`. Setiap lajur bertipe antrean FIFO (`LaneQueue`) berkapasitas maksimum `max_lane_capacity = 30` kendaraan. Kendaraan yang keluar saat lampu hijau mengikuti kapasitas pelepasan `straight_discharge_rate = 2.0` kendaraan/langkah untuk lajur lurus dan `turn_discharge_rate = 1.5` kendaraan/langkah untuk lajur belok (`1` atau `2` kendaraan secara stokastik pada `_sample_discharge_capacity`). Agen memilih satu dari `NUM_PHASES = 4` fase sinyal non-konflik (`SignalPhase`): `0: NS Straight` (lajur `0, 2`), `1: NS Turn` (lajur `1, 3`), `2: EW Straight` (lajur `4, 6`), dan `3: EW Turn` (lajur `5, 7`).
+Persimpangan memiliki 4 arah dengan 2 lajur per arah (`NUM_LANES = 8`, indeks `0..7` pada `LaneId` di `src/fly_traffic/environment/intersection_state.py`), yaitu `N_STRAIGHT (0)`, `N_TURN (1)`, `S_STRAIGHT (2)`, `S_TURN (3)`, `E_STRAIGHT (4)`, `E_TURN (5)`, `W_STRAIGHT (6)`, dan `W_TURN (7)`. Setiap lajur bertipe antrean FIFO (`LaneQueue`) berkapasitas maksimum `max_lane_capacity = 30` kendaraan (observasi antrean dibagi `30.0`, sedangkan mode interaktif `Live Simulation` memakai `hard_max_lane_capacity = 80`). Kendaraan yang keluar saat lampu hijau mengikuti kapasitas pelepasan `straight_discharge_rate = 2.5` kendaraan/langkah (`2` atau `3` kendaraan secara stokastik pada `_sample_discharge_capacity`) dan `turn_discharge_rate = 2.0` kendaraan/langkah. Agen memilih satu dari `NUM_PHASES = 4` fase sinyal non-konflik (`SignalPhase`): `0: NS Straight` (lajur `0, 2`), `1: NS Turn` (lajur `1, 3`), `2: EW Straight` (lajur `4, 6`), dan `3: EW Turn` (lajur `5, 7`).
 
 ### A. Perbedaan Kondisi Training (`mixed`) vs Benchmark Deterministik
 
@@ -20,20 +20,22 @@ Pada `TrafficProfileFactory` (`src/fly_traffic/environment/traffic_profiles.py`)
 
 | Aspek | Mode Training (`profile_name="mixed"`) | Mode Benchmark (`AgentEvaluator`) |
 |---|---|---|
-| **Konfigurasi Default** | `TrafficEnvConfig.profile_name = "mixed"` (dipakai oleh 8 env paralel di `PPOTrainer`) | `BenchmarkConfig.scenarios = ("normal", "asymmetric", "rush_hour")` pada 10 seed (`1000..1009`) |
-| **Pemilihan Skenario per Episode** | Setiap `reset()` memilih acak seragam satu dari 4 template: `normal`, `asymmetric`, `asymmetric_ew`, atau `rush_hour` | Skenario tetap dan deterministik per rangkaian evaluasi |
-| **Jitter Laju Kedatangan** | Dikalikan faktor acak `scale ~ Uniform(0.85, 1.15)` (`0.85x - 1.15x`) per episode | Tanpa jitter (`rate_scale = 1.0`) |
-| **Tujuan** | Mencegah *overfitting* pada satu arah kepadatan dan menjaga generalisasi kebijakan rekuren | Mengukur perbandingan adil antar agen (`Fixed Timer`, `PPO-MLP`, `PPO-GRU`, `Fly Connectome PPO`) |
+| **Konfigurasi Default** | `TrafficEnvConfig.profile_name = "mixed"` (dipakai oleh 8 env paralel di `PPOTrainer`) | `BenchmarkConfig.scenarios = ("normal", "asymmetric", "rush_hour", "stress_test")` pada 10 seed (`1000..1009`) |
+| **Pemilihan Skenario per Episode** | Setiap `reset()` memilih acak terbobot: `normal`, `asymmetric`, `asymmetric_ew`, `rush_hour` (`2/9` tiap template) dan `stress_train` (`1/9`) | Skenario tetap dan deterministik per rangkaian evaluasi |
+| **Jitter Laju Kedatangan** | Dikalikan faktor acak `scale ~ Uniform(0.85, 1.15)` (kecuali `stress_train` yang memakai batas seragam tersendiri) | Tanpa jitter (`rate_scale = 1.0`) |
+| **Tujuan** | Mencegah *overfitting* pada satu arah kepadatan dan melatih ketahanan terhadap lonjakan beban | Mengukur perbandingan adil antar agen (`Fixed Timer`, `PPO-MLP`, `PPO-GRU`, `Shuffled Connectome`, `Fly Connectome PPO`) |
 
 Rincian laju kedatangan Poisson dasar ($\lambda$ kendaraan per langkah sebelum faktor skala) tiap profil adalah:
 
 1. **`normal`**: Aliran seimbang ringan-sedang di seluruh pendekatan (`ns_straight=0.12`, `ns_turn=0.06`, `ew_straight=0.12`, `ew_turn=0.06`).
 2. **`asymmetric`**: Koridor Utara-Selatan padat berkelanjutan vs Timur-Barat ringan (`ns_straight=0.34`, `ns_turn=0.14`, `ew_straight=0.06`, `ew_turn=0.04`).
-3. **`asymmetric_ew`** *(hanya di dalam campuran `mixed`)*: Kebalikan dari `asymmetric`, koridor Timur-Barat padat berkelanjutan (`ns_straight=0.06`, `ns_turn=0.04`, `ew_straight=0.34`, `ew_turn=0.14`) agar kebijakan terlatih simetris terhadap kedua sumbu jalan.
-4. **`rush_hour`**: Profil dinamis 3-regime dalam 1 episode (`max_steps = 300`):
-   - **Regime 1 (Langkah `0..99`)**: Seimbang moderat `[0.14, 0.07, 0.14, 0.07, 0.14, 0.07, 0.14, 0.07]`.
-   - **Regime 2 (Langkah `100..199`)**: Lonjakan Utara-Selatan (*NS surge*) `[0.38, 0.16, 0.38, 0.16, 0.08, 0.04, 0.08, 0.04]`.
-   - **Regime 3 (Langkah `200..299`)**: Lonjakan Timur-Barat (*EW surge*) `[0.08, 0.04, 0.08, 0.04, 0.38, 0.16, 0.38, 0.16]`.
+3. **`asymmetric_ew`** *(di dalam campuran `mixed`)*: Kebalikan dari `asymmetric`, koridor Timur-Barat padat berkelanjutan (`ns_straight=0.06`, `ns_turn=0.04`, `ew_straight=0.34`, `ew_turn=0.14`).
+4. **`rush_hour`**: Profil dinamis 3-regime dalam 1 episode (`max_steps = 500`, batas potong `166` dan `333`):
+   - **Regime 1 (Langkah `0..165`)**: Moderat seimbang `[0.22, 0.10, 0.22, 0.10, 0.22, 0.10, 0.22, 0.10]`.
+   - **Regime 2 (Langkah `166..332`)**: Lonjakan Utara-Selatan (*NS surge*) `[0.56, 0.24, 0.56, 0.24, 0.16, 0.08, 0.16, 0.08]`.
+   - **Regime 3 (Langkah `333..499`)**: Lonjakan Timur-Barat (*EW surge*) `[0.16, 0.08, 0.16, 0.08, 0.56, 0.24, 0.56, 0.24]`.
+5. **`stress_train`** *(di dalam campuran `mixed`)*: Beban tinggi acak (`ns_s/ew_s ~ Uniform(0.38, 0.46)`, `ns_t/ew_t ~ Uniform(0.22, 0.28)`).
+6. **`stress_test`**: Beban ekstrem konstan untuk benchmark saturasi (`ns_straight=0.50`, `ns_turn=0.40`, `ew_straight=0.50`, `ew_turn=0.40`).
 
 ### B. Anatomi 1 Episode Penuh
 
@@ -42,23 +44,23 @@ Diagram berikut memetakan urutan eksekusi aktual di dalam `TrafficIntersectionEn
 ```mermaid
 flowchart TD
     A["Reset Episode (seed, profile)"] --> B["Inisialisasi 8 LaneQueue, SignalController = NS_STRAIGHT GREEN, step = 0"]
-    B --> C["Bangun Observasi 22-dim (queues/30, max_wait/120, phase_onehot, is_transitioning, elapsed/20)"]
+    B --> C["Bangun Observasi 22-dim (queues/30, max_wait/150, phase_onehot, is_transitioning, elapsed/20)"]
     C --> D["Policy Forward Pass (obs_t, hidden_t -> action_logits, V, next_hidden)"]
     D --> E["Signal Interlock: SignalController.request_phase(target_phase)"]
-    E --> F{"Lolos Interlock (GREEN, target != active, elapsed >= min_green_steps=2)?"}
-    F -- "Ya (phase_switched = True)" --> G["Masuk tahap YELLOW (1 langkah) atau ALL_RED jika yellow_steps=0"]
+    E --> F{"Lolos Interlock (GREEN, target != active, elapsed >= min_green_steps=6)?"}
+    F -- "Ya (phase_switched = True)" --> G["Masuk tahap YELLOW (2 langkah) -> ALL_RED (1 langkah)"]
     F -- "Tidak (phase_switched = False)" --> H["Pertahankan tahap sinyal aktif saat ini"]
-    G --> I["Discharge Kendaraan: green_lanes() kosong saat YELLOW/ALL_RED; lepas 2.0 lurus / 1.5 belok saat GREEN"]
+    G --> I["Discharge Kendaraan: kosong saat YELLOW/ALL_RED; lepas 2.5 lurus / 2.0 belok saat GREEN"]
     H --> I
     I --> J["Evaluasi Kolisi (_evaluate_collisions jika enable_collisions=True)"]
-    J --> J1["box_clearance_conflict: straggler dilemma_zone_prob=0.18 bertemu fase baru GREEN"]
-    J --> J2["red_light_conflict: antrean merah menunggu > 36.0s melanggar hingga prob 0.14"]
-    J1 --> K["Kedatangan Poisson (_step_arrivals, dibatasi max_lane_capacity=30)"]
+    J --> J1["box_clearance_conflict: straggler dilemma_zone_prob=0.18 jika intergreen < 2 langkah"]
+    J --> J2["red_light_conflict: antrean merah menunggu > 150.0s melanggar hingga prob 0.14"]
+    J1 --> K["Kedatangan Poisson (_step_arrivals, dibatasi max_lane_capacity=30 / hard=80)"]
     J2 --> K
     K --> L["Majukan Timer Sinyal (SignalController.step: YELLOW -> ALL_RED -> GREEN fase baru)"]
-    L --> M["Hitung Reward r_t = 0.005 * (-Q - 0.1*max_wait_s - 1.0*switched - 15.0*collisions)"]
-    M --> N{"step >= max_steps (300)?"}
-    N -- "Belum (step < 300)" --> C
+    L --> M["Hitung Reward r_t = 0.005 * (-Q - 0.1*max_wait_s - 1.0*switched - 80.0*collisions)"]
+    M --> N{"step >= max_steps (500)?"}
+    N -- "Belum (step < 500)" --> C
     N -- "Ya (truncated = True)" --> O["Episode Selesai (pada SyncVectorEnv SAME_STEP otomatis reset dan nolkan hidden_state)"]
 ```
 
@@ -80,7 +82,7 @@ flowchart TD
     U --> LR["Peluruhan Linear LR (8e-4 -> 1.2e-4) jika anneal_lr=True"]
     LR --> RC["Fase Rollout (128 langkah x 8 env = 1.024 transisi)"]
     RC --> M1["Masking hidden pada batas episode baru: hidden *= (1 - previous_done_mask)"]
-    M1 --> DM["Hitung decision_mask = (obs[:,20] < 0.5) & (obs[:,21]*20 >= 2)"]
+    M1 --> DM["Hitung decision_mask = (obs[:,20] < 0.5) & (obs[:,21]*20 >= 6 - 1e-4)"]
     DM --> PF["Policy eval: get_action_and_value -> step vector_envs -> simpan ke RecurrentRolloutBuffer"]
     PF -->|Ulang 128 langkah| RC
     PF -->|128 langkah selesai| GAE["Bootstrap V(s_128) & hitung GAE (gamma=0.99, gae_lambda=0.95)"]
@@ -111,7 +113,7 @@ sequenceDiagram
     Policy-->>Trainer: "PolicyStepOutput(action, log_prob, entropy, value, next_hidden)"
     Trainer->>Env: "step(selected_action)"
     Env->>Signal: "request_phase(SignalPhase(action))"
-    Signal-->>Env: "phase_switched (True jika GREEN & elapsed >= 2)"
+    Signal-->>Env: "phase_switched (True jika GREEN & elapsed >= 6)"
     Env->>Env: "_step_departures(), _evaluate_collisions(), _step_arrivals()"
     Env->>Signal: "step() majukan stage timer (YELLOW -> ALL_RED -> GREEN)"
     Env->>Env: "_compute_reward() & _build_observation()"
@@ -135,9 +137,9 @@ sequenceDiagram
 
 ---
 
-## 3. Penelusuran Nyata 1 Episode Penuh (Step 0 .. Step 300)
+## 3. Arsip Referensi Penelusuran 1 Episode Penuh (Konfigurasi Awal `max_steps = 300`)
 
-Seluruh angka pada bagian ini berasal langsung dari eksekusi skrip Python read-only menggunakan `/cache/ml/.venv/bin/python` terhadap *checkpoint* terlatih `artifacts/checkpoints/fly_ppo.pt` (`trained_timesteps = 163,840`, `trainable_params = 70,006`, `leak_rate_tau = 0.4328`) dan artefak sub-connectome `artifacts/fly_subconnectome.pt` (`2,500` neuron: `1,800` CX + `700` MB; `36,908` sisi eksitatori + `50,263` sisi inhibitori; *sparsity* `98.6053%`).
+> **Catatan Konfigurasi:** Penelusuran deterministik di bawah ini direkam pada konfigurasi lingkungan awal (`max_steps = 300`, `min_green_steps = 2`, `yellow_steps = 1`, `all_red_steps = 1`, `straight_discharge_rate = 2.0`, `turn_discharge_rate = 1.5`, `collision_penalty = 15.0`) menggunakan *checkpoint* `artifacts/checkpoints/fly_ppo.pt` (`trained_timesteps = 163,840`, `trainable_params = 70,006`, `leak_rate_tau = 0.4328`). Pada konfigurasi saat ini, parameter standar telah diperbarui menjadi `max_steps = 500`, `min_green_steps = 6`, `yellow_steps = 2`, `straight_discharge_rate = 2.5`, `turn_discharge_rate = 2.0`, `red_light_wait_threshold_s = 150.0`, dan `collision_penalty = 80.0` (lihat Bagian 1 & `benchmark_summary.json`).
 
 ### A. Jejak Episode Utama: `Fly Connectome PPO` pada `rush_hour` (`seed=1001`, `all_red_steps=1`)
 

@@ -220,7 +220,7 @@ export class ModelTelemetryRenderer {
     this._setVisible(this.scaleRow, false);
     this._setVisible(this.timerView, true);
 
-    const durations = Array.isArray(t.phase_durations) ? t.phase_durations : [8, 4, 8, 4];
+    const durations = Array.isArray(t.phase_durations) ? t.phase_durations : [10, 6, 10, 6];
     const activePhase = Number(t.active_phase ?? snapshot.active_phase ?? 0);
     const nextPhase = Number(t.next_phase ?? (activePhase + 1) % 4);
     const elapsed = Number(t.phase_elapsed ?? snapshot.phase_elapsed ?? 0);

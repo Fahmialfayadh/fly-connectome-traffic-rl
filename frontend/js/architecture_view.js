@@ -45,14 +45,14 @@ const COMPONENTS = {
     status: 'data',
     shape: '[B, 22]',
     params: '0',
-    role: 'Vektor 22 fitur kondisi simpang pada step t. Menjadi satu-satunya masukan eksternal ke policy.',
-    training: 'Tidak memiliki parameter. Nilainya dihitung ulang oleh environment pada setiap step.',
+    role: 'Vektor 22 fitur kondisi persimpangan pada step t yang merangkum panjang antrean (8), waktu tunggu kepala antrean (8), fase lampu aktif one-hot (4), flag transisi kuning/all-red (1), dan durasi fase hijau berjalan (1).',
+    training: 'Tidak memiliki parameter. Nilainya dihitung ulang oleh environment pada setiap step dan dijepit ke rentang aman agar skala input selalu stabil.',
     rows: [
-      ['obs[0:8]', 'lane.length / 30.0 (antrean 8 lajur)'],
-      ['obs[8:16]', 'max_wait_s / 120.0 (waktu tunggu per lajur)'],
-      ['obs[16:20]', 'one-hot fase hijau aktif'],
-      ['obs[20]', 'is_transitioning (YELLOW / ALL_RED)'],
-      ['obs[21]', 'phase_elapsed / 20.0'],
+      ['obs[0:8]', 'min(lane.length / 30.0, 2.0) — antrean 8 lajur (N_STR..W_TRN), 1.0 = 30 kend.'],
+      ['obs[8:16]', 'min(max_wait_s / 150.0, 2.0) — waktu tunggu kendaraan terdepan per lajur, 1.0 = 150s (ambang sabar).'],
+      ['obs[16:20]', 'one-hot fase hijau aktif: [NS_STR, NS_TRN, EW_STR, EW_TRN].'],
+      ['obs[20]', 'is_transitioning: 1.0 saat tahap YELLOW / ALL_RED (pindah lampu ditolak), 0.0 saat GREEN.'],
+      ['obs[21]', 'min(phase_elapsed / 20.0, 2.0) — jumlah step fase hijau saat ini berjalan (1 step = 2.0s). >= 0.30 menandakan syarat min_green=6 terpenuhi.'],
     ],
   },
   input_projection: {
@@ -63,12 +63,12 @@ const COMPONENTS = {
     status: 'trainable',
     shape: 'W [2500, 22] + b [2500]',
     params: '57.500',
-    role: 'Adapter masukan. Memetakan 22 fitur x_t menjadi arus masukan untuk setiap 2.500 neuron (W_in · x_t + b_in).',
-    training: 'Diupdate oleh optimizer Adam pada setiap PPO update. Inisialisasi orthogonal (gain 1.0), bias nol.',
+    role: 'Adapter masukan dense. Memetakan 22 fitur x_t ke seluruh 2.500 neuron (W_in · x_t + b_in) secara data-driven tanpa pemetaan manual satu-per-satu ke neuron tertentu.',
+    training: 'Diupdate oleh optimizer Adam pada setiap PPO update (gradien mengalir balik melewati W_exc^T / W_inh^T yang beku). Inisialisasi orthogonal (gain 1.0), bias nol.',
     rows: [
-      ['weight', '55.000 parameter'],
+      ['weight', '55.000 parameter (proyeksi penuh 22 -> 2.500)'],
       ['bias', '2.500 parameter'],
-      ['dibuat oleh', 'kode proyek (bukan dari dataset FAFB)'],
+      ['dibuat oleh', 'kode proyek (adapter terlatih, bukan dari FAFB)'],
     ],
   },
   hidden_state: {
@@ -79,12 +79,12 @@ const COMPONENTS = {
     status: 'data',
     shape: '[B, 2500]',
     params: '0',
-    role: 'Aktivasi 2.500 neuron FAFB v783. Indeks 0..1799 = Central Complex (PB, EB, FB, NO), 1800..2499 = Mushroom Body. Posisi titik mengikuti lokasi neuropil asli.',
+    role: 'Aktivasi 2.500 neuron FAFB v783. Indeks 0..1799 = Central Complex (PB: penyalur arah, EB: cincin status fasa, FB: integrasi & aksi, NO: noduli masukan); 1800..2499 = Mushroom Body (MB_CA: calyx masukan, MB_PED: pedunculus penghubung, MB_ML/VL: lobus memori asosiatif & temporal). Terhubung 2.880 sisi CX <-> MB.',
     training: 'Bukan parameter. Nilainya berubah setiap step dan direset ke nol saat episode baru dimulai.',
     rows: [
-      ['CX', '1.800 neuron'],
-      ['MB', '700 neuron'],
-      ['update', 'h_t = (1 - tau) h_{t-1} + tau tanh(...)'],
+      ['CX (0..1799)', '1.800 neuron (PB, EB, FB, NO)'],
+      ['MB (1800..2499)', '700 neuron (MB_CA, MB_PED, MB_ML, MB_VL)'],
+      ['update', 'h_t = [(1 - tau) h_tilde + tau tanh(s_t)] * lesion_mask'],
     ],
   },
   w_exc: {
@@ -117,7 +117,7 @@ const COMPONENTS = {
       ['ditampilkan', '1.555 edge teratas berdasarkan |W|'],
     ],
   },
-  tau: {
+    tau: {
     group: 'Recurrent core',
     title: 'leak_rate (tau)',
     code: 'nn.Parameter(tau_logit)',
@@ -125,10 +125,11 @@ const COMPONENTS = {
     status: 'trainable',
     shape: 'skalar',
     params: '1',
-    role: 'Laju integrasi membran. Menentukan porsi state lama (1 - tau) dan masukan baru (tau) di setiap step. tau = 0,05 + 0,90 sigmoid(tau_logit).',
-    training: 'Diupdate oleh Adam pada setiap PPO update. Nilai awal 0,35, selalu berada di rentang (0,05; 0,95).',
+    role: 'Rasio pencampuran memori (leaky integrator): h_t = (1 - tau) h_{t-1} + tau tanh(s_t). (1 - tau) menjaga sisa ingatan lama (peluruhan alami), sementara tau mengatur seberapa besar sinyal terbaru masuk ke state.',
+    training: '1 parameter tunggal untuk seluruh 2.500 neuron. Diperbarui oleh Adam setiap PPO update; nilai awal 0,35 dan selalu terjepit di (0,05; 0,95) via 0,05 + 0,90 sigmoid(tau_logit).',
     rows: [
-      ['dipakai bersama', 'oleh seluruh 2.500 neuron'],
+      ['rumus batas', '0,05 + 0,90 * sigmoid(tau_logit)'],
+      ['dipakai bersama', 'oleh seluruh 2.500 neuron (CX dan MB)'],
     ],
   },
   g_exc: {
@@ -139,9 +140,12 @@ const COMPONENTS = {
     status: 'runtime',
     shape: 'skalar',
     params: '0',
-    role: 'Pengali arus eksitatoris (ACH): g_exc · W_exc · h. Dipakai untuk uji neurofarmakologi in-silico.',
-    training: 'Tidak dilatih dan tidak disimpan di checkpoint. Bernilai 1,0 selama training, diubah lewat slider di Live Simulation (0,0 - 2,5).',
-    rows: [['default', '1,0']],
+    role: 'Pengali arus eksitatoris (ACH): g_exc * W_exc * h. Jika dinaikkan (> 1,0), neuron lebih mudah terpicu dan aktivasi cepat jenuh ke +/-1 (hiper-eksitasi). Jika diturunkan ke 0,0, jalur pengaktif antar-neuron putus.',
+    training: 'Tidak dilatih dan tidak disimpan di checkpoint. Bernilai 1,0 selama training; diubah via slider Live Simulation (0,0 - 2,5).',
+    rows: [
+      ['default', '1,0'],
+      ['bila = 0,0', 'sinyal ACH internal mati (hanya sisa W_inh & input_projection)'],
+    ],
   },
   g_inh: {
     group: 'Recurrent core',
@@ -151,9 +155,12 @@ const COMPONENTS = {
     status: 'runtime',
     shape: 'skalar',
     params: '0',
-    role: 'Pengali arus inhibitoris (GABA / GLUT): g_inh · W_inh · h.',
-    training: 'Tidak dilatih dan tidak disimpan di checkpoint. Bernilai 1,0 selama training, diubah lewat slider di Live Simulation (0,0 - 2,5).',
-    rows: [['default', '1,0']],
+    role: 'Pengali arus inhibitori (GABA / GLUT): - g_inh * W_inh * h. Jika dinaikkan (> 1,0), sinyal memori rekuren makin diredam menuju nol. Jika diturunkan (< 1,0), rem penghambat melemah sehingga arus eksitatoris menyebar bebas.',
+    training: 'Tidak dilatih dan tidak disimpan di checkpoint. Bernilai 1,0 selama training; diubah via slider Live Simulation (0,0 - 2,5).',
+    rows: [
+      ['default', '1,0'],
+      ['bila g_exc=0 & g_inh=0', 'graf rekuren FAFB putus total (sisa feedforward ber-tau dari u_t)'],
+    ],
   },
   lesion_mask: {
     group: 'Recurrent core',
@@ -163,9 +170,12 @@ const COMPONENTS = {
     status: 'runtime',
     shape: '[1, 2500]',
     params: '0',
-    role: 'Mask biner per neuron. Neuron bernilai 0 dibungkam: state dan keluarannya dikalikan nol.',
-    training: 'Tidak dilatih. Bernilai 1 untuk semua neuron selama training; diubah oleh tombol Lesion CX / MB / Random.',
-    rows: [['default', 'semua 1 (2.500 aktif)']],
+    role: 'Mask biner [1, 2500]. Neuron bernilai 0 dikalikan nol pada h_{t-1} (memutus kiriman ke W_exc/W_inh) dan h_t (menolkan bacaan ke actor/critic). Menguji redundansi saat sebagian CX (450 neuron), MB (175), atau acak (625) dimatikan.',
+    training: 'Tidak dilatih. Semua 1,0 saat training; diubah tombol Lesion CX / MB / Random 25% (seed=42) di Live Simulation.',
+    rows: [
+      ['default', 'semua 1 (2.500 aktif)'],
+      ['mode lesi 25%', 'CX -> 2.050 aktif | MB -> 2.325 aktif | Random -> 1.875 aktif'],
+    ],
   },
   actor_head: {
     group: 'Readout',
@@ -229,10 +239,11 @@ const COMPONENTS = {
     status: 'data',
     shape: 'Discrete(4) -> obs [22]',
     params: '0',
-    role: 'Simulator simpang empat. Menerima fase dari policy, menjalankan 1 step (dt 2,0 s), lalu mengembalikan x_{t+1} dan reward r_t.',
-    training: 'Tidak memiliki parameter. Reward r_t = 0,005 (-Q - 0,1 W - 1,0 S - 15,0 C) menjadi sinyal untuk PPO.',
+    role: 'Simulator simpang empat (2D/3D). Menerima fase dari policy, menjalankan 1 step (dt 2,0 s), lalu mengembalikan x_{t+1} dan reward r_t.',
+    training: 'Tidak memiliki parameter. Reward r_t = 0,005 (-Q - 0,1 W - 1,0 S - 80,0 C) menjadi sinyal untuk PPO.',
     rows: [
-      ['episode', '300 step'],
+      ['episode', '500 step (1.000 detik simulasi)'],
+      ['interlock', 'min_green=6, yellow=2, all_red=1 langkah'],
       ['training', '8 environment paralel x 128 step per update'],
     ],
   },
@@ -356,6 +367,12 @@ export class ArchitectureView {
     this.pointerInside = false;
     this.cameraTween = null;
     this.lastNudgeMs = 0;
+    this.cinematicActive = false;
+    this.cinematicTime = 0;
+    this.cinematicBlend = 1.0;
+    this.cinematicBaseAngle = Math.atan2(24, 9.5);
+    this.cinematicStartPos = new THREE.Vector3();
+    this.cinematicStartTarget = new THREE.Vector3();
 
     this._renderIndex();
     this._renderDetail(null);
@@ -402,6 +419,9 @@ export class ArchitectureView {
     this.controls.target.copy(this.homeTarget);
     this.controls.addEventListener('start', () => {
       this.cameraTween = null;
+      if (this.cinematicActive) {
+        this.setCinematicMode(false);
+      }
     });
 
     this.composer = new EffectComposer(this.renderer);
@@ -983,9 +1003,61 @@ export class ArchitectureView {
     const resetBtn = this.root.querySelector('[data-arch-action="reset"]');
     if (resetBtn) {
       resetBtn.addEventListener('click', () => {
+        this.setCinematicMode(false);
         this.select(null);
         this._tweenCamera(this.homeCamera.clone(), this.homeTarget.clone());
       });
+    }
+    this.cinematicBtn = this.root.querySelector('[data-arch-action="cinematic"]');
+    if (this.cinematicBtn) {
+      this.cinematicBtn.addEventListener('click', () => {
+        this.setCinematicMode(!this.cinematicActive);
+      });
+    }
+    this.fullscreenBtn = this.root.querySelector('[data-arch-action="fullscreen"]');
+    if (this.fullscreenBtn) {
+      this.fullscreenBtn.addEventListener('click', () => {
+        this.toggleFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const isFs = document.fullscreenElement === this.stage;
+        this.fullscreenBtn.textContent = isFs ? 'Exit Fullscreen' : 'Fullscreen';
+        this.fullscreenBtn.classList.toggle('is-active', isFs);
+        this.fullscreenBtn.setAttribute('aria-pressed', isFs ? 'true' : 'false');
+        this._resize();
+      });
+    }
+  }
+
+  setCinematicMode(enabled) {
+    const next = Boolean(enabled);
+    if (next && !this.initialized) return;
+    this.cinematicActive = next;
+    if (this.cinematicBtn) {
+      this.cinematicBtn.classList.toggle('is-active', next);
+      this.cinematicBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+    }
+    if (!next) return;
+
+    this.cameraTween = null;
+    this.cinematicTime = 0;
+    this.cinematicBlend = 0.0;
+    const dx = this.camera.position.x - this.homeTarget.x;
+    const dz = this.camera.position.z - this.homeTarget.z;
+    const horiz = Math.hypot(dx, dz);
+    this.cinematicBaseAngle = horiz > 0.5 ? Math.atan2(dz, dx) : Math.atan2(24, 9.5);
+    this.cinematicStartPos.copy(this.camera.position);
+    this.cinematicStartTarget.copy(this.controls.target);
+  }
+
+  toggleFullscreen() {
+    if (!this.stage) return;
+    if (!document.fullscreenElement) {
+      if (typeof this.stage.requestFullscreen === 'function') {
+        this.stage.requestFullscreen().catch(() => {});
+      }
+    } else if (typeof document.exitFullscreen === 'function') {
+      document.exitFullscreen().catch(() => {});
     }
   }
 
@@ -1021,6 +1093,7 @@ export class ArchitectureView {
     if (this.initialized) {
       this._applyEmphasis();
       if (focus && this.selectedId) {
+        this.setCinematicMode(false);
         const entry = this.components[this.selectedId];
         if (entry) {
           const dir = this.camera.position.clone().sub(this.controls.target).normalize();
@@ -1184,7 +1257,7 @@ export class ArchitectureView {
             </div>
           </dl>
           <p class="arch-insp-footnote">
-            Gulir ke bawah untuk membaca penjelasan matematis lengkap dari langkah (1) hingga (5).
+            Untuk melihat anatomi CX/MB, perbandingan model MLP/GRU, dan hasil eksperimen lengkap, klik <strong>Buka Dokumentasi Lengkap</strong> di bawah.
           </p>
         </div>
       `;
@@ -1300,7 +1373,33 @@ export class ArchitectureView {
     const now = performance.now();
     const time = now / 1000;
 
-    if (this.cameraTween) {
+    if (this.cinematicActive) {
+      this.cinematicTime += dt;
+      const t = this.cinematicTime;
+      const angle = this.cinematicBaseAngle + t * 0.16;
+      const radius = 23.5 + 3.5 * Math.sin(t * 0.32);
+      const height = 6.2 + 3.6 * Math.sin(t * 0.25 + 0.5);
+      const desiredPos = new THREE.Vector3(
+        Math.cos(angle) * radius,
+        height,
+        Math.sin(angle) * radius
+      );
+      const desiredTarget = new THREE.Vector3(
+        2.2 * Math.sin(t * 0.21),
+        -0.3,
+        1.2 * Math.cos(t * 0.17)
+      );
+      if (this.cinematicBlend < 1.0) {
+        this.cinematicBlend = Math.min(1.0, this.cinematicBlend + dt / 0.9);
+        const b = this.cinematicBlend;
+        const ease = b < 0.5 ? 2 * b * b : 1 - Math.pow(-2 * b + 2, 2) / 2;
+        this.camera.position.lerpVectors(this.cinematicStartPos, desiredPos, ease);
+        this.controls.target.lerpVectors(this.cinematicStartTarget, desiredTarget, ease);
+      } else {
+        this.camera.position.copy(desiredPos);
+        this.controls.target.copy(desiredTarget);
+      }
+    } else if (this.cameraTween) {
       const tw = this.cameraTween;
       const k = Math.min(1, (now - tw.start) / tw.duration);
       const e = 1 - Math.pow(1 - k, 3);

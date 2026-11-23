@@ -566,7 +566,7 @@ export class TrainingStudioView {
     if (!this.previewCaption || !snapshot) {
       return;
     }
-    const stepText = `${Number(snapshot.step || 0)}/${Number(snapshot.max_steps || 300)}`;
+    const stepText = `${Number(snapshot.step || 0)}/${Number(snapshot.max_steps || 500)}`;
     const phaseText = snapshot.phase_label
       ? `${snapshot.phase_label} (${snapshot.signal_stage || 'GREEN'})`
       : '-';

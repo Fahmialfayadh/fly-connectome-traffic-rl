@@ -313,7 +313,16 @@ const camButtons = {
   top: document.getElementById('btn-cam-top'),
   angle: document.getElementById('btn-cam-angle'),
   street: document.getElementById('btn-cam-street'),
+  cinematic: document.getElementById('btn-cam-cinematic'),
 };
+
+let cinematicActive = false;
+let cinematicTime = 0;
+let cinematicBaseAngle = Math.PI * 0.25;
+let cinematicBlend = 1.0;
+const cinematicStartPos = new THREE.Vector3();
+const cinematicStartTarget = new THREE.Vector3();
+let cameraTweenRaf = null;
 
 function activateCamButton(activeKey) {
   for (const [key, btn] of Object.entries(camButtons)) {
@@ -321,22 +330,94 @@ function activateCamButton(activeKey) {
   }
 }
 
+controls.addEventListener('start', () => {
+  if (cinematicActive) {
+    cinematicActive = false;
+    activateCamButton(null);
+  }
+  if (cameraTweenRaf !== null) {
+    cancelAnimationFrame(cameraTweenRaf);
+    cameraTweenRaf = null;
+  }
+});
+
 camButtons.top.addEventListener('click', () => {
+  cinematicActive = false;
   _animateCamera(0, 48, 0.1, 0, 0, 0);
   activateCamButton('top');
 });
 
 camButtons.angle.addEventListener('click', () => {
+  cinematicActive = false;
   _animateCamera(26, 28, 26, 0, 0, 0);
   activateCamButton('angle');
 });
 
 camButtons.street.addEventListener('click', () => {
+  cinematicActive = false;
   _animateCamera(-3.0, 2.5, -24, -1.5, 1.0, 0);
   activateCamButton('street');
 });
 
+if (camButtons.cinematic) {
+  camButtons.cinematic.addEventListener('click', () => {
+    cinematicActive = !cinematicActive;
+    if (!cinematicActive) {
+      activateCamButton(null);
+      return;
+    }
+    if (cameraTweenRaf !== null) {
+      cancelAnimationFrame(cameraTweenRaf);
+      cameraTweenRaf = null;
+    }
+    cinematicTime = 0;
+    cinematicBlend = 0.0;
+    const horizDist = Math.hypot(camera.position.x, camera.position.z);
+    cinematicBaseAngle =
+      horizDist > 1.0
+        ? Math.atan2(camera.position.z, camera.position.x)
+        : Math.PI * 0.25;
+    cinematicStartPos.copy(camera.position);
+    cinematicStartTarget.copy(controls.target);
+    activateCamButton('cinematic');
+  });
+}
+
+function _updateCinematicCamera(dt) {
+  cinematicTime += dt;
+  const t = cinematicTime;
+  const angle = cinematicBaseAngle + t * 0.22;
+  const radius = 32.0 + 7.0 * Math.sin(t * 0.35);
+  const height = 17.5 + 7.5 * Math.sin(t * 0.28 + 0.6);
+
+  const desiredPos = new THREE.Vector3(
+    Math.cos(angle) * radius,
+    height,
+    Math.sin(angle) * radius
+  );
+  const desiredTarget = new THREE.Vector3(
+    2.0 * Math.cos(t * 0.19),
+    1.0,
+    2.0 * Math.sin(t * 0.23)
+  );
+
+  if (cinematicBlend < 1.0) {
+    cinematicBlend = Math.min(1.0, cinematicBlend + dt / 0.9);
+    const b = cinematicBlend;
+    const ease = b < 0.5 ? 2 * b * b : 1 - Math.pow(-2 * b + 2, 2) / 2;
+    camera.position.lerpVectors(cinematicStartPos, desiredPos, ease);
+    controls.target.lerpVectors(cinematicStartTarget, desiredTarget, ease);
+  } else {
+    camera.position.copy(desiredPos);
+    controls.target.copy(desiredTarget);
+  }
+}
+
 function _animateCamera(x, y, z, tx, ty, tz) {
+  if (cameraTweenRaf !== null) {
+    cancelAnimationFrame(cameraTweenRaf);
+    cameraTweenRaf = null;
+  }
   const startPos = camera.position.clone();
   const endPos = new THREE.Vector3(x, y, z);
   const startTarget = controls.target.clone();
@@ -353,9 +434,13 @@ function _animateCamera(x, y, z, tx, ty, tz) {
     controls.target.lerpVectors(startTarget, endTarget, ease);
     controls.update();
 
-    if (t < 1) requestAnimationFrame(step);
+    if (t < 1) {
+      cameraTweenRaf = requestAnimationFrame(step);
+    } else {
+      cameraTweenRaf = null;
+    }
   }
-  requestAnimationFrame(step);
+  cameraTweenRaf = requestAnimationFrame(step);
 }
 
 /* ======== Window Resize ======== */
@@ -371,6 +456,9 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
 
+  if (cinematicActive) {
+    _updateCinematicCamera(dt);
+  }
   controls.update();
   vehicles.animate(dt);
   updateBadgePositions();

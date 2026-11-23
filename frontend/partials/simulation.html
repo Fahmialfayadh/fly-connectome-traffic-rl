@@ -38,7 +38,7 @@
       <span class="control-bar-label">Horizon</span>
       <div class="segmented-control" role="group" aria-label="Simulation Horizon">
         <button class="seg-btn is-active" type="button" data-continuous-mode="1" aria-pressed="true">Continuous</button>
-        <button class="seg-btn" type="button" data-continuous-mode="0" aria-pressed="false">300-Step</button>
+        <button class="seg-btn" type="button" data-continuous-mode="0" aria-pressed="false">500-Step</button>
       </div>
     </div>
 
@@ -61,7 +61,7 @@
     <div class="control-telemetry-group">
       <div class="telemetry-pill">
         <span class="control-bar-label">Step</span>
-        <strong id="sim-regime-value" class="mono-value">0 / 300</strong>
+        <strong id="sim-regime-value" class="mono-value">0 / 500</strong>
       </div>
       <div class="telemetry-pill">
         <span class="control-bar-label">Signal</span>
@@ -80,20 +80,194 @@
         <div>
           <h2>4-Way Intersection Simulation</h2>
         </div>
-        <div class="sim-transport-controls">
-          <button id="btn-sim-play-pause" class="btn btn-primary" type="button">
-            Pause
-          </button>
-          <button id="btn-sim-step" class="btn btn-secondary" type="button">
-            Step +1
-          </button>
-          <button id="btn-sim-reset" class="btn btn-secondary" type="button">
-            Reset Sim
-          </button>
+        <div class="sim-header-actions">
+          <div id="sim-view-switch" class="brain-view-switch" role="group" aria-label="Intersection Visualization Mode">
+            <button
+              id="btn-sim-view-3d"
+              class="seg-btn is-active"
+              type="button"
+              aria-pressed="true"
+            >
+              3D View
+            </button>
+            <button
+              id="btn-sim-view-2d"
+              class="seg-btn"
+              type="button"
+              aria-pressed="false"
+            >
+              2D Map
+            </button>
+          </div>
+          <div class="sim-transport-controls">
+            <button id="btn-sim-play-pause" class="btn btn-primary" type="button">
+              Pause
+            </button>
+            <button id="btn-sim-step" class="btn btn-secondary" type="button">
+              Step +1
+            </button>
+            <button id="btn-sim-reset" class="btn btn-secondary" type="button">
+              Reset Sim
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="canvas-stage">
+      <div id="intersection-3d-stage" class="sim3d-stage">
+        <div class="sim3d-canvas-host" data-sim3d="canvas-host"></div>
+
+        <div class="sim3d-camera-bar" role="group" aria-label="3D Intersection Camera Presets">
+          <button class="sim3d-cam-btn is-active" type="button" data-sim3d-cam="top" aria-pressed="true">Top View</button>
+          <button class="sim3d-cam-btn" type="button" data-sim3d-cam="angle" aria-pressed="false">3D Angle</button>
+          <button class="sim3d-cam-btn" type="button" data-sim3d-cam="street" aria-pressed="false">Street</button>
+          <button class="sim3d-cam-btn" type="button" data-sim3d-cam="cinematic" aria-pressed="false">Cinematic</button>
+        </div>
+
+        <div class="sim3d-stage-actions">
+          <button
+            id="btn-sim3d-fullscreen"
+            class="brain3d-overlay-btn"
+            type="button"
+            aria-label="Toggle Fullscreen 3D Intersection"
+            data-sim3d="fullscreen"
+          >
+            Fullscreen
+          </button>
+        </div>
+
+        <div class="sim3d-approach-overlay sim3d-approach-north">
+          <div class="sim3d-approach-title">NORTH</div>
+          <div class="sim3d-approach-signals">
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="0-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="0-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="0-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">N-STR</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="0">0s</span>
+              </div>
+            </div>
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="1-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="1-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="1-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">N-TRN</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="1">0s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim3d-approach-overlay sim3d-approach-east">
+          <div class="sim3d-approach-title">EAST</div>
+          <div class="sim3d-approach-signals">
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="4-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="4-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="4-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">E-STR</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="4">0s</span>
+              </div>
+            </div>
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="5-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="5-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="5-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">E-TRN</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="5">0s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim3d-approach-overlay sim3d-approach-south">
+          <div class="sim3d-approach-title">SOUTH</div>
+          <div class="sim3d-approach-signals">
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="2-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="2-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="2-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">S-STR</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="2">0s</span>
+              </div>
+            </div>
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="3-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="3-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="3-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">S-TRN</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="3">0s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim3d-approach-overlay sim3d-approach-west">
+          <div class="sim3d-approach-title">WEST</div>
+          <div class="sim3d-approach-signals">
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="6-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="6-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="6-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">W-STR</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="6">0s</span>
+              </div>
+            </div>
+            <div class="sim3d-signal-row">
+              <div class="sim3d-housing">
+                <span class="sim3d-lens red active" data-sim3d-lens="7-r"></span>
+                <span class="sim3d-lens yellow" data-sim3d-lens="7-y"></span>
+                <span class="sim3d-lens green" data-sim3d-lens="7-g"></span>
+              </div>
+              <div class="sim3d-tag-timer">
+                <span class="sim3d-tag">W-TRN</span>
+                <span class="sim3d-timer-pill mono-value" data-sim3d-timer="7">0s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="0">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="1">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="2">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="3">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="4">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="5">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="6">0</div>
+        <div class="sim3d-qbadge mono-value" data-sim3d-qbadge="7">0</div>
+
+        <div class="sim3d-collision-alert is-hidden" data-sim3d="collision-alert">
+          <span class="sim3d-alert-icon">!</span>
+          <div class="sim3d-alert-text">
+            <strong data-sim3d="alert-title">COLLISION EVENT</strong>
+            <span data-sim3d="alert-subtitle">Conflict in intersection box</span>
+          </div>
+        </div>
+
+        <div class="sim3d-hint-pill">Drag orbit · Scroll zoom · Klik lajur untuk tambah mobil</div>
+      </div>
+
+      <div id="intersection-2d-stage" class="canvas-stage is-hidden">
         <canvas id="intersection-canvas" width="700" height="580"></canvas>
       </div>
 
@@ -174,7 +348,7 @@
           <span class="metric-label tooltip-trigger">Phase Switches</span>
           <span id="metric-switches" class="metric-number mono-value">0</span>
         </div>
-        <div class="metric-cell" data-tooltip="Akumulasi skor reward agen pada episode aktif: 0.005 * (-Q - 0.1W - 1.0S - 15.0C)." data-tooltip-pos="top">
+        <div class="metric-cell" data-tooltip="Akumulasi skor reward agen pada episode aktif: 0.005 * (-Q - 0.1W - 1.0S - 80.0C)." data-tooltip-pos="top">
           <span class="metric-label tooltip-trigger">Episode Return</span>
           <span id="metric-episode-reward" class="metric-number mono-value">0.00</span>
         </div>
@@ -231,7 +405,7 @@
             <div class="brain3d-labels" data-brain3d="labels" aria-hidden="true"></div>
 
             <div class="brain3d-hud">
-              <div class="brain3d-hud-line mono-value" data-brain3d="hud-step">Step 0/300</div>
+              <div class="brain3d-hud-line mono-value" data-brain3d="hud-step">Step 0/500</div>
               <div class="brain3d-hud-line mono-value" data-brain3d="hud-phase">a_t = NS Straight</div>
               <div class="brain3d-hud-probs" data-brain3d="hud-probs"></div>
             </div>
@@ -490,7 +664,7 @@
             <tbody id="episode-history-tbody">
               <tr>
                 <td colspan="7" class="empty-cell">
-                  Belum ada episode simulasi yang selesai (berlaku pada mode 300-Step).
+                  Belum ada episode simulasi yang selesai (berlaku pada mode 500-Step).
                 </td>
               </tr>
             </tbody>

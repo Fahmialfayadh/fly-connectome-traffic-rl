@@ -66,3 +66,4 @@ class FlyConnectomePolicy(BaseRecurrentActorCritic):
         logits = self.actor_head(next_hidden)
         value = self.critic_head(next_hidden).squeeze(-1)
         return logits, value, next_hidden
+

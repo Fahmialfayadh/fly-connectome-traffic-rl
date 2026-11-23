@@ -5,32 +5,36 @@
  */
 
 const MASTER_DOC_SCENARIO_FALLBACK = [
-  { scenario: 'normal', agent_name: 'Fixed Timer', mean_reward: -17.688, mean_queue: 8.06, mean_wait_time_s: 22.33, mean_throughput: 208.2, mean_switches: 37.0, mean_collisions: 0.00, inference_ms_per_step: 0.002 },
-  { scenario: 'normal', agent_name: 'PPO-MLP', mean_reward: -10.731, mean_queue: 5.03, mean_wait_time_s: 13.90, mean_throughput: 211.9, mean_switches: 71.0, mean_collisions: 0.00, inference_ms_per_step: 0.075 },
-  { scenario: 'normal', agent_name: 'PPO-GRU', mean_reward: -12.010, mean_queue: 5.62, mean_wait_time_s: 15.50, mean_throughput: 212.7, mean_switches: 74.0, mean_collisions: 0.00, inference_ms_per_step: 0.165 },
-  { scenario: 'normal', agent_name: 'Fly Connectome PPO', mean_reward: -11.477, mean_queue: 5.29, mean_wait_time_s: 14.50, mean_throughput: 213.6, mean_switches: 68.0, mean_collisions: 0.00, inference_ms_per_step: 0.189 },
-  { scenario: 'asymmetric', agent_name: 'Fixed Timer', mean_reward: -31.220, mean_queue: 15.93, mean_wait_time_s: 28.14, mean_throughput: 328.0, mean_switches: 37.0, mean_collisions: 0.00, inference_ms_per_step: 0.001 },
-  { scenario: 'asymmetric', agent_name: 'PPO-MLP', mean_reward: -16.544, mean_queue: 8.27, mean_wait_time_s: 14.30, mean_throughput: 337.3, mean_switches: 72.2, mean_collisions: 0.00, inference_ms_per_step: 0.068 },
-  { scenario: 'asymmetric', agent_name: 'PPO-GRU', mean_reward: -19.962, mean_queue: 9.21, mean_wait_time_s: 15.88, mean_throughput: 338.5, mean_switches: 69.0, mean_collisions: 0.00, inference_ms_per_step: 0.077 },
-  { scenario: 'asymmetric', agent_name: 'Fly Connectome PPO', mean_reward: -16.792, mean_queue: 8.55, mean_wait_time_s: 15.09, mean_throughput: 332.5, mean_switches: 62.8, mean_collisions: 0.00, inference_ms_per_step: 0.198 },
-  { scenario: 'rush_hour', agent_name: 'Fixed Timer', mean_reward: -29.838, mean_queue: 15.26, mean_wait_time_s: 26.29, mean_throughput: 324.7, mean_switches: 37.0, mean_collisions: 0.00, inference_ms_per_step: 0.001 },
-  { scenario: 'rush_hour', agent_name: 'PPO-MLP', mean_reward: -18.950, mean_queue: 9.55, mean_wait_time_s: 16.65, mean_throughput: 329.8, mean_switches: 71.5, mean_collisions: 0.00, inference_ms_per_step: 0.065 },
-  { scenario: 'rush_hour', agent_name: 'PPO-GRU', mean_reward: -22.309, mean_queue: 10.85, mean_wait_time_s: 18.35, mean_throughput: 339.5, mean_switches: 70.3, mean_collisions: 0.00, inference_ms_per_step: 0.106 },
-  { scenario: 'rush_hour', agent_name: 'Fly Connectome PPO', mean_reward: -18.269, mean_queue: 9.16, mean_wait_time_s: 16.02, mean_throughput: 332.3, mean_switches: 67.1, mean_collisions: 0.00, inference_ms_per_step: 0.473 },
-  { scenario: 'stress_test', agent_name: 'Fixed Timer', mean_reward: -241.743, mean_queue: 140.88, mean_wait_time_s: 85.60, mean_throughput: 770.6, mean_switches: 37.0, mean_collisions: 42.50, inference_ms_per_step: 0.005 },
-  { scenario: 'stress_test', agent_name: 'PPO-MLP', mean_reward: -317.427, mean_queue: 185.54, mean_wait_time_s: 136.41, mean_throughput: 546.7, mean_switches: 73.2, mean_collisions: 41.90, inference_ms_per_step: 0.182 },
-  { scenario: 'stress_test', agent_name: 'PPO-GRU', mean_reward: -272.365, mean_queue: 150.45, mean_wait_time_s: 116.43, mean_throughput: 544.7, mean_switches: 59.6, mean_collisions: 55.60, inference_ms_per_step: 0.299 },
-  { scenario: 'stress_test', agent_name: 'Fly Connectome PPO', mean_reward: -320.557, mean_queue: 191.08, mean_wait_time_s: 143.97, mean_throughput: 521.5, mean_switches: 71.3, mean_collisions: 42.80, inference_ms_per_step: 0.486 },
+  { scenario: 'normal', agent_name: 'Fly Connectome PPO (fly_ppo_new_env)', mean_reward: -35.446, mean_queue: 9.32, mean_wait_time_s: 25.82, mean_throughput: 352.4, mean_switches: 54.7, mean_collisions: 0.00, inference_ms_per_step: 0.265 },
+  { scenario: 'normal', agent_name: 'Shuffled Connectome PPO (fly_shuffled_ppo_new_env)', mean_reward: -35.630, mean_queue: 9.37, mean_wait_time_s: 25.99, mean_throughput: 353.2, mean_switches: 55.0, mean_collisions: 0.00, inference_ms_per_step: 0.289 },
+  { scenario: 'normal', agent_name: 'PPO-GRU (gru_ppo_new_env)', mean_reward: -34.923, mean_queue: 9.32, mean_wait_time_s: 26.07, mean_throughput: 348.0, mean_switches: 53.5, mean_collisions: 0.00, inference_ms_per_step: 0.176 },
+  { scenario: 'normal', agent_name: 'PPO-MLP (mlp_ppo_new_env)', mean_reward: -34.605, mean_queue: 9.21, mean_wait_time_s: 25.75, mean_throughput: 349.1, mean_switches: 52.9, mean_collisions: 0.00, inference_ms_per_step: 0.128 },
+  { scenario: 'normal', agent_name: 'Fixed Timer', mean_reward: -40.626, mean_queue: 11.01, mean_wait_time_s: 30.69, mean_throughput: 348.8, mean_switches: 45.0, mean_collisions: 0.00, inference_ms_per_step: 0.002 },
+  { scenario: 'asymmetric', agent_name: 'Fly Connectome PPO (fly_ppo_new_env)', mean_reward: -48.370, mean_queue: 13.75, mean_wait_time_s: 23.57, mean_throughput: 571.5, mean_switches: 55.0, mean_collisions: 0.00, inference_ms_per_step: 0.282 },
+  { scenario: 'asymmetric', agent_name: 'Shuffled Connectome PPO (fly_shuffled_ppo_new_env)', mean_reward: -47.624, mean_queue: 13.88, mean_wait_time_s: 23.83, mean_throughput: 570.1, mean_switches: 55.0, mean_collisions: 0.00, inference_ms_per_step: 0.264 },
+  { scenario: 'asymmetric', agent_name: 'PPO-GRU (gru_ppo_new_env)', mean_reward: -47.893, mean_queue: 13.34, mean_wait_time_s: 22.63, mean_throughput: 577.1, mean_switches: 53.6, mean_collisions: 0.00, inference_ms_per_step: 0.132 },
+  { scenario: 'asymmetric', agent_name: 'PPO-MLP (mlp_ppo_new_env)', mean_reward: -47.616, mean_queue: 13.47, mean_wait_time_s: 23.27, mean_throughput: 565.5, mean_switches: 53.5, mean_collisions: 0.00, inference_ms_per_step: 0.089 },
+  { scenario: 'asymmetric', agent_name: 'Fixed Timer', mean_reward: -61.537, mean_queue: 19.12, mean_wait_time_s: 32.92, mean_throughput: 569.5, mean_switches: 45.0, mean_collisions: 0.00, inference_ms_per_step: 0.004 },
+  { scenario: 'rush_hour', agent_name: 'Fly Connectome PPO (fly_ppo_new_env)', mean_reward: -79.574, mean_queue: 25.65, mean_wait_time_s: 27.96, mean_throughput: 886.7, mean_switches: 54.8, mean_collisions: 0.00, inference_ms_per_step: 0.393 },
+  { scenario: 'rush_hour', agent_name: 'Shuffled Connectome PPO (fly_shuffled_ppo_new_env)', mean_reward: -79.431, mean_queue: 25.60, mean_wait_time_s: 28.05, mean_throughput: 879.7, mean_switches: 54.3, mean_collisions: 0.00, inference_ms_per_step: 0.262 },
+  { scenario: 'rush_hour', agent_name: 'PPO-GRU (gru_ppo_new_env)', mean_reward: -80.937, mean_queue: 26.01, mean_wait_time_s: 28.09, mean_throughput: 894.5, mean_switches: 53.9, mean_collisions: 0.00, inference_ms_per_step: 0.098 },
+  { scenario: 'rush_hour', agent_name: 'PPO-MLP (mlp_ppo_new_env)', mean_reward: -76.871, mean_queue: 24.71, mean_wait_time_s: 27.18, mean_throughput: 879.3, mean_switches: 54.0, mean_collisions: 0.00, inference_ms_per_step: 0.079 },
+  { scenario: 'rush_hour', agent_name: 'Fixed Timer', mean_reward: -104.742, mean_queue: 35.43, mean_wait_time_s: 38.61, mean_throughput: 855.9, mean_switches: 45.0, mean_collisions: 0.00, inference_ms_per_step: 0.005 },
+  { scenario: 'stress_test', agent_name: 'Fly Connectome PPO (fly_ppo_new_env)', mean_reward: -399.038, mean_queue: 144.89, mean_wait_time_s: 88.38, mean_throughput: 1448.8, mean_switches: 54.9, mean_collisions: 5.00, inference_ms_per_step: 0.266 },
+  { scenario: 'stress_test', agent_name: 'Shuffled Connectome PPO (fly_shuffled_ppo_new_env)', mean_reward: -395.579, mean_queue: 140.52, mean_wait_time_s: 84.97, mean_throughput: 1460.1, mean_switches: 54.9, mean_collisions: 14.00, inference_ms_per_step: 0.264 },
+  { scenario: 'stress_test', agent_name: 'PPO-GRU (gru_ppo_new_env)', mean_reward: -361.209, mean_queue: 129.12, mean_wait_time_s: 78.82, mean_throughput: 1468.7, mean_switches: 52.6, mean_collisions: 8.60, inference_ms_per_step: 0.099 },
+  { scenario: 'stress_test', agent_name: 'PPO-MLP (mlp_ppo_new_env)', mean_reward: -381.887, mean_queue: 131.83, mean_wait_time_s: 78.69, mean_throughput: 1487.1, mean_switches: 53.8, mean_collisions: 25.20, inference_ms_per_step: 0.085 },
+  { scenario: 'stress_test', agent_name: 'Fixed Timer', mean_reward: -365.067, mean_queue: 126.19, mean_wait_time_s: 76.47, mean_throughput: 1482.8, mean_switches: 45.0, mean_collisions: 20.90, inference_ms_per_step: 0.002 },
 ];
 
 const MASTER_DOC_PHARMA_FALLBACK = [
-  { condition: 'Baseline (g_exc=1.0, g_inh=1.0)', g_exc: 1.00, g_inh: 1.00, active_neurons: 2500, mean_reward: -18.269, mean_wait_time_s: 16.02, mean_throughput: 332.3, mean_switches: 67.1, mean_collisions: 0.00 },
-  { condition: 'High Excitation (g_exc=1.8)', g_exc: 1.80, g_inh: 1.00, active_neurons: 2500, mean_reward: -18.635, mean_wait_time_s: 15.99, mean_throughput: 338.6, mean_switches: 65.0, mean_collisions: 0.00 },
-  { condition: 'Low Inhibition (g_inh=0.2)', g_exc: 1.00, g_inh: 0.20, active_neurons: 2500, mean_reward: -18.763, mean_wait_time_s: 16.43, mean_throughput: 331.1, mean_switches: 67.4, mean_collisions: 0.00 },
-  { condition: 'High Inhibition (g_inh=2.0)', g_exc: 1.00, g_inh: 2.00, active_neurons: 2500, mean_reward: -18.365, mean_wait_time_s: 16.29, mean_throughput: 331.8, mean_switches: 67.3, mean_collisions: 0.00 },
-  { condition: 'CX Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 2050, mean_reward: -19.169, mean_wait_time_s: 16.50, mean_throughput: 340.7, mean_switches: 67.6, mean_collisions: 0.00 },
-  { condition: 'MB Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 2325, mean_reward: -18.656, mean_wait_time_s: 16.49, mean_throughput: 330.2, mean_switches: 67.6, mean_collisions: 0.00 },
-  { condition: 'Random Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 1875, mean_reward: -18.264, mean_wait_time_s: 16.17, mean_throughput: 330.2, mean_switches: 66.8, mean_collisions: 0.00 },
+  { condition: 'Baseline (g_exc=1.0, g_inh=1.0)', g_exc: 1.00, g_inh: 1.00, active_neurons: 2500, mean_reward: -79.574, mean_wait_time_s: 27.96, mean_throughput: 886.7, mean_switches: 54.8, mean_collisions: 0.00 },
+  { condition: 'High Excitation (g_exc=1.8, g_inh=1.0)', g_exc: 1.80, g_inh: 1.00, active_neurons: 2500, mean_reward: -78.480, mean_wait_time_s: 27.44, mean_throughput: 885.2, mean_switches: 54.4, mean_collisions: 0.00 },
+  { condition: 'Low Inhibition (g_exc=1.0, g_inh=0.2)', g_exc: 1.00, g_inh: 0.20, active_neurons: 2500, mean_reward: -78.988, mean_wait_time_s: 27.93, mean_throughput: 881.6, mean_switches: 54.7, mean_collisions: 0.00 },
+  { condition: 'High Inhibition (g_exc=1.0, g_inh=2.0)', g_exc: 1.00, g_inh: 2.00, active_neurons: 2500, mean_reward: -79.107, mean_wait_time_s: 28.01, mean_throughput: 879.1, mean_switches: 54.7, mean_collisions: 0.00 },
+  { condition: 'CX Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 2050, mean_reward: -80.407, mean_wait_time_s: 28.18, mean_throughput: 886.2, mean_switches: 54.6, mean_collisions: 0.00 },
+  { condition: 'MB Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 2325, mean_reward: -78.734, mean_wait_time_s: 27.55, mean_throughput: 887.3, mean_switches: 54.8, mean_collisions: 0.00 },
+  { condition: 'Random Lesion 25%', g_exc: 1.00, g_inh: 1.00, active_neurons: 1875, mean_reward: -79.440, mean_wait_time_s: 27.94, mean_throughput: 885.2, mean_switches: 54.6, mean_collisions: 0.00 },
 ];
 
 const DOC_AGENT_COLORS = {
@@ -134,7 +138,7 @@ export class DocumentationView {
     if (this.sourceBadge) {
       this.sourceBadge.textContent = hasLiveScenario
         ? 'Disinkronkan dari artifacts/benchmarks/benchmark_summary.json'
-        : 'Snapshot laporan docs/MASTER_DOC.md';
+        : 'Snapshot artifacts/benchmarks/benchmark_summary.json';
     }
 
     if (this.scenarioTbody) {
@@ -299,7 +303,7 @@ export class DocumentationView {
     if (!this.scenarioChartCanvas) return;
     const rows = this.currentScenarioRows || [];
     const w = 760;
-    const h = 290;
+    const h = 305;
     const ctx = this._prepareHiDpiCanvas(this.scenarioChartCanvas, w, h);
     if (!rows.length) return;
 
@@ -313,7 +317,7 @@ export class DocumentationView {
     const maxVal = Math.max(0, ...values);
     const span = Math.max(maxVal - minVal, 1e-3);
 
-    const pad = { left: 56, right: 16, top: 34, bottom: 34 };
+    const pad = { left: 56, right: 16, top: 44, bottom: 34 };
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
     const zeroY = pad.top + ((maxVal - 0) / span) * plotH;
@@ -341,17 +345,30 @@ export class DocumentationView {
     ctx.lineTo(pad.left + plotW, zeroY);
     ctx.stroke();
 
-    const getColor = (name, idx) => DOC_AGENT_COLORS[name] || DOC_FALLBACK_COLORS[idx % DOC_FALLBACK_COLORS.length];
-
-    // Legend
+    // Legend (wrap cleanly to next line when agent labels are long)
     ctx.textAlign = 'left';
     ctx.font = '500 11px "IBM Plex Sans", sans-serif';
     let lx = pad.left;
-    const ly = 10;
+    let ly = 8;
+    const maxLegendX = w - pad.right;
+    const getAgentColor = (name, idx) => {
+      if (DOC_AGENT_COLORS[name]) return DOC_AGENT_COLORS[name];
+      if (name.startsWith('Fly Connectome PPO')) {
+        return idx === 0 ? DOC_AGENT_COLORS['Fly Connectome PPO'] : DOC_FALLBACK_COLORS[(idx - 1) % DOC_FALLBACK_COLORS.length];
+      }
+      if (name.startsWith('Shuffled Connectome PPO')) return DOC_AGENT_COLORS['Shuffled Connectome PPO'];
+      if (name.startsWith('PPO-MLP')) return DOC_AGENT_COLORS['PPO-MLP'];
+      if (name.startsWith('PPO-GRU')) return DOC_AGENT_COLORS['PPO-GRU'];
+      return DOC_FALLBACK_COLORS[idx % DOC_FALLBACK_COLORS.length];
+    };
     agents.forEach((name, idx) => {
       const label = name;
       const itemW = ctx.measureText(label).width + 26;
-      ctx.fillStyle = getColor(name, idx);
+      if (lx > pad.left && lx + itemW > maxLegendX) {
+        lx = pad.left;
+        ly += 15;
+      }
+      ctx.fillStyle = getAgentColor(name, idx);
       if (ctx.roundRect) {
         ctx.beginPath();
         ctx.roundRect(lx, ly, 10, 10, 2);
@@ -379,7 +396,7 @@ export class DocumentationView {
         const by = Math.min(zeroY, valY);
         const bh = Math.max(2, Math.abs(valY - zeroY));
 
-        ctx.fillStyle = getColor(agentName, aIdx);
+        ctx.fillStyle = getAgentColor(agentName, aIdx);
         const radius = val >= 0 ? [3, 3, 0, 0] : [0, 0, 3, 3];
         if (ctx.roundRect) {
           ctx.beginPath();
