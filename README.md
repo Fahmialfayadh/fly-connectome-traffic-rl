@@ -162,7 +162,7 @@ Untuk mengisolasi pengaruh **topologi biologis FAFB v783**, modul [`src/fly_traf
 
 ---
 
-## Hasil Benchmark Terbaru (10 Seed per Skenario, 500 Langkah / Episode)
+## Hasil Benchmark (10 Seed per Skenario, 500 Langkah / Episode)
 
 Tabel di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.md` (`enable_collisions=True`, `min_green_steps=6`, `yellow_steps=2`, `all_red_steps=1`, `red_light_wait_threshold_s=150.0`). Keempat *checkpoint* final Env v2 tersebut telah dipasang sebagai model bawaan `artifacts/checkpoints/{fly,fly_shuffled,gru,mlp}_ppo.pt`:
 
