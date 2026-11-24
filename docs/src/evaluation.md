@@ -35,5 +35,6 @@
 |---|---|---|
 | `plot_training_curves(histories, output_path)` | `training_curves.png` | 1×3 subplot garis: `mean_episode_reward`, `mean_throughput`, dan `mean_collisions` terhadap `timesteps`. |
 | `plot_scenario_comparison(results, output_path)` | `scenario_comparison.png` | 2×2 *grouped bar* (`mean_reward` ± std, `mean_wait_time_s` ± std, `mean_throughput` ± std, `mean_collisions`). |
+| `plot_single_scenario_metric(results, ...)` | `mean_reward.png`, `mean_collisions.png` | *Grouped bar* tunggal per metrik lintas skenario untuk ringkasan laporan. |
 | `plot_reward_vs_collisions(results, output_path)` | `reward_vs_collisions.png` | 1×2 *grouped bar* fokus pada `mean_reward` dan `mean_collisions` (dengan label angka di atas bar non-nol). |
 | `plot_pharmacology_ablation(results, output_path)` | `pharmacology_ablation.png` | 1×3 *horizontal bar* kondisi farmakologi/lesi untuk `mean_reward`, `mean_wait_time_s`, dan `mean_collisions`. |

@@ -92,6 +92,8 @@ Dengan kontrol ini, hasil perbandingan terhadap `Fly Connectome PPO` memiliki in
 
 Lingkungan simulasi (`TrafficIntersectionEnv` di `src/fly_traffic/environment/traffic_env.py`) mengimplementasikan antarmuka Gymnasium berbasis NumPy yang berjalan sepenuhnya di CPU.
 
+![Geometri 8 Lajur & 4 Fase Sinyal](intersection_2d_diagram.png)
+
 ![Alur Langkah Environment per Episode](alur-langkah-env.svg)
 
 ### Geometri Persimpangan dan Pengontrol Sinyal
@@ -374,34 +376,34 @@ Angka di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.
 
 | Skenario | Agen | Mean Reward | Mean Queue | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions | Latency (ms/step) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `normal` | Fly Connectome PPO (`fly_ppo_new_env`) | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.265 |
-| `normal` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.289 |
-| `normal` | PPO-GRU (`gru_ppo_new_env`) | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.176 |
-| `normal` | PPO-MLP (`mlp_ppo_new_env`) | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.128 |
+| `normal` | Fly Connectome PPO | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.306 |
+| `normal` | Shuffled Connectome PPO | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.299 |
+| `normal` | PPO-GRU | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.115 |
+| `normal` | PPO-MLP | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.106 |
 | `normal` | Fixed Timer (`10-6-10-6`) | -40.626 | 11.01 | 30.69 | 348.8 | 45.0 | 0.00 | 0.002 |
-| `asymmetric` | Fly Connectome PPO (`fly_ppo_new_env`) | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.282 |
-| `asymmetric` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.264 |
-| `asymmetric` | PPO-GRU (`gru_ppo_new_env`) | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.132 |
-| `asymmetric` | PPO-MLP (`mlp_ppo_new_env`) | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
-| `asymmetric` | Fixed Timer (`10-6-10-6`) | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.004 |
-| `rush_hour` | Fly Connectome PPO (`fly_ppo_new_env`) | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.393 |
-| `rush_hour` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.262 |
-| `rush_hour` | PPO-GRU (`gru_ppo_new_env`) | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.098 |
-| `rush_hour` | PPO-MLP (`mlp_ppo_new_env`) | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.079 |
-| `rush_hour` | Fixed Timer (`10-6-10-6`) | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.005 |
-| `stress_test` | Fly Connectome PPO (`fly_ppo_new_env`) | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.266 |
-| `stress_test` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.264 |
-| `stress_test` | PPO-GRU (`gru_ppo_new_env`) | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.099 |
-| `stress_test` | PPO-MLP (`mlp_ppo_new_env`) | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.085 |
+| `asymmetric` | Fly Connectome PPO | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.336 |
+| `asymmetric` | Shuffled Connectome PPO | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.270 |
+| `asymmetric` | PPO-GRU | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.129 |
+| `asymmetric` | PPO-MLP | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
+| `asymmetric` | Fixed Timer (`10-6-10-6`) | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.002 |
+| `rush_hour` | Fly Connectome PPO | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.288 |
+| `rush_hour` | Shuffled Connectome PPO | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.275 |
+| `rush_hour` | PPO-GRU | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.107 |
+| `rush_hour` | PPO-MLP | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.090 |
+| `rush_hour` | Fixed Timer (`10-6-10-6`) | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.002 |
+| `stress_test` | Fly Connectome PPO | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.293 |
+| `stress_test` | Shuffled Connectome PPO | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.296 |
+| `stress_test` | PPO-GRU | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.109 |
+| `stress_test` | PPO-MLP | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.088 |
 | `stress_test` | Fixed Timer (`10-6-10-6`) | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
 
 Pada skenario `normal`, `asymmetric`, dan `rush_hour` dengan ambang batas kesabaran lampu merah `150,0` detik dan konfigurasi intergreen bawaan (`yellow_steps = 2`, `all_red_steps = 1`), seluruh agen pada `benchmark_summary.json` mencatat rata-rata `0,00` kolisi dan seluruh agen RL mengungguli `Fixed Timer` secara konsisten (`rush_hour`: `PPO-MLP -76,871 / 27,18 s`, `Shuffled -79,431 / 28,05 s`, `Fly -79,574 / 27,96 s`, `PPO-GRU -80,937 / 28,09 s` vs `Fixed Timer -104,742 / 38,61 s`). Pada profil beban ekstrem `stress_test`, `PPO-GRU` (`-361,209 +/- 22,370`, `52,6` switches, `8,60` kolisi) menjadi satu-satunya agen RL yang mengungguli `Fixed Timer` (`-365,067 +/- 17,968`, `20,90` kolisi) pada `Mean Reward`, sementara `Fly Connectome PPO` mencatat tingkat konflik terendah di antara seluruh agen (`5,00` kolisi vs `14,00` pada `Shuffled` dan `25,20` pada `PPO-MLP`) serta standar deviasi *reward* paling rapat (`+/- 17,601`).
 
 ### Visualisasi Hasil Benchmark
 
-![Perbandingan Mean Reward Lintas Skenario (5M Env v2)](../artifacts/benchmarks/mean_reward.png)
+![Perbandingan Mean Reward Lintas Skenario](../artifacts/benchmarks/mean_reward.png)
 
-![Perbandingan Mean Collisions Lintas Skenario (5M Env v2)](../artifacts/benchmarks/mean_collisions.png)
+![Perbandingan Mean Collisions Lintas Skenario](../artifacts/benchmarks/mean_collisions.png)
 
 ![Perbandingan Lintas Skema Pelatihan (Env v1 vs Stress Training vs Env v2)](../artifacts/benchmarks/experiment_evolution_comparison.png)
 
@@ -409,7 +411,7 @@ Pada skenario `normal`, `asymmetric`, dan `rush_hour` dengan ambang batas kesaba
 
 ![Kurva Pelatihan PPO](../artifacts/benchmarks/training_curves.png)
 
-> Catatan faktual berkas: `mean_reward.png`, `mean_collisions.png`, dan `experiment_evolution_comparison.png` merefleksikan evaluasi `5M` Env v2 pada tabel di atas, sedangkan berkas terbaru `scenario_comparison.png`, `training_curves.png`, dan `pharmacology_ablation.png` pada direktori [artifacts/benchmarks/](../artifacts/benchmarks/) dirender dari run evaluasi notebook `163.840` langkah (`*_ppofrom_ipynb`). Arsip data evolusi lintas skema tersedia di [experiment_evolution.json](../artifacts/benchmarks/experiment_evolution.json).
+> Arsip data komparasi lintas skema pelatihan (`Env v1`, `Stress Training`, dan konfigurasi standar `500` langkah saat ini) tersedia di [experiment_evolution.json](../artifacts/benchmarks/experiment_evolution.json).
 
 ### Uji Farmakologi dan Lesi Sirkuit (`rush_hour`, 10 Seed)
 
@@ -438,7 +440,7 @@ Kontrol `set_safety_buffer()` (dan sakelar UI **Signal Buffer**) mengatur parame
 1. **Abstraksi simulasi terbatas.** `TrafficIntersectionEnv` adalah model antrean diskrit berbasis NumPy (ditampilkan secara visual lewat 3D Three.js dan 2D Canvas) tanpa fisika mikroskopik kendaraan seperti pada simulator SUMO. Hasilnya tidak dapat langsung digeneralisasikan ke persimpangan dunia nyata.
 2. **Ukuran sampel evaluasi kecil.** Benchmark mengevaluasi 10 seed per skenario, sehingga perbedaan tipis antar arsitektur atau *checkpoint* belum cukup kuat untuk menyimpulkan signifikansi statistik tanpa pengujian seed yang lebih besar.
 3. **Model kolisi bersifat stokastik.** `red_light_conflict` dan `box_clearance_conflict` menggunakan pencuplikan acak dengan probabilitas tetap. Variasi seed dapat menghasilkan jumlah konflik yang berbeda meski bobot kebijakannya sama.
-4. **Biaya latensi operasi matriks *sparse*.** Pada CPU, inferensi satu langkah `Fly Connectome PPO` membutuhkan `0,265–0,393 ms/step` dan `Shuffled` `0,262–0,289 ms/step`, sekitar 2–3 kali lebih lambat dibanding `PPO-GRU` (`0,098–0,176 ms/step`) maupun `PPO-MLP` (`0,079–0,128 ms/step`), serta jauh di bawah `Fixed Timer` (`<= 0,005 ms/step`).
+4. **Biaya latensi operasi matriks *sparse*.** Pada CPU, inferensi satu langkah `Fly Connectome PPO` membutuhkan `0,288–0,336 ms/step` dan `Shuffled` `0,270–0,299 ms/step`, sekitar 2,5–3 kali lebih lambat dibanding `PPO-GRU` (`0,107–0,129 ms/step`) maupun `PPO-MLP` (`0,088–0,106 ms/step`), serta jauh di bawah `Fixed Timer` (`0,002 ms/step`).
 5. **Keselamatan tetap bergantung pada *interlock* sinyal dan kapasitas simpang.** `SignalController` mengunci perpindahan fase minimum hijau `6` langkah serta fase transisi antar-hijau, namun kondisi jenuh di atas `red_light_wait_threshold_s = 150,0 s` tetap menimbulkan pelanggaran lampu merah pada kebijakan mana pun.
 
 ---

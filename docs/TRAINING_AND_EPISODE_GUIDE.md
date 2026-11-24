@@ -1,8 +1,41 @@
-# Panduan Lengkap Siklus Episode, Loop Training PPO, dan Penelusuran Simulasi
+# Panduan Siklus Episode, Arsitektur Sistem, dan Loop Training PPO
 
-Dokumen ini menjelaskan alur lengkap satu episode simulasi lalu lintas (`500` langkah pada konfigurasi terkini : Perhatikan `src/fly_traffic/config.py`), mekanisme training PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI, serta referensi penelusuran nyata episode.
+Dokumen ini menjelaskan arsitektur interaksi antar-komponen sistem, alur satu episode simulasi lalu lintas (`500` langkah pada `src/fly_traffic/config.py`), serta mekanisme pelatihan PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI.
 
-Untuk daftar lengkap simbol persamaan dan pemetaan nama variabel kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md).
+Untuk pemetaan simbol persamaan ke atribut kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md). Untuk laporan eksperimen menyeluruh, lihat [MASTER_DOC.md](MASTER_DOC.md).
+
+---
+
+## Gambaran Arsitektur Sistem (*High-Level Dataflow*)
+
+```mermaid
+flowchart LR
+    subgraph EnvDesign ["Desain Lingkungan & Skenario"]
+        P1["Profil Training (Mixed + Jitter)<br/>Normal, Asymmetric, Rush Hour, Stress"]
+        P2["Profil Benchmark (Deterministik)<br/>Evaluasi 10 Seed"]
+        ENV["TrafficIntersectionEnv<br/>8 Lajur FIFO, 4 Fase, Safety Interlock"]
+        P1 --> ENV
+        P2 -.-> ENV
+    end
+
+    subgraph AgentDesign ["Desain Agen & Optimasi"]
+        AG["Policy Network<br/>Fly / Shuffled Connectome (2.500 Neuron)<br/>vs Baseline (MLP / GRU / Fixed Timer)"]
+        MASK["Decision Masking<br/>Filter langkah valid di luar masa interlock"]
+        PPO["PPO Training Engine<br/>(8 SyncVectorEnv, Sequence Chunk 16)"]
+        ENV -->|"Observasi 22-dim & Reward"| AG
+        AG -->|"Aksi: Pilih 1 dari 4 Fase"| ENV
+        ENV --> MASK
+        MASK --> PPO
+        PPO -->|"Update Adapter / Policy"| AG
+    end
+
+    subgraph WebUI ["Web UI & Visualisasi"]
+        PREV["Live Policy Preview<br/>(4 Tick Rush Hour per Update)"]
+        LIVE["Live Simulation & Benchmark<br/>(Auto-load Checkpoint)"]
+        AG -.->|"Snapshot Bobot"| PREV
+        PPO -.->|"Simpan Checkpoint (.pt)"| LIVE
+    end
+```
 
 ---
 
@@ -113,63 +146,3 @@ sequenceDiagram
    - Setiap kali `PPOTrainer` menyelesaikan 1 update (`1.024` langkah rollout + 4 epoch optimasi), callback `on_policy_update_callback` memanggil `TrainingJobManager._rollout_preview_frames(..., num_ticks=4)`.
    - Fungsi ini menjalankan hanya **4 langkah deterministik** (`torch.argmax(logits, dim=-1)` dalam blok `torch.no_grad()` dan mode `policy.eval()`) serta memanggil `preview_env.get_render_snapshot()`. Pengukuran langsung pada sesi ini menunjukkan 4 tick preview untuk `FlyConnectomePolicy` hanya memakan **`10.33 ms`** per update (dibandingkan ~`2.6` detik per update training Fly).
    - Keempat snapshot JSON tersebut dikirim melalui field `preview_frames` pada event WebSocket `training_update` (`/ws/training`). Di sisi browser, `TrainingStudioView` (`frontend/js/training_studio.js`) memutar ulang antrean 4 frame tersebut satu per satu setiap `previewIntervalMs = 260` ms melalui `IntersectionRenderer` (`{ compact: true }`) selama tab Training Studio aktif terlihat, menampilkan pergerakan kendaraan, lampu 3-lensa, dan penghitung `Collisions` secara *live* tanpa menyentuh maupun memperlambat loop rollout PPO.
-
----
-
-## 3. Arsip Referensi Penelusuran 1 Episode Penuh (Konfigurasi Awal `max_steps = 300`)
-
-> **Catatan Konfigurasi:** Penelusuran deterministik di bawah ini direkam pada konfigurasi lingkungan awal (`max_steps = 300`, `min_green_steps = 2`, `yellow_steps = 1`, `all_red_steps = 1`, `straight_discharge_rate = 2.0`, `turn_discharge_rate = 1.5`, `collision_penalty = 15.0`) menggunakan *checkpoint* `artifacts/checkpoints/fly_ppo.pt` (`trained_timesteps = 163,840`, `trainable_params = 70,006`, `leak_rate_tau = 0.4328`). Pada konfigurasi saat ini, parameter standar telah diperbarui menjadi `max_steps = 500`, `min_green_steps = 6`, `yellow_steps = 2`, `straight_discharge_rate = 2.5`, `turn_discharge_rate = 2.0`, `red_light_wait_threshold_s = 150.0`, dan `collision_penalty = 80.0` (lihat Bagian 1 & `benchmark_summary.json`).
-
-### A. Jejak Episode Utama: `Fly Connectome PPO` pada `rush_hour` (`seed=1001`, `all_red_steps=1`)
-
-Pada konfigurasi default (`all_red_steps=1`, `yellow_steps=1`, `min_green_steps=2`), agen memulai episode di fase `0 (NS Straight)` dengan seluruh antrean kosong (`step=0`). Tabel berikut mencatat kondisi nyata pada *milestone* `step = 0, 1, 30, 100, 150, 200, 250, 300`:
-
-| Step | Fase Aktif & Stage | Aksi / Switch | Antrean 8 Lajur `[N_S, N_T, S_S, S_T, E_S, E_T, W_S, W_T]` | Total Queue | Arr / Dep Step | Total Throughput | Total Switches | Max Wait (s) | Mean Wait (s) | Step Reward | Episode Return | Total Collisions | Probabilitas Aksi `[P0, P1, P2, P3]` & `V(s_t)` |
-|---:|---|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---|
-| **0** | `0: NS Straight` (`GREEN`) | Reset | `[0, 0, 0, 0, 0, 0, 0, 0]` | 0 | `-` | 0 | 0 | 0.0 | 0.00 | - | 0.0000 | 0 | Awal episode (`obs_sum = 1.0000`) |
-| **1** | `0: NS Straight` (`GREEN`) | `0` (`False`) | `[0, 0, 0, 0, 0, 0, 0, 0]` | 0 | `0 / 0` | 0 | 0 | 0.0 | 0.00 | -0.0000 | 0.0000 | 0 | `[0.343, 0.183, 0.140, 0.334]`, `V=-1.826` |
-| **30** | `2: EW Straight` (`GREEN`) | `2` (`False`) | `[0, 0, 0, 0, 3, 3, 2, 1]` | 9 | `1 / 0` | 11 | 6 | 26.0 | 13.09 | -0.0580 | -0.8540 | 0 | `[0.002, 0.001, 0.919, 0.079]`, `V=-4.242` |
-| **100** | `1: NS Turn` (`GREEN`) | `0` (`False`) | `[2, 1, 2, 3, 1, 2, 1, 1]` | 13 | `1 / 0` | 75 | 23 | 28.0 | 15.28 | -0.0790 | -4.3940 | 0 | `[0.467, 0.416, 0.100, 0.017]`, `V=-4.606` |
-| **150** | `0: NS Straight` (`GREEN`) | `0` (`False`) | `[2, 3, 1, 1, 1, 0, 0, 1]` | 9 | `1 / 4` | 154 | 33 | 38.0 | 16.18 | -0.0640 | -8.4460 | 0 | `[0.996, 0.000, 0.000, 0.004]`, `V=-4.920` |
-| **200** | `1: NS Turn` (`GREEN`) | `0` (`False`) | `[1, 0, 5, 0, 1, 0, 0, 0]` | 7 | `0 / 2` | 207 | 44 | 26.0 | 16.43 | -0.0480 | -11.6720 | 0 | `[0.831, 0.165, 0.003, 0.001]`, `V=-4.417` |
-| **250** | `2: EW Straight` (`GREEN`) | `2` (`False`) | `[0, 0, 1, 0, 4, 0, 3, 0]` | 8 | `1 / 4` | 275 | 55 | 14.0 | 15.96 | -0.0470 | -15.0590 | 0 | `[0.001, 0.000, 0.999, 0.001]`, `V=-4.306` |
-| **300** | `2: EW Straight` (`GREEN`) | `2` (`False`) | `[0, 1, 1, 2, 1, 0, 3, 1]` | 9 | `1 / 0` | 336 | 67 | 26.0 | 15.21 | -0.0580 | -17.6850 | 0 | `[0.030, 0.096, 0.858, 0.016]`, `V=-4.238` |
-
-**Ringkasan Akhir Episode Utama (`rush_hour`, `seed=1001`, `all_red_steps=1`)**:
-- `total_reward`: `-17.6850`
-- `mean_queue`: `8.66` kendaraan
-- `mean_wait_time_s` (termasuk kendaraan tersisa di akhir episode): `15.06` s
-- `total_throughput`: `336` kendaraan
-- `total_switches`: `67` perpindahan fase
-- `total_collisions`: **`0`** (`red_light_conflict = 0`, `box_clearance_conflict = 0`)
-- Status terminasi: `truncated = True`, `terminated = False`
-
-#### Mekanisme Interlock Sinyal pada Pergantian Fase Pertama (Langkah `7..12`)
-
-Tabel berikut menampilkan jejak langkah demi langkah di sekitar pergantian fase pertama (`NS Straight -> NS Turn -> EW Straight`) untuk menunjukkan cara kerja `decision_mask`, `YELLOW`, `ALL_RED`, dan `min_green_steps = 2`:
-
-| Step | `decision_mask` Sebelum Step | Aksi Policy | `phase_switched` | Fase & Stage di Akhir Step | `phase_elapsed` di `obs[21]` Berikutnya | Arr / Dep | Reward | Keterangan Mekanisme |
-|---:|---:|---:|---:|---|---:|---|---:|---|
-| **7** | `1` | `0` (`NS Straight`) | `False` | `0: NS Straight` (`GREEN`) | `7` | `1 / 0` | `-0.0210` | Tetap melayani `NS Straight` |
-| **8** | `1` | `1` (`NS Turn`) | `True` | `0: NS Straight` (`ALL_RED`) | `7` | `1 / 0` | `-0.0320` | `request_phase(1)` masuk `YELLOW` (sehingga `dep=0`), lalu `signal.step()` memajukan ke `ALL_RED`; penalti switch `-0.005` aktif |
-| **9** | `0` | `0` | `False` | `1: NS Turn` (`GREEN`) | `0` | `1 / 0` | `-0.0330` | `ALL_RED` mengunci pelepasan (`dep=0`) & membiarkan straggler bersih sebelum `signal.step()` mengaktifkan `1: NS Turn` (`GREEN`) |
-| **10** | `0` | `1` | `False` | `1: NS Turn` (`GREEN`) | `1` | `1 / 1` | `-0.0330` | Langkah hijau ke-1 `NS Turn` (`dep=1`); `elapsed=0 -> 1 < min_green_steps (2)` |
-| **11** | `0` | `2` (`EW Straight`) | `False` | `1: NS Turn` (`GREEN`) | `2` | `0 / 1` | `-0.0250` | Policy meminta fase `2`, tetapi ditolak interlock karena `elapsed=1 < 2` (`decision_mask=0` selama training) |
-| **12** | `1` | `2` (`EW Straight`) | `True` | `1: NS Turn` (`ALL_RED`) | `2` | `0 / 0` | `-0.0310` | `elapsed=2 >= min_green_steps`: switch ke `EW Straight` diterima |
-
-### B. Uji Tekanan (*Stress Test*) & Perbandingan Kolisi Nyata pada `rush_hour`
-
-Untuk menguji fungsi proteksi *safety buffer* dan perilaku kontroler di bawah beban puncak, tabel di bawah merangkum eksekusi nyata di `TrafficIntersectionEnv` pada `rush_hour` (`seed=1001` serta rata-rata 10 seed `1000..1009`):
-
-| Agen & Kondisi | `all_red_steps` | `seed=1001` Total Reward | `seed=1001` Mean Queue | `seed=1001` Mean Wait (s) | `seed=1001` Throughput | `seed=1001` Switches | `seed=1001` Collisions (`red_light` / `box_clearance`) | 10-Seed (`1000..1009`) Mean Collisions |
-|---|---:|---:|---:|---:|---:|---:|---|---|
-| **Fly Connectome PPO (Default)** | `1` | `-17.6850` | `8.66` | `15.06` | `336` | `67` | **`0`** (`0` / `0`) | **`0.30`** (`[0,0,0,0,1,1,1,0,0,0]`) |
-| **Fly Connectome PPO (CX Lesion 25%)** | `1` | `-18.4670` | `9.45` | `16.49` | `331` | `68` | **`0`** (`0` / `0`) | *Tidak diukur pada skrip ini* |
-| **Fly Connectome PPO (Stress: `set_safety_buffer(0)`)** | `0` | `-12.6310` | `6.09` | `10.45` | `341` | `87` | **`6`** (`0` / `6`) | **`9.60`** (`[11,6,10,8,11,10,16,11,6,7]`) |
-| **Fixed Timer (Rule-Based, `8,4,8,4`)** | `1` | `-32.9000` | `16.85` | `27.93` | `341` | `37` | **`3`** (`3` / `0`) | **`1.60`** (`[0,3,2,1,1,1,4,2,1,1]`) |
-| **Fixed Timer (Stress: `all_red_steps=0`)** | `0` | `-25.0810` | `12.58` | `20.57` | `347` | `42` | **`8`** (`1` / `7`) | **`4.60`** (`[1,8,2,5,1,7,12,6,2,2]`) |
-
-**Temuan Mekanistik dari Uji Tekanan**:
-1. **Peran `all_red_steps = 1` pada `box_clearance_conflict`**: Saat `phase_switched = True`, kendaraan yang baru melepas pada langkah sebelumnya berpeluang `dilemma_zone_prob = 0.18` tertinggal di kotak persimpangan dengan sisa umur `2` langkah di `_box_stragglers`. Dengan konfigurasi default (`yellow_steps=1` + `all_red_steps=1`), dua langkah jeda tanpa pelepasan menghabiskan sisa umur `2 -> 1 -> 0` sebelum fase baru mendapat lampu `GREEN`. Ketika `set_safety_buffer(0)` mematikan `ALL_RED`, fase baru sudah aktif `GREEN` saat `remaining_steps = 1`, sehingga pada `seed=1001` memicu **6 `box_clearance_conflict`** (pada langkah `73, 83, 86, 122, 160, 262`) dan rata-rata **`9.60` kolisi/episode** di 10 seed.
-2. **Kegagalan `Fixed Timer` terhadap `red_light_conflict`**: Meskipun `all_red_steps = 1` melindungi persimpangan dari `box_clearance_conflict`, jadwal statis `(8, 4, 8, 4)` tidak merespons penumpukan lajur tertentu selama fase *NS surge* dan *EW surge* (`max_wait_s` mencapai `98.0 s` di langkah `200`). Pada `seed=1001`, hal ini memicu **3 `red_light_conflict`** (langkah `187` oleh lajur `3` setelah menunggu `78.0 s`, langkah `225` oleh lajur `3` setelah `94.0 s`, dan langkah `247` oleh lajur `7` setelah `46.0 s`). Sebaliknya, `Fly Connectome PPO` mengubah fase secara adaptif (`67` vs `37` switch) sehingga menjaga `red_light_conflict = 0` pada `seed=1001` dan rata-rata `0.30` kolisi di seluruh 10 seed.
-3. **Ketangguhan terhadap Lesi CX 25%**: Mematikan 25% neuron Central Complex (`450` dari `1.800` neuron CX, menyisakan `2.050` neuron aktif) pada `seed=1001` meningkatkan antrean rata-rata dari `8.66` menjadi `9.45` dan waktu tunggu dari `15.06 s` menjadi `16.49 s`, tetapi tetap mempertahankan `total_collisions = 0`.

@@ -1,234 +1,191 @@
-# Can a Fly Control Traffic? 
-Pengujian kelayakan sub-konektom otak lalat buah (*Drosophila melanogaster*, dataset `FlyWire FAFB v783`) sebagai inti rekuren pada kebijakan kendali lampu lalu lintas persimpangan empat arah berbasis *Reinforcement Learning* (PPO). Proyek ini memadukan **2.500 neuron** dari sirkuit **Central Complex (`PB`, `FB`, `EB`, `NO`)** dan **Mushroom Body (`MB_*`)** dengan bobot graf terbeku, berjalan 100% di CPU.
+# Can a Fly Control Traffic?
+
+Pengujian kelayakan sub-konektom otak lalat buah (*Drosophila melanogaster*, dataset `FlyWire FAFB v783`) sebagai inti rekuren pada kebijakan pengendalian lampu lalu lintas persimpangan empat arah berbasis *Proximal Policy Optimization* (PPO), berjalan 100% di CPU.
+
+Proyek ini merumuskan **uji kapabilitas (*capability study*)** dengan pola **Biological Reservoir Computing**: matriks sinaptik asli dari **2.500 neuron** sirkuit **Central Complex (`PB`, `FB`, `EB`, `NO`)** dan **Mushroom Body (`MB_*`)** (`87.171` sisi berpolaritas eksitatori `ACH` dan inhibitori `GABA`/`GLUT`, *sparsity* `98,61%`) dibekukan (*frozen*, `requires_grad=False`), sementara PPO melatih tepat **`70.006` parameter adapter** (`input_projection`, `tau_logit`, `actor_head`, dan `critic_head`).
+
+![Geometri Persimpangan 8 Lajur & 4 Fase Sinyal](docs/intersection_2d_diagram.png)
 
 ---
 
-## Ringkasan Alur & Artefak Repositori
+## Fitur Utama & Artefak Siap Pakai
 
-Proyek ini terdiri atas 5 fase yang dapat dijalankan interaktif melalui Web Lab maupun skrip CLI:
+Repositori ini menyertakan sub-konektom hasil ekstraksi (`artifacts/fly_subconnectome.pt`, `artifacts/fly_subconnectome_shuffled.pt`), **4 checkpoint model final (~5 juta langkah latih)** di `artifacts/checkpoints/{fly,fly_shuffled,gru,mlp}_ppo.pt`, serta laporan benchmark terverifikasi di `artifacts/benchmarks/`. Anda dapat langsung menjalankan Web Lab interaktif maupun evaluasi tanpa perlu mengunduh dataset mentah `dataset/` (`>333 MiB`).
 
-| Fase | Tujuan | Skrip / Antarmuka | Output Artefak |
-|---|---|---|---|
-| **Fase 1: Ekstraksi Graf** | Saring `1.800` neuron CX + `700` neuron MB dari `connections_princeton.csv`, pisahkan $W_{\text{exc}}$ dan $W_{\text{inh}}$, skalakan *spectral radius* ke `0.95`, serta bangun *null model* acak terkontrol (*global random rewiring*). | `scripts/extract_connectome.py`, `connectome/shuffled.py` | `artifacts/fly_subconnectome.pt`, `artifacts/fly_subconnectome_shuffled.pt` |
-| **Fase 2 & 3: Training PPO** | Latih kebijakan `FlyConnectomePolicy` (`fly`), `Shuffled Connectome PPO` (`fly_shuffled`), `MLPBaselinePolicy`, dan `GRUBaselinePolicy` pada 8 environment CPU paralel menggunakan PPO + *decision-step masking* dengan **Live Policy Preview**. | **Tab Training Studio** di Web UI, atau `scripts/train_agents.py` | `artifacts/checkpoints/{fly,fly_shuffled,gru,mlp}_ppo.pt` |
-| **Fase 4: Benchmark** | Evaluasi komparatif seluruh model (`Fixed Timer`, `PPO-MLP`, `PPO-GRU`, `Fly Connectome PPO`, `Shuffled Connectome PPO`) di skenario `normal`, `asymmetric`, `rush_hour`, dan `stress_test`, serta uji farmakologi & lesi. | **Tab Benchmark & Connectome** di Web UI, atau `scripts/run_benchmark.py` | `artifacts/benchmarks/benchmark_summary.json`, `benchmark_table.md`, `*.png` |
-| **Fase 5: Lab Simulasi, 3D & Dokumentasi** | Jalankan **Inference** secara *real-time* (**3D View** Three.js + sakelar **2D Map** + visualisasi **3D Brain** FlyWire + telemetri adaptif non-fly), eksplorasi arsitektur di **Tab 3D Architecture**, serta laporan teknis di **Tab Documentation**. | `scripts/launch_web_lab.py` (Utama) & `simulation3d/serve.py` (3D Mandiri) | Web UI di `http://127.0.0.1:8080` (`/simulation`, `/training`, `/benchmark`, `/architecture`, `/docs`) |
-
-> **Catatan Penting (Artefak Siap Pakai & Paradigma *Biological Reservoir*):**  
-> Repositori ini sudah menyertakan graf hasil ekstraksi (`artifacts/fly_subconnectome.pt`, `artifacts/fly_subconnectome_shuffled.pt`), **4 checkpoint model final Env v2 (~5 juta langkah latih)** di `artifacts/checkpoints/{fly,fly_shuffled,gru,mlp}_ppo.pt`, serta arsip evaluasi di `artifacts/benchmarks/`. Anda dapat langsung menjalankan Web UI atau evaluasi tanpa perlu mengunduh maupun mengekstrak ulang dataset mentah `dataset/` (`>333 MiB`).  
-> Matriks konektom FAFB v783 (`2.500` neuron, `87.171` sisi) dibekukan (`requires_grad=False`), sedangkan PPO melatih `70.006` parameter adapter (`input_projection`, `tau_logit`, `actor_head`, `critic_head`). Penjelasan rinci alur 1 episode tersedia di [Panduan Training & Siklus Episode](docs/TRAINING_AND_EPISODE_GUIDE.md).
+- **Web Lab Interaktif (`http://127.0.0.1:8080`)**:
+  - **Live Simulation (`/simulation`)**: Simulasi **3D View** Three.js (`Top View`, `3D Angle`, `Street`, `Cinematic`, `OrbitControls`, HUD sinyal per arah) dan sakelar **2D Map**, injeksi kendaraan manual per lajur, visualisasi **3D Brain** FlyWire (`2.500` neuron CX/MB + pulsa sinapsis), slider farmakologi $g_{\text{exc}}$ / $g_{\text{inh}}$ *real-time*, serta lesi sirkuit *in-silico*.
+  - **Training Studio (`/training`)**: Pelatihan PPO 8 environment CPU paralel (`fly`, `fly_shuffled`, `gru`, `mlp`), fitur *resume checkpoint*, kustomisasi hyperparameter, dan **Live Policy Preview** via WebSocket.
+  - **Benchmark & Connectome (`/benchmark`)**: Evaluasi deterministik multi-skenario langsung dari antarmuka web, ringkasan statistik graf `FAFB v783`, serta tabel uji farmakologi dan lesi.
+  - **3D Architecture (`/architecture`) & Documentation (`/docs`)**: Eksplorasi 3D aliran *Forward Pass* vs *Backward Gradient* pada `FlyConnectomePolicy` dan laporan teknis interaktif.
 
 ---
 
-## Cara Menjalankan
+## Instalasi & Cara Menjalankan
 
-Siapkan environment Python (`>= 3.11`, disarankan menggunakan `uv`) dengan paket `numpy`, `polars`, `scipy`, `torch`, `gymnasium`, `aiohttp`, `matplotlib`, `trimesh`, dan `pytest`, lalu jalankan dari root repositori (`PYTHONPATH=src` atau instal editable via `uv pip install -e .`):
-
-### 1. Menjalankan Web Frontend & Backend Server (Direkomendasikan)
+Memerlukan Python `>= 3.11` dan [`uv`](https://docs.astral.sh/uv/) (indeks PyTorch CPU sudah dikonfigurasi otomatis di `pyproject.toml`):
 
 ```bash
-python scripts/launch_web_lab.py --host 127.0.0.1 --port 8080
+# 1. Buat virtual environment & instal dependensi inti (CPU-only PyTorch)
+uv sync
+
+# Opsional: sertakan paket ekstraksi CSV/3D, Pygame sandbox, & pytest
+uv sync --extra all
 ```
 
-Atau jalankan server 3D Simpang Terpisah (`simulation3d`):
+### 1. Menjalankan Web Lab Utama (Direkomendasikan)
 
 ```bash
-python simulation3d/serve.py --host 127.0.0.1 --port 8888
+uv run python scripts/launch_web_lab.py --host 127.0.0.1 --port 8080
 ```
 
-Lalu buka `http://127.0.0.1:8080` di browser untuk mengakses:
-- **Tab Live Simulation**: Simulasi **3D View** Three.js (preset kamera `Top View`, `3D Angle`, `Street`, **`Cinematic`**, `Fullscreen`, navigasi `OrbitControls`, **kompas mata angin hitam-putih** di tengah simpang, HUD sinyal & timer per arah, koreografi lengkung belok dan tabrakan kinematik) serta sakelar **2D Map** dengan **Map Zoom** (`45%`–`125%`), **penambahan kendaraan manual** (klik lajur langsung hingga batas `80` kendaraan/lajur / `640` total), pemilih **Active Model / Controller**, kontrol **Safety Buffer** (`All-Red` vs `Yellow Only`), indikator **Collisions**, probabilitas aksi 4 fase, visualisasi otak 3D (`CX` dan `MB`), *slider* pengali $g_{\text{exc}}$ / $g_{\text{inh}}$, dan tombol lesi sirkuit.
-- **Tab Training Studio (`/training`)**: Pemilihan arsitektur kebijakan (`fly`, `fly_shuffled` *Null Model*, `mlp`, `gru`), fitur **Resume from Checkpoint**, pengaturan *timesteps*, panel **Custom PPO Hyperparameters**, opsi penyimpanan checkpoint, grafik optimasi *real-time*, inventaris *checkpoint*, serta **Live Policy Preview** via `/ws/training`.
-- **Tab Benchmark & Connectome (`/benchmark`)**: Pemilih model interaktif untuk evaluasi komparatif via `POST /api/benchmark/run`, ringkasan sub-graf `FAFB v783`, grafik perbandingan multi-skenario (`normal`, `asymmetric`, `rush_hour`, `stress_test`), tabel hasil farmakologi/lesi, dan kamus variabel.
-- **Tab 3D Architecture (`/architecture`)**: Visualisasi 3D interaktif *end-to-end* untuk `FlyConnectomePolicy` (`x_t -> input_projection -> ConnectomeRecurrentCell -> actor_head / critic_head -> environment`) beserta kontrol **`Cinematic`** dan **`Fullscreen`**, sakelar aliran **Forward Pass** vs **Backward Gradient**, filter status (*Trainable*, *Frozen Bio*, *Runtime*), peta komponen horizontal, dan inspektor detail per modul.
-- **Tab Documentation (`/docs`)**: Laporan teknis berbahasa Indonesia dengan daftar isi *sticky*, persamaan matematis, grafik Canvas interaktif tersinkronisasi dari `benchmark_summary.json`, kurva konvergensi training, perbandingan lintas skema, daftar referensi dataset, serta glosari istilah.
-
-### 2. Perintah CLI Opsional (Ekstraksi, Training, Benchmark, Tes)
+Buka `http://127.0.0.1:8080` di browser. Untuk menjalankan penampil 3D simpang secara terpisah tanpa panel penuh:
 
 ```bash
-# Fase 1 (opsional, jika menyediakan dataset/connections_princeton.csv): Ekstrak ulang sub-connectome (hapus komen jika butuh)
-# python scripts/extract_connectome.py
+uv run python simulation3d/serve.py --host 127.0.0.1 --port 8888
+```
 
-# Fase 2-3: Latih agen dari CLI (ganti parameter sesuai kebutuhan)
-python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --parallel-models 1 --suffix "from_cli"
+### 2. Perintah CLI & Notebook (Training, Benchmark, Pengujian)
 
-# Alternatif: Training via Jupyter Notebook untuk eksplorasi interaktif di
+```bash
+# Evaluasi komparatif 5 pengendali pada 4 skenario (10 seed, 500 langkah/episode)
+uv run python scripts/run_benchmark.py
 
-"scripts/train_agents.ipynb"
-
-# Resume training
-python scripts/train_agents.py --agents fly --total-timesteps 327680 --resume
-
-# Fase 4: Evaluasi komparatif 10 seed per skenario (normal, asymmetric, rush_hour, stress_test)
-python scripts/run_benchmark.py
+# Latih kebijakan PPO dari CLI (mendukung --resume dan --parallel-models 1|2|4)
+uv run python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --suffix "_custom"
 
 # Jalankan seluruh unit & integration tests
-python -m pytest tests/ -q
+uv run pytest tests/ -q
+
+# Opsional: ekstrak ulang sub-connectome bila menyediakan dataset/connections_princeton.csv
+# uv run --extra extract python scripts/extract_connectome.py
 ```
 
----
-
-## Struktur Direktori Kode
-
-```text
-.
-├── dataset/                        # Data mentah FlyWire FAFB v783 (CSV)
-├── artifacts/                      # Artefak final (sub-connectome, 4 model PPO final, & benchmarks)
-│   ├── fly_subconnectome.pt
-│   ├── fly_subconnectome_shuffled.pt
-│   ├── checkpoints/                # fly_ppo.pt, fly_shuffled_ppo.pt, gru_ppo.pt, mlp_ppo.pt (~5M Env v2)
-│   └── benchmarks/                 # JSON, tabel Markdown, & figur hasil evaluasi
-├── docs/
-│   ├── MASTER_DOC.md                 # Laporan teknis utama & hasil evaluasi
-│   ├── config.md                     # Referensi konfigurasi (src/fly_traffic/config.py)
-│   ├── TRAINING_AND_EPISODE_GUIDE.md # Panduan alur 1 episode (500 langkah) & loop PPO
-│   ├── training_compact.md           # Ringkasan arsitektur sistem
-│   ├── VARIABLES_AND_MATH.md         # Kamus variabel kode & pemetaan rumus
-│   ├── alur-langkah-env.svg          # Flowchart langkah environment per episode
-│   ├── src/                          # Referensi modular per submodul backend
-│   └── scripts/                      # Referensi entrypoint CLI & notebook
-├── frontend/                       # Antarmuka Web (Modular Partials + CSS + ES6 + Canvas 2D + Three.js)
-│   ├── index.html
-│   ├── partials/                   # Potongan HTML per tab (simulation, training, benchmark, architecture, documentation)
-│   ├── css/
-│   │   ├── tokens.css
-│   │   ├── layout.css
-│   │   └── code.css
-│   └── js/
-│       ├── main.js
-│       ├── intersection_renderer.js
-│       ├── intersection3d_renderer.js
-│       ├── sim3d/                  # Modul 3D Simpang Empat terintegrasi (world, signals, vehicles)
-│       ├── connectome_renderer.js
-│       ├── model_telemetry_renderer.js
-│       ├── brain3d_renderer.js
-│       ├── architecture_view.js
-│       ├── training_studio.js
-│       ├── benchmark_view.js
-│       └── documentation_view.js
-├── simulation3d/                   # Aplikasi & server mandiri 3D Persimpangan Three.js (port 8888)
-│   ├── index.html
-│   ├── serve.py
-│   ├── css/
-│   └── js/
-├── scripts/                        # CLI entrypoints
-│   ├── extract_connectome.py
-│   ├── train_agents.py
-│   ├── train_agents.ipynb          # Jupyter Notebook alternatif untuk training agen PPO
-│   ├── run_benchmark.py
-│   ├── launch_web_lab.py
-│   └── launch_sandbox.py           # Utilitas headless Pygame opsional
-├── src/fly_traffic/                # Paket backend modular OOP
-│   ├── __init__.py
-│   ├── config.py
-│   ├── connectome/                 # Ekstraksi, shuffled null model, aset 3D, & serialisasi sparse CSR
-│   ├── environment/                # TrafficIntersectionEnv (Gymnasium) & profil kedatangan
-│   ├── agents/                     # ConnectomeRecurrentCell, Fly/MLP/GRU policies, FixedTimer
-│   ├── training/                   # RecurrentRolloutBuffer & PPOTrainer
-│   ├── evaluation/                 # AgentEvaluator & BenchmarkPlotter
-│   ├── web/                        # Server aiohttp, SimulationService, TrainingJobManager
-│   └── ui/                         # Renderer Pygame opsional
-├── tests/                          # Pengujian unit & integrasi (pytest)
-├── pyproject.toml
-├── uv.lock
-└── README.md
-```
+Eksplorasi pelatihan interaktif (lokal maupun Google Colab) tersedia di [`notebooks/train_agents.ipynb`](notebooks/train_agents.ipynb).
 
 ---
 
-## Fisika Kolisi & Live Policy Preview
+## Desain Pengendali & Kontrol Ilmiah
 
-- **Pemodelan Kolisi (`TrafficIntersectionEnv._evaluate_collisions`)**:
-  - **`red_light_conflict`**: Lajur merah yang menunggu melebihi ambang `red_light_wait_threshold_s = 150.0` s berpeluang menerobos lampu merah (hingga `red_light_max_prob = 0.14`) dan bertabrakan dengan lajur hijau yang sedang melaju.
-  - **`box_clearance_conflict`**: Saat terjadi perpindahan fase, lajur pelepas sebelumnya berpeluang `dilemma_zone_prob = 0.18` menyisakan kendaraan *straggler* berumur 2 langkah di kotak persimpangan (`_box_stragglers`). Dengan *safety buffer* bawaan (`yellow_steps = 2`, `all_red_steps = 1`), straggler terselesaikan sebelum fase baru menjadi `GREEN`; konflik muncul apabila total jeda antar-hijau diturunkan di bawah 2 langkah (`yellow_steps <= 1` dan `all_red_steps = 0`).
-  - Setiap kolisi mengurangi *reward* langkah sebesar `collision_penalty * reward_scale` (`80.0 * 0.005 = 0.400`) dan dirender sebagai indikator bahaya pada 3D View maupun Canvas 2D.
-- **Kapasitas Live Simulation & Normalisasi Observasi (`SimulationService` / `TrafficIntersectionEnv`)**:
-  - Di tab **Live Simulation**, batas kapasitas per lajur diatur ke `hard_max_lane_capacity = 80` kendaraan/lajur (`640` kendaraan total maksimal) untuk menampung penambahan manual dan mode zoom-out `45%`–`125%`, sementara normalisasi observasi antrean `obs[0:8]` tetap menggunakan `queue_obs_norm_capacity = 30.0` dan dijepit ke `[0.0, 2.0]` agar kompatibel dengan model PPO yang dilatih pada kapasitas latihan standar (`30`/lajur).
-- **Live Policy Preview (`TrainingJobManager._rollout_preview_frames`)**:
-  - Selama training PPO berjalan *headless* di CPU pada 8 environment vektor (`SyncVectorEnv`), `TrainingJobManager` mengeksekusi 4 tick deterministik pada satu environment `rush_hour` terpisah setiap selesai 1 update PPO dan mengirim `preview_frames` lewat WebSocket `/ws/training`. Tab **Training Studio** memutar frame tersebut secara berkala tanpa memperlambat proses optimasi CPU.
+Untuk menguji apakah topologi biologis memberikan kontribusi nyata dibanding sekadar proyeksi rekuren berdimensi tinggi atau jaringan standar, kelima pengendali diuji pada anggaran parameter terlatih yang sebanding (~70 ribu parameter) di lingkungan yang identik (`max_steps = 500` / `1.000 s`, `min_green_steps = 6`, `yellow_steps = 2`, `all_red_steps = 1`, `collision_penalty = 80.0`):
 
----
+| Pengendali | Kelas / Modul | Memori Rekuren | Parameter Terlatih | Peran Pembanding |
+|---|---|---|---:|---|
+| **Fly Connectome PPO** (`fly`) | `FlyConnectomePolicy` | `2.500` neuron *sparse* FAFB v783 (*frozen* $W_{\text{exc}}, W_{\text{inh}}$) | `70.006` | Model utama berbasis sub-konektom biologis asli (`1.800` CX + `700` MB, `2.880` sisi lintas wilayah). |
+| **Shuffled Connectome PPO** (`fly_shuffled`) | `FlyConnectomePolicy` + `shuffled.py` | `2.500` neuron *sparse* teracak (*frozen*) | `70.006` | *Null model* (*global random edge rewiring*): mempertahankan jumlah sisi, distribusi bobot E/I, *sparsity* `98,61%`, dan *spectral radius* `0,95`, tetapi mengacak topologi modular (`35.430` sisi lintas wilayah). |
+| **PPO-GRU** (`gru`) | `GRUBaselinePolicy` | `105` unit GRU terlatih penuh | `69.725` | Pembanding *end-to-end* rekuren artifisial standar. |
+| **PPO-MLP** (`mlp`) | `MLPBaselinePolicy` | Tidak ada (2 lapis `Tanh`, lebar `250`) | `69.755` | Pembanding *feedforward* reaktif tanpa memori internal. |
+| **Fixed Timer** (`fixed_timer`) | `FixedTimerAgent` | Tidak ada (aturan siklik `(10, 6, 10, 6)` langkah) | `0` | Baseline non-AI berjadwal waktu hijau tetap (`20s-12s-20s-12s`). |
 
-## Ringkasan Perubahan *Shuffled Connectome* (*Null Model*)
+### Invarian Statistik *Fly Connectome* vs *Shuffled Null Model*
 
-Untuk mengisolasi pengaruh **topologi biologis FAFB v783**, modul [`src/fly_traffic/connectome/shuffled.py`](src/fly_traffic/connectome/shuffled.py) (`create_shuffled_connectome_artifact()` & `load_or_create_shuffled_connectome()`) membangun graf kontrol acak terkontrol (*global random edge rewiring*, `seed=42`) dengan menempatkan ulang seluruh pasangan `(post, pre)` secara seragam pada matriks `2.500 × 2.500`:
-
-| Properti | Fly Connectome Asli (`fly_subconnectome.pt`) | Shuffled Connectome (`fly_subconnectome_shuffled.pt`) | Keterangan Perubahan |
+| Properti Graf | Fly Connectome (`fly_subconnectome.pt`) | Shuffled Connectome (`fly_subconnectome_shuffled.pt`) | Keterangan |
 |---|---|---|---|
-| **Jumlah Neuron (`CX + MB`)** | `2.500` (`1.800` + `700`) | `2.500` (`1.800` + `700`) | Sama persis (metadata wilayah & label dipertahankan) |
-| **Sisi Eksitatori (`W_exc`)** | `36.908` sisi | `36.908` sisi | Jumlah sisi & himpunan bobot relatif sama, pasangan `(post, pre)` diacak |
-| **Sisi Inhibitori (`W_inh`)** | `50.263` sisi | `50.263` sisi | Jumlah sisi & himpunan bobot relatif sama, pasangan `(post, pre)` diacak |
-| **Kejarangan (*Sparsity*)** | `98,6053%` | `98,6053%` | Identik (`87.171` sisi non-nol dari `6.250.000` sel) |
-| **Koneksi Lintas Wilayah (`CX <-> MB`)** | `2.880` sisi | `35.430` sisi | Modularitas biologis hancur; koneksi tersebar acak antar kluster |
-| ***Raw Spectral Radius*** (`W_exc - W_inh`) | `113,1494` | `0,1302` | Struktur spektral sebelum normalisasi berubah |
-| ***Scaled Spectral Radius*** | `0,9500` | `0,9500` | Sama-sama dinormalisasi ulang ke `0,95` |
-| **Parameter Adapter PPO** | `70.006` | `70.006` | Menggunakan arsitektur `FlyConnectomePolicy` yang sama |
+| **Jumlah Neuron (`CX + MB`)** | `2.500` (`1.800` + `700`) | `2.500` (`1.800` + `700`) | Identik |
+| **Sisi Eksitatori / Inhibitori** | `36.908` / `50.263` | `36.908` / `50.263` | Jumlah sisi & himpunan bobot identik, pasangan `(post, pre)` diacak |
+| **Kejarangan (*Sparsity*)** | `98,6053%` | `98,6053%` | Identik (`87.171` sisi aktif dari `6.250.000` pasangan) |
+| **Koneksi Lintas Wilayah (`CX <-> MB`)** | `2.880` sisi | `35.430` sisi | Modularitas biologis hancur pada *null model* |
+| ***Raw* -> *Scaled Spectral Radius*** | `113,1494` -> `0,9500` | `0,1302` -> `0,9500` | Sama-sama dinormalisasi ke `0,95` sebelum dibekukan |
 
 ---
 
-## Hasil Benchmark (10 Seed per Skenario, 500 Langkah / Episode)
+## Hasil Benchmark (~5 Juta Langkah Latih, 10 Seed per Skenario)
 
-Tabel di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.md` (`enable_collisions=True`, `min_green_steps=6`, `yellow_steps=2`, `all_red_steps=1`, `red_light_wait_threshold_s=150.0`). Keempat *checkpoint* final Env v2 tersebut telah dipasang sebagai model bawaan `artifacts/checkpoints/{fly,fly_shuffled,gru,mlp}_ppo.pt`:
+Tabel di bawah disinkronkan langsung dari [`artifacts/benchmarks/benchmark_table.md`](artifacts/benchmarks/benchmark_table.md) (`500` langkah / episode, `seed = 1000..1009`):
 
 | Skenario | Agen | Parameter Terlatih | Mean Reward | Mean Queue | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions | Latency (ms/step) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `normal` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.265 |
-| `normal` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.289 |
-| `normal` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.176 |
-| `normal` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.128 |
-| `normal` | Fixed Timer (`10-6-10-6`) | - | -40.626 | 11.01 | 30.69 | 348.8 | 45.0 | 0.00 | 0.002 |
-| `asymmetric` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.282 |
-| `asymmetric` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.264 |
-| `asymmetric` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.132 |
-| `asymmetric` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
-| `asymmetric` | Fixed Timer (`10-6-10-6`) | - | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.004 |
-| `rush_hour` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.393 |
-| `rush_hour` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.262 |
-| `rush_hour` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.098 |
-| `rush_hour` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.079 |
-| `rush_hour` | Fixed Timer (`10-6-10-6`) | - | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.005 |
-| `stress_test` | Fly Connectome PPO (`fly_ppo_new_env`) | 70.006 | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.266 |
-| `stress_test` | Shuffled Connectome PPO (`fly_shuffled_ppo_new_env`) | 70.006 | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.264 |
-| `stress_test` | PPO-GRU (`gru_ppo_new_env`) | 69.725 | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.099 |
-| `stress_test` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.085 |
-| `stress_test` | Fixed Timer (`10-6-10-6`) | - | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
+| `normal` | Fly Connectome PPO | 70.006 | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.306 |
+| `normal` | Shuffled Connectome PPO | 70.006 | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.299 |
+| `normal` | PPO-GRU | 69.725 | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.115 |
+| `normal` | PPO-MLP | 69.755 | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.106 |
+| `normal` | Fixed Timer (`10-6-10-6`) | 0 | -40.626 | 11.01 | 30.69 | 348.8 | 45.0 | 0.00 | 0.002 |
+| `asymmetric` | Fly Connectome PPO | 70.006 | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.336 |
+| `asymmetric` | Shuffled Connectome PPO | 70.006 | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.270 |
+| `asymmetric` | PPO-GRU | 69.725 | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.129 |
+| `asymmetric` | PPO-MLP | 69.755 | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
+| `asymmetric` | Fixed Timer (`10-6-10-6`) | 0 | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.002 |
+| `rush_hour` | Fly Connectome PPO | 70.006 | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.288 |
+| `rush_hour` | Shuffled Connectome PPO | 70.006 | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.275 |
+| `rush_hour` | PPO-GRU | 69.725 | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.107 |
+| `rush_hour` | PPO-MLP | 69.755 | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.090 |
+| `rush_hour` | Fixed Timer (`10-6-10-6`) | 0 | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.002 |
+| `stress_test` | Fly Connectome PPO | 70.006 | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.293 |
+| `stress_test` | Shuffled Connectome PPO | 70.006 | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.296 |
+| `stress_test` | PPO-GRU | 69.725 | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.109 |
+| `stress_test` | PPO-MLP | 69.755 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.088 |
+| `stress_test` | Fixed Timer (`10-6-10-6`) | 0 | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
 
-### Figur Benchmark Utama
+### Ringkasan Temuan Faktual
 
-![Perbandingan Mean Reward Lintas Skenario (5M Env v2)](artifacts/benchmarks/mean_reward.png)
+1. **Rezim Non-Jenuh (`normal`, `asymmetric`, `rush_hour`)**: Seluruh keempat kebijakan RL mencatat `0.00` kolisi dan menurunkan waktu tunggu serta panjang antrean dibanding `Fixed Timer` (pada `rush_hour`, waktu tunggu rata-rata turun dari `38.61 s` menjadi `27.18–28.09 s`).
+2. **Rezim Saturasi Ekstrem (`stress_test`)**: `PPO-GRU` meraih `Mean Reward` tertinggi (`-361.209`, melampaui `Fixed Timer` `-365.067` dengan `8.60` kolisi), sedangkan `Fly Connectome PPO` mencatat `Mean Collisions` paling rendah di antara seluruh pengendali (`5.00` kolisi vs `14.00` pada `Shuffled Connectome PPO`, `20.90` pada `Fixed Timer`, dan `25.20` pada `PPO-MLP`) namun dengan antrean rata-rata lebih tinggi (`144.89`).
+3. **Perturbasi Farmakologi & Lesi Sirkuit (`rush_hour`)**: Perubahan pengali sinaptik (`g_exc = 1.8`, `g_inh = 0.2` atau `2.0`) serta lesi `25%` neuron CX, MB, maupun acak mempertahankan `0.00` kolisi dengan `Mean Reward` pada rentang `-80.407` hingga `-78.480`.
+4. **Biaya Komputasi CPU**: Perkalian matriks *sparse* `2.500 × 2.500` pada `Fly` dan `Shuffled Connectome` membutuhkan `0.270–0.336 ms/step`, sekitar 2,5–3 kali lebih lambat dibanding `PPO-GRU` (`0.107–0.129 ms/step`) dan `PPO-MLP` (`0.088–0.106 ms/step`).
 
-![Perbandingan Mean Collisions Lintas Skenario (5M Env v2)](artifacts/benchmarks/mean_collisions.png)
+![Perbandingan Mean Reward Lintas Skenario](artifacts/benchmarks/mean_reward.png)
 
-![Evolusi Eksperimen: Env v1 vs Stress Training vs Env v2](artifacts/benchmarks/experiment_evolution_comparison.png)
+![Perbandingan Mean Collisions Lintas Skenario](artifacts/benchmarks/mean_collisions.png)
 
-Figur lengkap lainnya di `artifacts/benchmarks/`: [scenario_comparison.png](artifacts/benchmarks/scenario_comparison.png), [training_curves.png](artifacts/benchmarks/training_curves.png), dan [pharmacology_ablation.png](artifacts/benchmarks/pharmacology_ablation.png).
+Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_comparison.png](artifacts/benchmarks/scenario_comparison.png), [training_curves.png](artifacts/benchmarks/training_curves.png), [pharmacology_ablation.png](artifacts/benchmarks/pharmacology_ablation.png), dan [experiment_evolution_comparison.png](artifacts/benchmarks/experiment_evolution_comparison.png).
 
 ---
 
-## Dokumentasi Teknis
+## Struktur Direktori
 
-- [Laporan Teknis Utama](docs/MASTER_DOC.md): Pembahasan menyeluruh konstruksi sub-konektom FAFB v783, *Shuffled Null Model*, lingkungan lalu lintas, paradigma reservoir biologis & adapter, PPO, serta hasil evaluasi.
-- [Referensi Konfigurasi](docs/config.md): Tabel seluruh konstanta dan dataclass pada `src/fly_traffic/config.py`.
-- [Referensi Modular Backend (`docs/src/`)](docs/src/README.md): Penjelasan singkat per submodul `connectome`, `environment`, `agents`, `training`, `evaluation`, dan `web`/`ui`.
-- [Referensi Skrip CLI (`docs/scripts/cli.md`)](docs/scripts/cli.md): Opsi argumen & perintah eksekusi skrip di `scripts/`.
-- [Panduan Training & Siklus Episode](docs/TRAINING_AND_EPISODE_GUIDE.md): Diagram siklus 1 episode (`500` langkah, `alur-langkah-env.svg`), alur loop PPO CPU + Live Policy Preview, serta referensi jejak episode.
-- [Kamus Variabel & Matematika](docs/VARIABLES_AND_MATH.md): Pemetaan simbol persamaan biologis, observasi, reward, kolisi, *safety buffer*, dan hyperparameter PPO ke nama variabel kode.
+```text
+.
+├── artifacts/                      # Sub-connectome (.pt), 4 checkpoint PPO (~5M), & laporan benchmark
+│   ├── fly_subconnectome.pt
+│   ├── fly_subconnectome_shuffled.pt
+│   ├── checkpoints/                # fly_ppo.pt, fly_shuffled_ppo.pt, gru_ppo.pt, mlp_ppo.pt
+│   └── benchmarks/                 # JSON, tabel Markdown, & grafik hasil evaluasi
+├── docs/                           # Dokumentasi berjenjang (lihat docs/README.md)
+│   ├── README.md                   # Indeks navigasi dokumentasi 3 lapis
+│   ├── MASTER_DOC.md               # Laporan teknis & analisis hasil menyeluruh
+│   ├── TRAINING_AND_EPISODE_GUIDE.md
+│   ├── VARIABLES_AND_MATH.md
+│   ├── config.md
+│   ├── src/                        # Referensi teknis per submodul backend
+│   └── scripts/                    # Referensi CLI & notebook
+├── frontend/                       # SPA Web Lab (HTML Partials, CSS, Canvas 2D, Three.js)
+│   ├── assets/brain/               # Mesh anatomi 3D (.glb) & koordinat soma neuron
+│   ├── partials/                   # Panel simulation, training, benchmark, architecture, docs
+│   ├── js/                         # Controller UI & modul bersama 3D simpang (js/sim3d/)
+│   └── vendor/three/               # Pustaka Three.js lokal tanpa ketergantungan CDN
+├── notebooks/
+│   └── train_agents.ipynb          # Notebook interaktif training & benchmark (lokal / Colab)
+├── scripts/                        # Entrypoint CLI (extract, build_brain_assets, train, benchmark, web)
+├── simulation3d/                   # Server penampil 3D simpang mandiri (port 8888)
+├── src/fly_traffic/                # Paket Python utama
+│   ├── config.py                   # 5 frozen dataclass konfigurasi terpusat
+│   ├── connectome/                 # Ekstraksi CSV Polars, shuffled null model, & aset otak 3D
+│   ├── environment/                # TrafficIntersectionEnv (Gymnasium), interlock, & profil Poisson
+│   ├── agents/                     # ConnectomeRecurrentCell, Fly/MLP/GRU policies, FixedTimer
+│   ├── training/                   # RecurrentRolloutBuffer & sequence-chunked PPOTrainer
+│   ├── evaluation/                 # AgentEvaluator & BenchmarkPlotter
+│   ├── web/                        # Server aiohttp/WebSocket, SimulationService, TrainingJobManager
+│   └── ui/                         # Aplikasi desktop Pygame opsional
+├── tests/                          # Unit & integration tests (pytest)
+├── pyproject.toml
+└── uv.lock
+```
+
+---
+
+## Dokumentasi Lanjutan
+
+Mulai dari [Indeks Dokumentasi (`docs/README.md`)](docs/README.md):
+1. **[Laporan Teknis Utama (`docs/MASTER_DOC.md`)](docs/MASTER_DOC.md)** — Metodologi ekstraksi konektom, spesifikasi lingkungan dan mekanisme kolisi, arsitektur kebijakan, eksperimen evolusi skema latih, hasil evaluasi, serta batasan studi.
+2. **[Panduan Siklus Episode & Loop PPO (`docs/TRAINING_AND_EPISODE_GUIDE.md`)](docs/TRAINING_AND_EPISODE_GUIDE.md)** — Alur data sistem, anatomi 1 episode `500` langkah, *decision masking*, dan *Live Policy Preview*.
+3. **[Referensi Kode & Matematika](docs/VARIABLES_AND_MATH.md)** — Kamus simbol persamaan, [Referensi Konfigurasi](docs/config.md), [Referensi Submodul Backend](docs/src/README.md), dan [Referensi Skrip CLI](docs/scripts/cli.md).
 
 ---
 
 ## Sumber Dataset & Referensi
 
-Berkas mentah berukuran besar (`dataset/`, `>333 MiB`) tidak disertakan ke dalam Git karena sudah tersedia dalam bentuk matriks hasil ekstraksi (`artifacts/fly_subconnectome*.pt`). Apabila ingin mengekstrak ulang dari sumber mentahnya, dataset dapat diunduh dari tautan terbuka berikut:
+Berkas mentah (`dataset/`, `>333 MiB`) dikecualikan dari Git karena sudah dikemas menjadi matriks sparse siap pakai di `artifacts/fly_subconnectome*.pt` dan aset 3D di `frontend/assets/brain/`. Sumber data asli dapat diakses melalui:
 
-1. **FlyWire FAFB v783 Whole-Brain Connectome (`dataset/connections_princeton.csv`):**
-   - Portal & unduhan data: [codex.flywire.ai](https://codex.flywire.ai)
-   - Publikasi: Dorkenwald, S., Matsliah, A., Yu, S.-C., et al. (2024). *Neuronal wiring diagram of an adult brain.* Nature, 634, 124–138. [doi:10.1038/s41586-024-07558-y](https://doi.org/10.1038/s41586-024-07558-y)
-2. **Prediksi Neurotransmiter Sinaptik (`ACH`, `GABA`, `GLUT`):**
-   - Eckstein, N., Bates, A. S., Champion, A., et al. (2024). *Neurotransmitter classification from electron microscopy images at synaptic sites in Drosophila melanogaster.* Cell, 187(10), 2574–2594. [doi:10.1016/j.cell.2024.03.016](https://doi.org/10.1016/j.cell.2024.03.016)
-3. **Anotasi Neuron & Koordinat Soma (`dataset/brain3d/neuron_annotations.tsv`):**
-   - Repositori & berkas: [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations) ([Supplemental_file1_neuron_annotations.tsv](https://raw.githubusercontent.com/flyconnectome/flywire_annotations/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv))
-   - Publikasi: Schlegel, P., Yin, Y., Bates, A. S., et al. (2024). *Whole-brain annotation and multi-connectome cell typing of Drosophila.* Nature, 634, 139–152. [doi:10.1038/s41586-024-07686-5](https://doi.org/10.1038/s41586-024-07686-5)
-4. **Mesh Neuropil & Permukaan Otak 3D (`dataset/brain3d/`):**
-   - Neuropil meshes: [JFRC2NP.surf.fw.zip](https://github.com/navis-org/fafbseg-py/raw/master/fafbseg/data/JFRC2NP.surf.fw.zip) (nomenklatur: Ito et al., 2014, [doi:10.1016/j.neuron.2013.12.017](https://doi.org/10.1016/j.neuron.2013.12.017))
-   - Whole-brain mesh: [brain_mesh_v3 (`1:0:0`)](https://storage.googleapis.com/flywire_neuropil_meshes/whole_neuropil/brain_mesh_v3/mesh/1:0:0)
-   - FAFB v14 EM Volume: Zheng, Z., Lauritzen, J. S., Perlman, E., et al. (2018). *A complete electron microscopy volume of the brain of adult Drosophila melanogaster.* Cell, 174(3), 730–743. [doi:10.1016/j.cell.2018.06.019](https://doi.org/10.1016/j.cell.2018.06.019)
+1. **FlyWire FAFB v783 Whole-Brain Connectome (`connections_princeton.csv`):** [codex.flywire.ai](https://codex.flywire.ai) — Dorkenwald, S., Matsliah, A., Yu, S.-C., et al. (2024). *Neuronal wiring diagram of an adult brain.* Nature, 634, 124–138. [doi:10.1038/s41586-024-07558-y](https://doi.org/10.1038/s41586-024-07558-y)
+2. **Prediksi Neurotransmiter Sinaptik (`ACH`, `GABA`, `GLUT`):** Eckstein, N., Bates, A. S., Champion, A., et al. (2024). *Neurotransmitter classification from electron microscopy images at synaptic sites in Drosophila melanogaster.* Cell, 187(10), 2574–2594. [doi:10.1016/j.cell.2024.03.016](https://doi.org/10.1016/j.cell.2024.03.016)
+3. **Anotasi Neuron & Koordinat Soma (`neuron_annotations.tsv`):** [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations) — Schlegel, P., Yin, Y., Bates, A. S., et al. (2024). *Whole-brain annotation and multi-connectome cell typing of Drosophila.* Nature, 634, 139–152. [doi:10.1038/s41586-024-07686-5](https://doi.org/10.1038/s41586-024-07686-5)
+4. **Mesh Neuropil & Permukaan Otak 3D:** [JFRC2NP.surf.fw.zip](https://github.com/navis-org/fafbseg-py/raw/master/fafbseg/data/JFRC2NP.surf.fw.zip) (Ito et al., 2014, [doi:10.1016/j.neuron.2013.12.017](https://doi.org/10.1016/j.neuron.2013.12.017)), [brain_mesh_v3 (`1:0:0`)](https://storage.googleapis.com/flywire_neuropil_meshes/whole_neuropil/brain_mesh_v3/mesh/1:0:0), dan FAFB v14 EM Volume (Zheng et al., 2018, [doi:10.1016/j.cell.2018.06.019](https://doi.org/10.1016/j.cell.2018.06.019)).

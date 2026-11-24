@@ -41,7 +41,7 @@ $$r_t = \text{reward\_scale} \cdot \left(-\sum \text{queue\_length} - \alpha \cd
 | Simbol / Elemen | Nama Variabel di Kode | Nilai Default | Lokasi File |
 |---|---|---|---|
 | $x_t$ (*Observation Space*) | `observation` (`Box(0, 2, shape=(22,))`) | 22 float32 | `traffic_env.py` (`_build_observation`) |
-| Indeks `obs[0:8]` | Panjang antrean ternormalisasi (`lane.length / 30`) | `[0.0 .. 1.0]` | `LaneId` (`N_STRAIGHT .. W_TURN`) |
+| Indeks `obs[0:8]` | Panjang antrean ternormalisasi (`min(lane.length / 30.0, 2.0)`) | `[0.0 .. 2.0]` | `LaneId` (`N_STRAIGHT .. W_TURN`) |
 | Indeks `obs[8:16]` | Waktu tunggu terlama per lajur (`max_wait_s / 150.0`) | `[0.0 .. 2.0]` | `LaneQueue.max_wait_seconds` |
 | Indeks `obs[16:20]` | *One-hot* fase lampu aktif | 4 bit | `SignalPhase` (`0: NS Straight, 1: NS Turn, 2: EW Straight, 3: EW Turn`) |
 | Indeks `obs[20]` | Flag transisi kuning / all-red (`is_transitioning`) | `0.0` atau `1.0` | `SignalController.is_transitioning` |
@@ -79,7 +79,7 @@ Lingkungan memodelkan dua jenis konflik lalu lintas ketika `enable_collisions = 
 ## 2. Alur Transparan Training PPO (`src/fly_traffic/training/`)
 
 1. **Vector Rollout Collection (`PPOTrainer.train`)**:
-   - Menjalankan `num_envs = 8` instance `TrafficIntersectionEnv` (profil `mixed`: sampel acak `normal`, `asymmetric`, `asymmetric_ew`, atau `rush_hour` dengan skala laju `Uniform(0.85, 1.15)`) secara paralel dengan mode `AutoresetMode.SAME_STEP`.
+   - Menjalankan `num_envs = 8` instance `TrafficIntersectionEnv` (profil `mixed`: sampel acak terbobot `normal`, `asymmetric`, `asymmetric_ew`, `rush_hour` masing-masing `2/9`, serta `stress_train` sebesar `1/9`, disertai skala laju `Uniform(0.85, 1.15)`) secara paralel dengan mode `AutoresetMode.SAME_STEP`.
    - Setiap update mengumpulkan `rollout_steps = 128` langkah per env (`batch_steps = 1024` langkah total).
    - Pada awal episode baru (`previous_done_mask == 1.0`), state rekuren $h_t$ di-nol-kan kembali agar memori antar-episode tidak bocor.
    - `decision_mask` bernilai `1.0` hanya ketika lampu berstatus `GREEN` (`obs[:, 20] < 0.5`) dan `phase_elapsed >= min_green_steps`, sehingga gradien aktor dan entropi tidak terdilusi oleh langkah *no-op* selama fase `YELLOW`/`ALL_RED`.

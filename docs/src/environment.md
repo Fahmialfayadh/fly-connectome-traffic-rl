@@ -1,5 +1,7 @@
 # Lingkungan Simulasi Persimpangan (`src/fly_traffic/environment/`)
 
+![Geometri 8 Lajur & 4 Fase Sinyal](../intersection_2d_diagram.png)
+
 ![Flowchart Langkah Environment per Episode](../alur-langkah-env.svg)
 
 ## 1. Pemetaan Lajur (`LaneId`) & Fase Sinyal (`SignalPhase`)

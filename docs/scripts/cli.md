@@ -1,6 +1,6 @@
-# Referensi Skrip CLI (`docs/scripts/cli.md`)
+# Referensi Skrip CLI & Notebook (`docs/scripts/cli.md`)
 
-Seluruh skrip dijalankan dari root repositori (`PYTHONPATH=src` atau instalasi editable `uv pip install -e .`).
+Seluruh skrip dijalankan dari root repositori (`uv run python ...`, `PYTHONPATH=src`, atau setelah instalasi editable `uv pip install -e .`).
 
 ---
 
@@ -40,15 +40,13 @@ Melatih satu atau beberapa kebijakan PPO (`fly`, `fly_shuffled`, `mlp`, `gru`) s
 ---
 
 ## 4. `scripts/run_benchmark.py`
-Mengevaluasi `FixedTimerAgent` + checkpoint `mlp_ppo.pt`, `gru_ppo.pt`, dan `fly_ppo.pt` melalui `AgentEvaluator` pada 4 skenario (`10` seed) + uji farmakologi/lesi, lalu menulis JSON, Markdown, serta figur PNG.
+Mengevaluasi kelima pengendali (`Fly Connectome PPO`, `Shuffled Connectome PPO`, `PPO-GRU`, `PPO-MLP`, dan `Fixed Timer`) melalui `AgentEvaluator` pada 4 skenario (`10` seed) + uji farmakologi/lesi, lalu menulis JSON, tabel Markdown, serta figur PNG.
 
 | Argumen | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `--checkpoints-dir` | `Path` | `PPOConfig.checkpoints_dir` | Direktori berisi `*_ppo.pt`. |
-| `--connectome` | `Path` | `ConnectomeConfig.output_path` | Path ke `fly_subconnectome.pt`. |
-| `--output-dir` | `Path` | `BenchmarkConfig.output_dir` | Direktori keluaran `benchmark_summary.json`, `benchmark_table.md`, `training_curves.png`, `scenario_comparison.png`, `reward_vs_collisions.png`, dan `pharmacology_ablation.png`. |
-
-*(Catatan: gunakan tab **Benchmark & Connectome** di Web Lab untuk menyertakan `Shuffled Connectome PPO` atau checkpoint ber-suffix kustom dalam laporan komparatif.)*
+| `--connectome` | `Path` | `ConnectomeConfig.output_path` | Path ke `fly_subconnectome.pt` (`fly_shuffled` otomatis memuat/membuat `*_shuffled.pt`). |
+| `--output-dir` | `Path` | `BenchmarkConfig.output_dir` | Direktori keluaran `benchmark_summary.json`, `benchmark_table.md`, `training_curves.png`, `scenario_comparison.png`, `mean_reward.png`, `mean_collisions.png`, dan `pharmacology_ablation.png`. |
 
 ---
 
@@ -65,8 +63,18 @@ Menjalankan `TrafficLabServer` berbasis `aiohttp`.
 
 ---
 
-## 6. `scripts/launch_sandbox.py`
-Menjalankan aplikasi desktop Pygame `TrafficConnectomeSandboxApp`.
+## 6. `simulation3d/serve.py`
+Menjalankan penampil 3D simpang empat mandiri (`Traffic3DServer`) yang berbagi modul Three.js dari `frontend/js/sim3d/`.
+
+| Argumen | Tipe | Default | Keterangan |
+|---|---|---|---|
+| `--host` | `str` | `"127.0.0.1"` | Antarmuka host bind server HTTP/WS. |
+| `--port` | `int` | `8888` | Port TCP server 3D mandiri (juga mendukung argumen posisional opsional). |
+
+---
+
+## 7. `scripts/launch_sandbox.py`
+Menjalankan aplikasi desktop Pygame `TrafficConnectomeSandboxApp` (memerlukan paket opsional `pygame` dan `pillow`).
 
 | Argumen | Tipe | Default | Keterangan |
 |---|---|---|---|
@@ -74,4 +82,8 @@ Menjalankan aplikasi desktop Pygame `TrafficConnectomeSandboxApp`.
 | `--checkpoints-dir` | `Path` | `PPOConfig.checkpoints_dir` | Direktori checkpoint terlatih. |
 | `--headless-screenshot` | `Path \| None` | `None` | Jika diisi, render simulasi tanpa jendela display lalu simpan PNG ke path ini. |
 | `--steps` | `int` | `45` | Jumlah langkah simulasi sebelum screenshot headless diambil. |
-| `--parallel-models` | `int` | `1` | Opsi CLI tambahan (`1`, `2`, `4`). |
+
+---
+
+## 8. `notebooks/train_agents.ipynb`
+Notebook Jupyter interaktif untuk eksperimen pelatihan PPO dan evaluasi terisolasi (`artifacts/benchmarks/notebook_*/`), kompatibel untuk eksekusi lokal maupun remote (mis. Google Colab).
