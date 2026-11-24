@@ -6,7 +6,36 @@ build-backend = "setuptools.build_meta"
 name = "fly-traffic-connectome"
 version = "0.1.0"
 description = "Drosophila connectome recurrent RL traffic controller"
+readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.9",
+    "gymnasium>=0.29",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "torch>=2.2",
+]
+
+[project.optional-dependencies]
+extract = [
+    "polars>=0.20",
+    "trimesh>=4.0",
+]
+sandbox = [
+    "pillow>=10.0",
+    "pygame>=2.5",
+]
+dev = [
+    "pytest>=8.0",
+]
+all = [
+    "pillow>=10.0",
+    "polars>=0.20",
+    "pygame>=2.5",
+    "pytest>=8.0",
+    "trimesh>=4.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -14,3 +43,13 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

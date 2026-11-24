@@ -234,5 +234,6 @@ artifacts/checkpoints/*
 
 # Local experiment archives & personal recording/presentation files
 artifacts/checkpoints_archive/
+artifacts/benchmarks/notebook_*/
 demo_note.md
 *.pptx
