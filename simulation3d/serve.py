@@ -6,10 +6,10 @@ real Drosophila connectome recurrent neural policies, Poisson arrival profiles,
 and safety-interlocked signal controller from src/fly_traffic.
 """
 
+import argparse
 import asyncio
 from contextlib import suppress
 import json
-import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -48,9 +48,12 @@ class Traffic3DServer:
         app.router.add_post("/api/simulation/control", self._handle_control)
         app.router.add_get("/ws/simulation", self._handle_ws)
 
-        # Serve static assets (js, css, etc.)
+        # Serve static assets (js, css, shared 3D modules, vendor)
         app.router.add_static("/js", self.static_dir / "js")
         app.router.add_static("/css", self.static_dir / "css")
+        sim3d_dir = PROJECT_ROOT / "frontend" / "js" / "sim3d"
+        if sim3d_dir.exists():
+            app.router.add_static("/sim3d", sim3d_dir)
         vendor_dir = PROJECT_ROOT / "frontend" / "vendor"
         if vendor_dir.exists():
             app.router.add_static("/vendor", vendor_dir)
@@ -190,17 +193,45 @@ class Traffic3DServer:
             self._clients.discard(d)
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse host and port arguments for the standalone 3D viewer server."""
+    parser = argparse.ArgumentParser(
+        description="Launch standalone 3D Traffic Intersection simulation server."
+    )
+    parser.add_argument(
+        "port_pos",
+        nargs="?",
+        type=int,
+        default=None,
+        help="Optional positional TCP port (for backward compatibility).",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host interface to bind.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8888,
+        help="TCP port for the HTTP and WebSocket server.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
+    args = parse_args()
+    port = args.port_pos if args.port_pos is not None else args.port
     static_dir = Path(__file__).resolve().parent
     server = Traffic3DServer(static_dir=static_dir, port=port)
     app = server.create_app()
 
-    print(f"\n=======================================================")
-    print(f"  3D Traffic Simulation (Connected to Python Env)")
-    print(f"  Serving at: http://127.0.0.1:{port}")
-    print(f"=======================================================\n")
-    web.run_app(app, host="127.0.0.1", port=port, print=None)
+    print("\n=======================================================")
+    print("  3D Traffic Simulation (Connected to Python Env)")
+    print(f"  Serving at: http://{args.host}:{port}")
+    print("=======================================================\n")
+    web.run_app(app, host=args.host, port=port, print=None)
 
 
 if __name__ == "__main__":

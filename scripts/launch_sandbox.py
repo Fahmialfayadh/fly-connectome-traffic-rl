@@ -36,15 +36,6 @@ def parse_args() -> argparse.Namespace:
         default=45,
         help="Simulation steps to advance before saving headless screenshot.",
     )
-
-    parser.add_argument(
-        "--parallel-models",
-        type=int,
-        choices=[1, 2, 4],
-        default=1,
-        help="Maximum number of models trained concurrently.",
-    )
-
     return parser.parse_args()
 
 

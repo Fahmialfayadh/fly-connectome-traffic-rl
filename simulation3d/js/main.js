@@ -5,9 +5,9 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { IntersectionWorld } from './world.js';
-import { VehicleManager3D } from './vehicles.js';
-import { TrafficSignals3D } from './signals.js';
+import { IntersectionWorld } from '/sim3d/world.js';
+import { VehicleManager3D } from '/sim3d/vehicles.js';
+import { TrafficSignals3D } from '/sim3d/signals.js';
 
 /* ======== Scene & Renderer ======== */
 const container = document.getElementById('canvas-container');

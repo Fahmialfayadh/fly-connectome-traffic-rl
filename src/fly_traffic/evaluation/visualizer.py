@@ -212,6 +212,45 @@ class BenchmarkPlotter:
         return output_path
 
     @classmethod
+    def plot_single_scenario_metric(
+        cls,
+        results: list[ScenarioBenchmarkResult],
+        metric_attr: str,
+        std_attr: str | None,
+        ylabel: str,
+        output_path: Path,
+        label_nonzero: bool = False,
+    ) -> Path:
+        """Plot a standalone grouped scenario bar chart for a single metric."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        scenarios = list(dict.fromkeys(r.scenario for r in results))
+        agents = list(dict.fromkeys(r.agent_name for r in results))
+        lookup = {(r.scenario, r.agent_name): r for r in results}
+
+        fig, ax = plt.subplots(figsize=(8.6, 5.0), dpi=150)
+        cls._plot_grouped_scenario_panel(
+            ax=ax,
+            scenarios=scenarios,
+            agents=agents,
+            lookup=lookup,
+            metric_attr=metric_attr,
+            std_attr=std_attr,
+            ylabel=ylabel,
+            label_nonzero=label_nonzero,
+        )
+        if label_nonzero:
+            max_val = max((getattr(r, metric_attr) for r in results), default=1.0)
+            ax.set_ylim(0, max(max_val * 1.18, 1.0))
+            ax.legend(loc="upper left", fontsize=8)
+        else:
+            ax.legend(loc="best", fontsize=8)
+
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=150)
+        plt.close(fig)
+        return output_path
+
+    @classmethod
     def plot_pharmacology_ablation(
         cls,
         results: list[PharmacologyResult],
