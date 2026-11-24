@@ -9,6 +9,10 @@ from fly_traffic.agents.fixed_timer import FixedTimerAgent
 from fly_traffic.agents.fly_policy import FlyConnectomePolicy
 from fly_traffic.config import BenchmarkConfig, ConnectomeConfig, PPOConfig, TrafficEnvConfig
 from fly_traffic.connectome.artifact import ConnectomeArtifact
+from fly_traffic.connectome.shuffled import (
+    default_shuffled_connectome_path,
+    load_or_create_shuffled_connectome,
+)
 from fly_traffic.evaluation.evaluator import AgentEvaluator
 from fly_traffic.evaluation.visualizer import BenchmarkPlotter
 
@@ -16,7 +20,10 @@ from fly_traffic.evaluation.visualizer import BenchmarkPlotter
 def parse_args() -> argparse.Namespace:
     """Parse CLI options for evaluation and plotting."""
     parser = argparse.ArgumentParser(
-        description="Run benchmark comparison across Fixed Timer, MLP, GRU, and Fly PPO."
+        description=(
+            "Run benchmark comparison across Fly Connectome PPO, Shuffled Connectome PPO, "
+            "PPO-GRU, PPO-MLP, and Fixed Timer."
+        )
     )
     parser.add_argument(
         "--checkpoints-dir",
@@ -47,15 +54,24 @@ def main() -> None:
         if args.connectome.exists()
         else None
     )
+    shuffled_artifact = (
+        load_or_create_shuffled_connectome(
+            connectome_path=args.connectome,
+            shuffled_path=default_shuffled_connectome_path(args.connectome),
+        )
+        if args.connectome.exists()
+        else None
+    )
 
-    agents: list[BaseTrafficAgent] = [FixedTimerAgent()]
+    agents: list[BaseTrafficAgent] = []
     histories: dict[str, dict[str, list[float]]] = {}
     fly_policy: FlyConnectomePolicy | None = None
 
     checkpoint_specs = [
-        ("mlp", "PPO-MLP", args.checkpoints_dir / "mlp_ppo.pt"),
-        ("gru", "PPO-GRU", args.checkpoints_dir / "gru_ppo.pt"),
         ("fly", "Fly Connectome PPO", args.checkpoints_dir / "fly_ppo.pt"),
+        ("fly_shuffled", "Shuffled Connectome PPO", args.checkpoints_dir / "fly_shuffled_ppo.pt"),
+        ("gru", "PPO-GRU", args.checkpoints_dir / "gru_ppo.pt"),
+        ("mlp", "PPO-MLP", args.checkpoints_dir / "mlp_ppo.pt"),
     ]
 
     for model_key, display_name, ckpt_path in checkpoint_specs:
@@ -66,12 +82,15 @@ def main() -> None:
         policy, payload = load_policy_checkpoint(
             path=ckpt_path,
             artifact=artifact if model_key == "fly" else None,
+            shuffled_artifact=shuffled_artifact if model_key == "fly_shuffled" else None,
         )
         agents.append(NeuralAgentAdapter(policy=policy, agent_name=display_name))
         if isinstance(payload.get("history"), dict):
             histories[display_name] = payload["history"]
         if model_key == "fly" and isinstance(policy, FlyConnectomePolicy):
             fly_policy = policy
+
+    agents.append(FixedTimerAgent())
 
     evaluator = AgentEvaluator(
         benchmark_config=BenchmarkConfig(output_dir=args.output_dir),
@@ -100,9 +119,20 @@ def main() -> None:
         results=scenario_results,
         output_path=args.output_dir / "scenario_comparison.png",
     )
-    BenchmarkPlotter.plot_reward_vs_collisions(
+    BenchmarkPlotter.plot_single_scenario_metric(
         results=scenario_results,
-        output_path=args.output_dir / "reward_vs_collisions.png",
+        metric_attr="mean_reward",
+        std_attr="std_reward",
+        ylabel="mean_reward",
+        output_path=args.output_dir / "mean_reward.png",
+    )
+    BenchmarkPlotter.plot_single_scenario_metric(
+        results=scenario_results,
+        metric_attr="mean_collisions",
+        std_attr=None,
+        ylabel="mean_collisions (per episode)",
+        output_path=args.output_dir / "mean_collisions.png",
+        label_nonzero=True,
     )
     if pharmacology_results:
         BenchmarkPlotter.plot_pharmacology_ablation(
