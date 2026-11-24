@@ -92,6 +92,8 @@ Dengan kontrol ini, hasil perbandingan terhadap `Fly Connectome PPO` memiliki in
 
 Lingkungan simulasi (`TrafficIntersectionEnv` di `src/fly_traffic/environment/traffic_env.py`) mengimplementasikan antarmuka Gymnasium berbasis NumPy yang berjalan sepenuhnya di CPU.
 
+![Alur Langkah Environment per Episode](alur-langkah-env.svg)
+
 ### Geometri Persimpangan dan Pengontrol Sinyal
 
 Persimpangan memiliki 4 pendekatan (Utara, Selatan, Timur, Barat), masing-masing terdiri atas lajur lurus dan lajur belok kiri, sehingga total ada 8 lajur (`NUM_LANES = 8`). Tiap lajur dikelola sebagai antrean FIFO (`LaneQueue`) yang mencatat langkah kedatangan setiap kendaraan untuk menghitung waktu tunggu secara akurat.
@@ -395,11 +397,25 @@ Angka di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.
 
 Pada skenario `normal`, `asymmetric`, dan `rush_hour` dengan ambang batas kesabaran lampu merah `150,0` detik dan konfigurasi intergreen bawaan (`yellow_steps = 2`, `all_red_steps = 1`), seluruh agen pada `benchmark_summary.json` mencatat rata-rata `0,00` kolisi dan seluruh agen RL mengungguli `Fixed Timer` secara konsisten (`rush_hour`: `PPO-MLP -76,871 / 27,18 s`, `Shuffled -79,431 / 28,05 s`, `Fly -79,574 / 27,96 s`, `PPO-GRU -80,937 / 28,09 s` vs `Fixed Timer -104,742 / 38,61 s`). Pada profil beban ekstrem `stress_test`, `PPO-GRU` (`-361,209 +/- 22,370`, `52,6` switches, `8,60` kolisi) menjadi satu-satunya agen RL yang mengungguli `Fixed Timer` (`-365,067 +/- 17,968`, `20,90` kolisi) pada `Mean Reward`, sementara `Fly Connectome PPO` mencatat tingkat konflik terendah di antara seluruh agen (`5,00` kolisi vs `14,00` pada `Shuffled` dan `25,20` pada `PPO-MLP`) serta standar deviasi *reward* paling rapat (`+/- 17,601`).
 
-Figur statis perbandingan tersimpan di [scenario_comparison.png](../artifacts/benchmarks/scenario_comparison.png), [training_curves.png](../artifacts/benchmarks/training_curves.png), [pharmacology_ablation.png](../artifacts/benchmarks/pharmacology_ablation.png), serta perbandingan lintas skema & jumlah step latih (`Env v1` vs `Stress Training` vs `Env v2 New Env`) di [experiment_evolution_comparison.png](../artifacts/benchmarks/experiment_evolution_comparison.png) dan [experiment_evolution.json](../artifacts/benchmarks/experiment_evolution.json).
+### Visualisasi Hasil Benchmark
+
+![Perbandingan Mean Reward Lintas Skenario (5M Env v2)](../artifacts/benchmarks/mean_reward.png)
+
+![Perbandingan Mean Collisions Lintas Skenario (5M Env v2)](../artifacts/benchmarks/mean_collisions.png)
+
+![Perbandingan Lintas Skema Pelatihan (Env v1 vs Stress Training vs Env v2)](../artifacts/benchmarks/experiment_evolution_comparison.png)
+
+![Perbandingan 4 Metrik Skenario](../artifacts/benchmarks/scenario_comparison.png)
+
+![Kurva Pelatihan PPO](../artifacts/benchmarks/training_curves.png)
+
+> Catatan faktual berkas: `mean_reward.png`, `mean_collisions.png`, dan `experiment_evolution_comparison.png` merefleksikan evaluasi `5M` Env v2 pada tabel di atas, sedangkan berkas terbaru `scenario_comparison.png`, `training_curves.png`, dan `pharmacology_ablation.png` pada direktori [artifacts/benchmarks/](../artifacts/benchmarks/) dirender dari run evaluasi notebook `163.840` langkah (`*_ppofrom_ipynb`). Arsip data evolusi lintas skema tersedia di [experiment_evolution.json](../artifacts/benchmarks/experiment_evolution.json).
 
 ### Uji Farmakologi dan Lesi Sirkuit (`rush_hour`, 10 Seed)
 
 Pengukuran ketahanan `Fly Connectome PPO` ketika gain sinaptik atau sebagian neuron dimodifikasi (`artifacts/benchmarks/benchmark_summary.json`):
+
+![Hasil Uji Farmakologi dan Lesi Sirkuit](../artifacts/benchmarks/pharmacology_ablation.png)
 
 | Kondisi | `g_exc` | `g_inh` | Neuron Aktif | Mean Reward | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|

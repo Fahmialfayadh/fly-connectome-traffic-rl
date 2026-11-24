@@ -100,6 +100,10 @@ def main() -> None:
         results=scenario_results,
         output_path=args.output_dir / "scenario_comparison.png",
     )
+    BenchmarkPlotter.plot_reward_vs_collisions(
+        results=scenario_results,
+        output_path=args.output_dir / "reward_vs_collisions.png",
+    )
     if pharmacology_results:
         BenchmarkPlotter.plot_pharmacology_ablation(
             results=pharmacology_results,

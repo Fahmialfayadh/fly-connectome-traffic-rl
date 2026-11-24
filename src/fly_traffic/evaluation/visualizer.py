@@ -23,6 +23,16 @@ class BenchmarkPlotter:
     }
 
     @classmethod
+    def _color_for_agent(cls, agent_name: str) -> str | None:
+        """Resolve consistent bar color for both exact and checkpoint-suffixed agent labels."""
+        if agent_name in cls.AGENT_COLORS:
+            return cls.AGENT_COLORS[agent_name]
+        for base_name, color in cls.AGENT_COLORS.items():
+            if agent_name.startswith(base_name):
+                return color
+        return None
+
+    @classmethod
     def plot_training_curves(
         cls,
         histories: dict[str, dict[str, list[float]]],
@@ -71,6 +81,60 @@ class BenchmarkPlotter:
         return output_path
 
     @classmethod
+    def _plot_grouped_scenario_panel(
+        cls,
+        ax: plt.Axes,
+        scenarios: list[str],
+        agents: list[str],
+        lookup: dict[tuple[str, str], ScenarioBenchmarkResult],
+        metric_attr: str,
+        std_attr: str | None,
+        ylabel: str,
+        label_nonzero: bool = False,
+    ) -> None:
+        """Render a grouped bar subplot across scenarios and agents."""
+        x = np.arange(len(scenarios))
+        bar_width = 0.8 / max(1, len(agents))
+
+        for idx, agent_name in enumerate(agents):
+            offsets = x + (idx - (len(agents) - 1) / 2.0) * bar_width
+            means = [getattr(lookup[(sc, agent_name)], metric_attr) for sc in scenarios]
+            stds = (
+                [getattr(lookup[(sc, agent_name)], std_attr) for sc in scenarios]
+                if std_attr is not None
+                else None
+            )
+            bars = ax.bar(
+                offsets,
+                means,
+                width=bar_width,
+                yerr=stds,
+                capsize=3 if stds is not None else 0,
+                label=agent_name,
+                color=cls._color_for_agent(agent_name),
+                alpha=0.9,
+            )
+            if label_nonzero:
+                for bar, val in zip(bars, means):
+                    if val > 0.0:
+                        ax.text(
+                            bar.get_x() + bar.get_width() / 2.0,
+                            val + 0.5,
+                            f"{val:.1f}",
+                            ha="center",
+                            va="bottom",
+                            fontsize=7.5,
+                            fontweight="bold",
+                        )
+
+        ax.set_title(metric_attr)
+        ax.set_xticks(x)
+        ax.set_xticklabels(scenarios)
+        ax.set_xlabel("scenario")
+        ax.set_ylabel(ylabel)
+        ax.grid(True, axis="y", alpha=0.3)
+
+    @classmethod
     def plot_scenario_comparison(
         cls,
         results: list[ScenarioBenchmarkResult],
@@ -91,41 +155,57 @@ class BenchmarkPlotter:
             ("mean_collisions", None, "mean_collisions (per episode)"),
         ]
 
-        x = np.arange(len(scenarios))
-        bar_width = 0.8 / max(1, len(agents))
-
         for ax, (metric_attr, std_attr, ylabel) in zip(axes, metrics):
-            for idx, agent_name in enumerate(agents):
-                offsets = x + (idx - (len(agents) - 1) / 2.0) * bar_width
-                means = [
-                    getattr(lookup[(sc, agent_name)], metric_attr)
-                    for sc in scenarios
-                ]
-                stds = (
-                    [getattr(lookup[(sc, agent_name)], std_attr) for sc in scenarios]
-                    if std_attr is not None
-                    else None
-                )
-                color = cls.AGENT_COLORS.get(agent_name, None)
-                ax.bar(
-                    offsets,
-                    means,
-                    width=bar_width,
-                    yerr=stds,
-                    capsize=3 if stds is not None else 0,
-                    label=agent_name,
-                    color=color,
-                    alpha=0.9,
-                )
-
-            ax.set_title(metric_attr)
-            ax.set_xticks(x)
-            ax.set_xticklabels(scenarios)
-            ax.set_xlabel("scenario")
-            ax.set_ylabel(ylabel)
-            ax.grid(True, axis="y", alpha=0.3)
+            cls._plot_grouped_scenario_panel(
+                ax=ax,
+                scenarios=scenarios,
+                agents=agents,
+                lookup=lookup,
+                metric_attr=metric_attr,
+                std_attr=std_attr,
+                ylabel=ylabel,
+            )
 
         axes[0].legend(loc="best", fontsize=8)
+        fig.tight_layout()
+        fig.savefig(output_path, dpi=150)
+        plt.close(fig)
+        return output_path
+
+    @classmethod
+    def plot_reward_vs_collisions(
+        cls,
+        results: list[ScenarioBenchmarkResult],
+        output_path: Path,
+    ) -> Path:
+        """Plot 2-panel comparison focusing on mean_reward and mean_collisions."""
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        scenarios = list(dict.fromkeys(r.scenario for r in results))
+        agents = list(dict.fromkeys(r.agent_name for r in results))
+        lookup = {(r.scenario, r.agent_name): r for r in results}
+
+        fig, axes = plt.subplots(1, 2, figsize=(15.2, 5.4), dpi=150)
+        panels: list[tuple[str, str | None, str, bool]] = [
+            ("mean_reward", "std_reward", "mean_reward", False),
+            ("mean_collisions", None, "mean_collisions (per episode)", True),
+        ]
+
+        for ax, (metric_attr, std_attr, ylabel, label_nonzero) in zip(axes, panels):
+            cls._plot_grouped_scenario_panel(
+                ax=ax,
+                scenarios=scenarios,
+                agents=agents,
+                lookup=lookup,
+                metric_attr=metric_attr,
+                std_attr=std_attr,
+                ylabel=ylabel,
+                label_nonzero=label_nonzero,
+            )
+
+        max_col = max((r.mean_collisions for r in results), default=1.0)
+        axes[1].set_ylim(0, max(max_col * 1.18, 1.0))
+        axes[0].legend(loc="lower left", fontsize=8)
+        axes[1].legend(loc="upper left", fontsize=8)
         fig.tight_layout()
         fig.savefig(output_path, dpi=150)
         plt.close(fig)

@@ -1,5 +1,4 @@
-# Can a Fly Control Traffic? (Dapatkah Lalat Mengatur Lalu Lintas?)
-
+# Can a Fly Control Traffic? 
 Pengujian kelayakan sub-konektom otak lalat buah (*Drosophila melanogaster*, dataset `FlyWire FAFB v783`) sebagai inti rekuren pada kebijakan kendali lampu lalu lintas persimpangan empat arah berbasis *Reinforcement Learning* (PPO). Proyek ini memadukan **2.500 neuron** dari sirkuit **Central Complex (`PB`, `FB`, `EB`, `NO`)** dan **Mushroom Body (`MB_*`)** dengan bobot graf terbeku, berjalan 100% di CPU.
 
 ---
@@ -80,9 +79,14 @@ python -m pytest tests/ -q
 │   ├── checkpoints/                # fly_ppo.pt, fly_shuffled_ppo.pt, gru_ppo.pt, mlp_ppo.pt (~5M Env v2)
 │   └── benchmarks/                 # JSON, tabel Markdown, & figur hasil evaluasi
 ├── docs/
-│   ├── MASTER_DOC.md                 # Laporan teknis (konektom, null model, lingkungan, PPO, hasil)
-│   ├── TRAINING_AND_EPISODE_GUIDE.md # Panduan alur 1 episode (500 langkah), diagram PPO, & jejak episode
-│   └── VARIABLES_AND_MATH.md         # Kamus variabel kode, kolisi, dan pemetaan rumus matematika
+│   ├── MASTER_DOC.md                 # Laporan teknis utama & hasil evaluasi
+│   ├── config.md                     # Referensi konfigurasi (src/fly_traffic/config.py)
+│   ├── TRAINING_AND_EPISODE_GUIDE.md # Panduan alur 1 episode (500 langkah) & loop PPO
+│   ├── training_compact.md           # Ringkasan arsitektur sistem
+│   ├── VARIABLES_AND_MATH.md         # Kamus variabel kode & pemetaan rumus
+│   ├── alur-langkah-env.svg          # Flowchart langkah environment per episode
+│   ├── src/                          # Referensi modular per submodul backend
+│   └── scripts/                      # Referensi entrypoint CLI & notebook
 ├── frontend/                       # Antarmuka Web (Modular Partials + CSS + ES6 + Canvas 2D + Three.js)
 │   ├── index.html
 │   ├── partials/                   # Potongan HTML per tab (simulation, training, benchmark, architecture, documentation)
@@ -189,14 +193,25 @@ Tabel di bawah disinkronkan langsung dari `artifacts/benchmarks/benchmark_table.
 | `stress_test` | PPO-MLP (`mlp_ppo_new_env`) | 69.755 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.085 |
 | `stress_test` | Fixed Timer (`10-6-10-6`) | - | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
 
-Figur hasil eksperimen tersedia di `artifacts/benchmarks/`: `scenario_comparison.png`, `training_curves.png`, `pharmacology_ablation.png`, dan `experiment_evolution_comparison.png`.
+### Figur Benchmark Utama
+
+![Perbandingan Mean Reward Lintas Skenario (5M Env v2)](artifacts/benchmarks/mean_reward.png)
+
+![Perbandingan Mean Collisions Lintas Skenario (5M Env v2)](artifacts/benchmarks/mean_collisions.png)
+
+![Evolusi Eksperimen: Env v1 vs Stress Training vs Env v2](artifacts/benchmarks/experiment_evolution_comparison.png)
+
+Figur lengkap lainnya di `artifacts/benchmarks/`: [scenario_comparison.png](artifacts/benchmarks/scenario_comparison.png), [training_curves.png](artifacts/benchmarks/training_curves.png), dan [pharmacology_ablation.png](artifacts/benchmarks/pharmacology_ablation.png).
 
 ---
 
 ## Dokumentasi Teknis
 
 - [Laporan Teknis Utama](docs/MASTER_DOC.md): Pembahasan menyeluruh konstruksi sub-konektom FAFB v783, *Shuffled Null Model*, lingkungan lalu lintas, paradigma reservoir biologis & adapter, PPO, serta hasil evaluasi.
-- [Panduan Training & Siklus Episode](docs/TRAINING_AND_EPISODE_GUIDE.md): Diagram Mermaid siklus 1 episode (`500` langkah), alur loop PPO CPU + Live Policy Preview, serta referensi jejak episode historis.
+- [Referensi Konfigurasi](docs/config.md): Tabel seluruh konstanta dan dataclass pada `src/fly_traffic/config.py`.
+- [Referensi Modular Backend (`docs/src/`)](docs/src/README.md): Penjelasan singkat per submodul `connectome`, `environment`, `agents`, `training`, `evaluation`, dan `web`/`ui`.
+- [Referensi Skrip CLI (`docs/scripts/cli.md`)](docs/scripts/cli.md): Opsi argumen & perintah eksekusi skrip di `scripts/`.
+- [Panduan Training & Siklus Episode](docs/TRAINING_AND_EPISODE_GUIDE.md): Diagram siklus 1 episode (`500` langkah, `alur-langkah-env.svg`), alur loop PPO CPU + Live Policy Preview, serta referensi jejak episode.
 - [Kamus Variabel & Matematika](docs/VARIABLES_AND_MATH.md): Pemetaan simbol persamaan biologis, observasi, reward, kolisi, *safety buffer*, dan hyperparameter PPO ke nama variabel kode.
 
 ---

@@ -128,6 +128,8 @@ def train_agent_worker(
     suffix: str = "",
     resume: bool = False,
     lr: float = PPOConfig.learning_rate,
+    ppo_overrides: dict | None = None,
+    env_overrides: dict | None = None,
 ) -> None:
     """Train one independent PPO agent inside a separate process."""
 
@@ -136,15 +138,17 @@ def train_agent_worker(
     torch.set_num_threads(1)
 
     conn_config = ConnectomeConfig(output_path=connectome_path)
-    env_config = TrafficEnvConfig()
+    env_config = TrafficEnvConfig(**(env_overrides or {}))
 
-    ppo_config = PPOConfig(
+    ppo_kwargs = dict(ppo_overrides or {})
+    ppo_kwargs.update(
         total_timesteps=total_timesteps,
         num_envs=num_envs,
         seed=seed,
         checkpoints_dir=checkpoints_dir,
         learning_rate=lr,
     )
+    ppo_config = PPOConfig(**ppo_kwargs)
 
     artifact: ConnectomeArtifact | None = None
 

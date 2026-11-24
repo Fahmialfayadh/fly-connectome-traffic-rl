@@ -39,30 +39,9 @@ Rincian laju kedatangan Poisson dasar ($\lambda$ kendaraan per langkah sebelum f
 
 ### B. Anatomi 1 Episode Penuh
 
-Diagram berikut memetakan urutan eksekusi aktual di dalam `TrafficIntersectionEnv.reset()` dan `TrafficIntersectionEnv.step()`:
+Flowchart berikut memetakan urutan eksekusi aktual di dalam `TrafficIntersectionEnv.reset()` dan `TrafficIntersectionEnv.step()`:
 
-```mermaid
-flowchart TD
-    A["Reset Episode (seed, profile)"] --> B["Inisialisasi 8 LaneQueue, SignalController = NS_STRAIGHT GREEN, step = 0"]
-    B --> C["Bangun Observasi 22-dim (queues/30, max_wait/150, phase_onehot, is_transitioning, elapsed/20)"]
-    C --> D["Policy Forward Pass (obs_t, hidden_t -> action_logits, V, next_hidden)"]
-    D --> E["Signal Interlock: SignalController.request_phase(target_phase)"]
-    E --> F{"Lolos Interlock (GREEN, target != active, elapsed >= min_green_steps=6)?"}
-    F -- "Ya (phase_switched = True)" --> G["Masuk tahap YELLOW (2 langkah) -> ALL_RED (1 langkah)"]
-    F -- "Tidak (phase_switched = False)" --> H["Pertahankan tahap sinyal aktif saat ini"]
-    G --> I["Discharge Kendaraan: kosong saat YELLOW/ALL_RED; lepas 2.5 lurus / 2.0 belok saat GREEN"]
-    H --> I
-    I --> J["Evaluasi Kolisi (_evaluate_collisions jika enable_collisions=True)"]
-    J --> J1["box_clearance_conflict: straggler dilemma_zone_prob=0.18 jika intergreen < 2 langkah"]
-    J --> J2["red_light_conflict: antrean merah menunggu > 150.0s melanggar hingga prob 0.14"]
-    J1 --> K["Kedatangan Poisson (_step_arrivals, dibatasi max_lane_capacity=30 / hard=80)"]
-    J2 --> K
-    K --> L["Majukan Timer Sinyal (SignalController.step: YELLOW -> ALL_RED -> GREEN fase baru)"]
-    L --> M["Hitung Reward r_t = 0.005 * (-Q - 0.1*max_wait_s - 1.0*switched - 80.0*collisions)"]
-    M --> N{"step >= max_steps (500)?"}
-    N -- "Belum (step < 500)" --> C
-    N -- "Ya (truncated = True)" --> O["Episode Selesai (pada SyncVectorEnv SAME_STEP otomatis reset dan nolkan hidden_state)"]
-```
+![Flowchart Langkah Environment per Episode](alur-langkah-env.svg)
 
 ---
 
