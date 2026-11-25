@@ -22,6 +22,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -146,6 +152,8 @@ input[type="checkbox"]:focus-visible {
 
 /* Main workspace */
 .workspace-main {
+  flex: 1 0 auto;
+  width: 100%;
   max-width: 1520px;
   margin: 0 auto;
   padding: var(--space-4) var(--space-6) var(--space-8);
@@ -4499,6 +4507,268 @@ input[type="range"]:active::-moz-range-thumb {
 
   .doc-fact-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
+
+.app-footer {
+  margin-top: auto;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-subtle);
+  width: 100%;
+}
+
+.footer-main {
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "brand links"
+    "tagline links";
+  align-items: center;
+  column-gap: var(--space-6);
+  row-gap: var(--space-1);
+}
+
+.footer-brand {
+  grid-area: brand;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.footer-brand-mark {
+  width: 4px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+  background-color: var(--color-primary);
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.footer-brand:hover .footer-brand-mark {
+  transform: scaleY(1.15);
+}
+
+.footer-brand-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--ink-primary);
+  line-height: 1.25;
+}
+
+.footer-tagline {
+  grid-area: tagline;
+  font-size: 0.8125rem;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.footer-links {
+  grid-area: links;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.35rem 0.72rem;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--ink-secondary);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.footer-link:hover {
+  background-color: var(--bg-surface);
+  border-color: var(--border-medium);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-subtle);
+}
+
+.footer-link:focus-visible {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--color-primary-ring);
+}
+
+.footer-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: currentColor;
+  opacity: 0.85;
+  transition: opacity var(--transition-fast);
+}
+
+.footer-link:hover .footer-icon {
+  opacity: 1;
+}
+
+.footer-bottom {
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-6) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.footer-copyright {
+  font-size: 0.775rem;
+  color: var(--ink-muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Compact Footer (Footer2) - Minimal, Pill Style */
+.app-footer--compact {
+  background: transparent;
+  border-top: none;
+  box-shadow: none;
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-4);
+  display: flex;
+  justify-content: center;
+}
+
+.footer-compact {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0.35rem 0.95rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-subtle);
+  font-size: 0.785rem;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.footer-compact-item {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.footer-compact-divider {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--ink-muted);
+  font-weight: 700;
+  user-select: none;
+}
+
+.footer-compact-link {
+  display: inline-block;
+  vertical-align: middle;
+  color: var(--ink-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.footer-compact-link:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* GitHub Button in Header */
+.tab-button--github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-button-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.tab-button-label {
+  display: inline;
+}
+
+@media (max-width: 768px) {
+  .footer-main {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "tagline"
+      "links";
+    row-gap: var(--space-3);
+    padding: var(--space-4) var(--space-5) var(--space-3);
+  }
+
+  .footer-links {
+    justify-content: flex-start;
+  }
+
+  .footer-bottom {
+    padding: var(--space-3) var(--space-5) var(--space-4);
+    justify-content: center;
+    text-align: center;
+  }
+
+  .tab-button-label {
+    display: none;
+  }
+
+  .tab-button--github {
+    padding: 0.38rem 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-main {
+    padding: var(--space-3) var(--space-4) var(--space-2);
+    row-gap: var(--space-2);
+  }
+
+  .footer-links {
+    gap: var(--space-1);
+  }
+
+  .footer-link {
+    padding: 0.28rem 0.55rem;
+    font-size: 0.775rem;
+  }
+
+  .footer-bottom {
+    padding: var(--space-2) var(--space-4) var(--space-3);
+  }
+
+  .footer-compact {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    gap: 4px;
   }
 }
 
