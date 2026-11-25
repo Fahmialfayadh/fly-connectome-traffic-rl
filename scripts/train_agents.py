@@ -151,6 +151,7 @@ def train_agent_worker(
     ppo_config = PPOConfig(**ppo_kwargs)
 
     artifact: ConnectomeArtifact | None = None
+    shuffled_path: Path | None = None
 
     if model_type == "fly":
         artifact = ConnectomeArtifact.load(conn_config.output_path)
@@ -159,10 +160,11 @@ def train_agent_worker(
             default_shuffled_connectome_path,
             load_or_create_shuffled_connectome,
         )
-        shuffled_path = default_shuffled_connectome_path(conn_config.output_path)
+        shuffled_path = default_shuffled_connectome_path(conn_config.output_path, seed=seed)
         artifact = load_or_create_shuffled_connectome(
             connectome_path=conn_config.output_path,
             shuffled_path=shuffled_path,
+            seed=seed,
         )
 
     trainer = PPOTrainer(
@@ -178,7 +180,7 @@ def train_agent_worker(
 
     print(
         f"\n[PID {os.getpid()}] {mode_label} for {model_type.upper()} PPO "
-        f"(target={total_timesteps} steps)",
+        f"(seed={seed}, target={total_timesteps} steps)",
         flush=True,
     )
 
@@ -188,6 +190,8 @@ def train_agent_worker(
         verbose=True,
         checkpoint_filename=target_filename,
         resume_from=resume_from,
+        learning_rate=lr,
+        shuffled_connectome_path=shuffled_path,
     )
 
     print(
@@ -270,15 +274,20 @@ def main() -> None:
 
         for model_type in args.agents:
             model_artifact = artifact
+            shuffled_path: Path | None = None
             if model_type == "fly_shuffled":
                 from fly_traffic.connectome.shuffled import (
                     default_shuffled_connectome_path,
                     load_or_create_shuffled_connectome,
                 )
-                shuffled_path = default_shuffled_connectome_path(conn_config.output_path)
+                shuffled_path = default_shuffled_connectome_path(
+                    conn_config.output_path,
+                    seed=args.seed,
+                )
                 model_artifact = load_or_create_shuffled_connectome(
                     connectome_path=conn_config.output_path,
                     shuffled_path=shuffled_path,
+                    seed=args.seed,
                 )
 
             target_filename = f"{model_type}_ppo{args.suffix}.pt"
@@ -289,18 +298,18 @@ def main() -> None:
             if resume_from is not None:
                 print(
                     f"\n--- Resuming {model_type.upper()} PPO from {checkpoint_path} "
-                    f"(target={args.total_timesteps} steps) ---"
+                    f"(seed={args.seed}, target={args.total_timesteps} steps) ---"
                 )
             else:
                 if args.resume:
                     print(
                         f"\n--- No existing checkpoint at {checkpoint_path}; "
-                        f"starting {model_type.upper()} PPO fresh ({args.total_timesteps} steps) ---"
+                        f"starting {model_type.upper()} PPO fresh (seed={args.seed}, {args.total_timesteps} steps) ---"
                     )
                 else:
                     print(
                         f"\n--- Training {model_type.upper()} PPO "
-                        f"({args.total_timesteps} steps) ---"
+                        f"(seed={args.seed}, {args.total_timesteps} steps) ---"
                     )
             print(f"learning rate {model_type}:", args.lr)
 
@@ -311,6 +320,7 @@ def main() -> None:
                 checkpoint_filename=target_filename,
                 resume_from=resume_from,
                 learning_rate=args.lr,
+                shuffled_connectome_path=shuffled_path,
             )
 
         return

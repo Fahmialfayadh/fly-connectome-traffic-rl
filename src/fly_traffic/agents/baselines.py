@@ -184,6 +184,8 @@ def save_policy_checkpoint(
     connectome_path: Path | None = None,
     trained_timesteps: int | None = None,
     optimizer_state_dict: dict[str, Any] | None = None,
+    seed: int | None = None,
+    shuffled_connectome_path: Path | None = None,
 ) -> None:
     """Save trained policy state dict and metadata for reproducible reload."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -209,10 +211,14 @@ def save_policy_checkpoint(
         "trainable_params": int(policy.count_trainable_parameters()),
         "trained_timesteps": resolved_timesteps,
         "leak_rate_tau": leak_rate_tau,
+        "seed": int(seed) if seed is not None else None,
         "saved_at_iso": datetime.now(timezone.utc).isoformat(),
         "state_dict": policy.state_dict(),
         "history": history_dict,
         "connectome_path": str(connectome_path) if connectome_path else None,
+        "shuffled_connectome_path": (
+            str(shuffled_connectome_path) if shuffled_connectome_path else None
+        ),
         "optimizer_state_dict": optimizer_state_dict,
     }
     torch.save(payload, path)
@@ -234,11 +240,18 @@ def load_policy_checkpoint(
     if model_type == "fly_shuffled":
         resolved_artifact = shuffled_artifact
         if resolved_artifact is None:
-            conn_path_raw = payload.get("connectome_path")
-            if conn_path_raw and Path(conn_path_raw).exists():
-                resolved_artifact = ConnectomeArtifact.load(Path(conn_path_raw))
+            shuffled_raw = payload.get("shuffled_connectome_path") or payload.get(
+                "connectome_path"
+            )
+            if (
+                shuffled_raw
+                and "shuffled" in Path(shuffled_raw).stem
+                and Path(shuffled_raw).exists()
+            ):
+                resolved_artifact = ConnectomeArtifact.load(Path(shuffled_raw))
             else:
-                resolved_artifact = load_or_create_shuffled_connectome()
+                ckpt_seed = int(payload.get("seed") or 42)
+                resolved_artifact = load_or_create_shuffled_connectome(seed=ckpt_seed)
     elif model_type == "fly" and resolved_artifact is None:
         conn_path_raw = payload.get("connectome_path")
         candidate = Path(conn_path_raw) if conn_path_raw else ConnectomeConfig().output_path

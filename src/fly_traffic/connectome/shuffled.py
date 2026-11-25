@@ -16,10 +16,15 @@ from fly_traffic.connectome.artifact import ConnectomeArtifact, ConnectomeMetada
 from fly_traffic.connectome.preprocessor import ConnectomePreprocessor
 
 
-def default_shuffled_connectome_path(connectome_path: Path | None = None) -> Path:
+def default_shuffled_connectome_path(
+    connectome_path: Path | None = None,
+    seed: int = 42,
+) -> Path:
     """Return sibling artifact path for the shuffled null-model connectome."""
     base = connectome_path or ConnectomeConfig.output_path
-    return base.with_name(f"{base.stem}_shuffled{base.suffix}")
+    if seed == 42:
+        return base.with_name(f"{base.stem}_shuffled{base.suffix}")
+    return base.with_name(f"{base.stem}_shuffled_seed{seed}{base.suffix}")
 
 
 def _rewire_edges_globally(
@@ -147,7 +152,7 @@ def load_or_create_shuffled_connectome(
 ) -> ConnectomeArtifact:
     """Load cached shuffled null-model artifact or generate & persist it deterministically."""
     base_path = connectome_path or ConnectomeConfig.output_path
-    target_path = shuffled_path or default_shuffled_connectome_path(base_path)
+    target_path = shuffled_path or default_shuffled_connectome_path(base_path, seed=seed)
     if target_path.exists():
         return ConnectomeArtifact.load(target_path)
 

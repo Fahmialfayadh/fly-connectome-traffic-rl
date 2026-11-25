@@ -90,7 +90,7 @@ class BenchmarkConfig:
 
     scenarios: tuple[str, ...] = ("normal", "asymmetric", "rush_hour", "stress_test")
     eval_seeds: tuple[int, ...] = field(
-        default_factory=lambda: tuple(range(1000, 1010))
+        default_factory=lambda: tuple(range(1000, 1050))
     )
     latency_warmup_steps: int = 20
     latency_measure_steps: int = 200

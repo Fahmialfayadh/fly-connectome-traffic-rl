@@ -119,6 +119,13 @@ def main() -> None:
         results=scenario_results,
         output_path=args.output_dir / "scenario_comparison.png",
     )
+    isolated_names = {"Fly Connectome PPO", "Shuffled Connectome PPO", "Fixed Timer"}
+    isolated_results = [r for r in scenario_results if r.agent_name in isolated_names]
+    if len(isolated_results) >= 2:
+        BenchmarkPlotter.plot_scenario_comparison(
+            results=isolated_results,
+            output_path=args.output_dir / "fly_vs_shuffled_comparison.png",
+        )
     BenchmarkPlotter.plot_single_scenario_metric(
         results=scenario_results,
         metric_attr="mean_reward",

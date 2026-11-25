@@ -93,6 +93,7 @@ class PPOTrainer:
         save_on_cancel: bool = True,
         resume_from: Path | None = None,
         learning_rate: float | None = None,
+        shuffled_connectome_path: Path | None = None,
     ) -> tuple[BaseRecurrentActorCritic, TrainingHistory]:
         """Train a policy end-to-end on vectorized TrafficIntersectionEnv instances."""
         ppo_config = self.ppo_config
@@ -377,6 +378,28 @@ class PPOTrainer:
                 if on_policy_update_callback is not None:
                     on_policy_update_callback(policy, metrics_dict)
 
+                if save_checkpoint and session_update_idx % 250 == 0:
+                    target_filename = checkpoint_filename or f"{model_type.lower()}_ppo.pt"
+                    checkpoint_path = ppo_config.checkpoints_dir / target_filename
+                    resolved_conn_path = (
+                        shuffled_connectome_path
+                        if (model_type == "fly_shuffled" and shuffled_connectome_path is not None)
+                        else self.connectome_config.output_path
+                    )
+                    save_policy_checkpoint(
+                        path=checkpoint_path,
+                        model_type=model_type,
+                        policy=policy,
+                        obs_dim=obs_dim,
+                        act_dim=act_dim,
+                        history=history.to_dict(),
+                        connectome_path=resolved_conn_path,
+                        trained_timesteps=global_timesteps,
+                        optimizer_state_dict=optimizer.state_dict(),
+                        seed=ppo_config.seed,
+                        shuffled_connectome_path=shuffled_connectome_path,
+                    )
+
                 if verbose and (
                     session_update_idx == 1
                     or update_index % 10 == 0
@@ -391,6 +414,33 @@ class PPOTrainer:
                         f"v_loss={update_metrics['value_loss']:7.4f} "
                         f"ent={update_metrics['entropy']:5.3f}"
                     )
+        except KeyboardInterrupt:
+            if save_checkpoint and save_on_cancel and len(history.updates) > 0:
+                target_filename = checkpoint_filename or f"{model_type.lower()}_ppo.pt"
+                checkpoint_path = ppo_config.checkpoints_dir / target_filename
+                resolved_conn_path = (
+                    shuffled_connectome_path
+                    if (model_type == "fly_shuffled" and shuffled_connectome_path is not None)
+                    else self.connectome_config.output_path
+                )
+                save_policy_checkpoint(
+                    path=checkpoint_path,
+                    model_type=model_type,
+                    policy=policy,
+                    obs_dim=obs_dim,
+                    act_dim=act_dim,
+                    history=history.to_dict(),
+                    connectome_path=resolved_conn_path,
+                    trained_timesteps=history.timesteps[-1],
+                    optimizer_state_dict=optimizer.state_dict(),
+                    seed=ppo_config.seed,
+                    shuffled_connectome_path=shuffled_connectome_path,
+                )
+                if verbose:
+                    print(
+                        f"\nInterrupted! Saved resumable checkpoint ({history.timesteps[-1]} steps) to: {checkpoint_path}"
+                    )
+            raise
         finally:
             vector_envs.close()
 
@@ -402,6 +452,11 @@ class PPOTrainer:
             target_filename = checkpoint_filename or f"{model_type.lower()}_ppo.pt"
             checkpoint_path = ppo_config.checkpoints_dir / target_filename
             trained_timesteps = history.timesteps[-1] if history.timesteps else 0
+            resolved_conn_path = (
+                shuffled_connectome_path
+                if (model_type == "fly_shuffled" and shuffled_connectome_path is not None)
+                else self.connectome_config.output_path
+            )
             save_policy_checkpoint(
                 path=checkpoint_path,
                 model_type=model_type,
@@ -409,9 +464,11 @@ class PPOTrainer:
                 obs_dim=obs_dim,
                 act_dim=act_dim,
                 history=history.to_dict(),
-                connectome_path=self.connectome_config.output_path,
+                connectome_path=resolved_conn_path,
                 trained_timesteps=trained_timesteps,
                 optimizer_state_dict=optimizer.state_dict(),
+                seed=ppo_config.seed,
+                shuffled_connectome_path=shuffled_connectome_path,
             )
             if verbose:
                 print(f"Saved checkpoint to: {checkpoint_path}")
