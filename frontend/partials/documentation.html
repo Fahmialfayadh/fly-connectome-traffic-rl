@@ -1055,10 +1055,10 @@ total_loss = policy_loss - ppo_config.ent_coef * mean_entropy + ppo_config.vf_co
           <span id="doc-bench-source-badge" class="doc-source-badge mono-value">Snapshot artifacts/benchmarks/benchmark_summary.json</span>
         </div>
         <p class="doc-prose">
-          Evaluasi dilakukan secara deterministik menggunakan <span class="mono-inline">AgentEvaluator</span> pada empat skenario dengan <strong>10 seed identik</strong> (<span class="mono-inline">1000..1009</span>), masing-masing berdurasi 500 langkah (1.000 detik simulasi): <span class="mono-inline">normal</span> (kedatangan seimbang <span class="mono-inline">0,12 / 0,06</span>), <span class="mono-inline">asymmetric</span> (koridor Utara-Selatan padat <span class="mono-inline">0,34 / 0,14</span>), <span class="mono-inline">rush_hour</span> (moderat <span class="mono-inline">0,22 / 0,10</span> pada langkah 0&ndash;165, lonjakan NS <span class="mono-inline">0,56 / 0,24</span> pada 166&ndash;332, lonjakan EW pada 333&ndash;499), dan <span class="mono-inline">stress_test</span> (beban ekstrem <span class="mono-inline">ns=0,50/0,40</span> &amp; <span class="mono-inline">ew=0,50/0,40</span> per langkah di seluruh lajur untuk menguji saturasi antrean serta batas kesabaran lampu merah 150,0 detik).
+          Evaluasi dilakukan secara deterministik menggunakan <span class="mono-inline">AgentEvaluator</span> pada empat skenario dengan <strong>50 seed identik</strong> (<span class="mono-inline">1000..1049</span>), masing-masing berdurasi 500 langkah (1.000 detik simulasi): <span class="mono-inline">normal</span> (kedatangan seimbang <span class="mono-inline">0,12 / 0,06</span>), <span class="mono-inline">asymmetric</span> (koridor Utara-Selatan padat <span class="mono-inline">0,34 / 0,14</span>), <span class="mono-inline">rush_hour</span> (moderat <span class="mono-inline">0,22 / 0,10</span> pada langkah 0&ndash;165, lonjakan NS <span class="mono-inline">0,56 / 0,24</span> pada 166&ndash;332, lonjakan EW pada 333&ndash;499), dan <span class="mono-inline">stress_test</span> (beban ekstrem <span class="mono-inline">ns=0,50/0,40</span> &amp; <span class="mono-inline">ew=0,50/0,40</span> per langkah di seluruh lajur untuk menguji saturasi antrean serta batas kesabaran lampu merah 150,0 detik).
         </p>
 
-        <h4 class="doc-h3">Perbandingan Multi-Skenario (5 Model · 10 Seed)</h4>
+        <h4 class="doc-h3">Perbandingan Multi-Skenario (5 Model · 50 Seed)</h4>
         <div class="table-container doc-table-wrap">
           <table class="data-table">
             <thead>
@@ -1082,7 +1082,7 @@ total_loss = policy_loss - ppo_config.ent_coef * mean_entropy + ppo_config.vf_co
           <div class="doc-chart-toolbar">
             <div class="doc-chart-heading">
               <span class="doc-chart-title">Grafik Interaktif Multi-Skenario</span>
-              <span class="doc-chart-sub mono-value">normal · asymmetric · rush_hour · stress_test (10 seed)</span>
+              <span class="doc-chart-sub mono-value">normal · asymmetric · rush_hour · stress_test (50 seed)</span>
             </div>
             <div class="doc-chart-tabs" id="doc-scenario-metric-tabs" role="tablist" aria-label="Pilih metrik skenario">
               <button class="doc-chart-tab is-active" type="button" data-metric="mean_reward">Mean Reward</button>
@@ -1097,7 +1097,7 @@ total_loss = policy_loss - ppo_config.ent_coef * mean_entropy + ppo_config.vf_co
           </div>
         </div>
 
-        <h4 class="doc-h3">Uji Farmakologi dan Lesi Sirkuit (rush_hour, 10 Seed)</h4>
+        <h4 class="doc-h3">Uji Farmakologi dan Lesi Sirkuit (rush_hour, 50 Seed)</h4>
         <div class="table-container doc-table-wrap">
           <table class="data-table">
             <thead>
@@ -1138,15 +1138,70 @@ total_loss = policy_loss - ppo_config.ent_coef * mean_entropy + ppo_config.vf_co
           Gambar ringkasan resolusi tinggi:
           <a href="/artifacts/benchmarks/scenario_comparison.png" target="_blank" rel="noopener noreferrer">scenario_comparison.png</a>
           &middot;
+          <a href="/artifacts/benchmarks/multiseed_fly_vs_shuffled/stress_test_seed_consistency.png" target="_blank" rel="noopener noreferrer">stress_test_seed_consistency.png</a>
+          &middot;
           <a href="/artifacts/benchmarks/pharmacology_ablation.png" target="_blank" rel="noopener noreferrer">pharmacology_ablation.png</a>
         </p>
 
-        <h4 class="doc-h3">Analisis Skenario, Beban Ekstrem, &amp; Mekanisme Safety Buffer</h4>
+        <h4 class="doc-h3">Analisis Skenario, Replikasi Multi-Seed Fly vs Shuffled, &amp; Mekanisme Safety Buffer</h4>
         <p class="doc-prose">
-          Pada skenario non-jenuh (<span class="mono-inline">normal</span>, <span class="mono-inline">asymmetric</span>, dan <span class="mono-inline">rush_hour</span>) dengan konfigurasi bawaan (<span class="mono-inline">yellow_steps = 2</span>, <span class="mono-inline">all_red_steps = 1</span>, ambang sabar <span class="mono-inline">150,0 s</span>), seluruh keempat agen RL mencatat <strong>0,00 kolisi</strong> dan mengungguli <span class="mono-inline">Fixed Timer</span> secara konsisten (pada <span class="mono-inline">rush_hour</span>: <span class="mono-inline">PPO-MLP &minus;76,871 / 27,18 s</span>, <span class="mono-inline">Shuffled &minus;79,431 / 28,05 s</span>, <span class="mono-inline">Fly &minus;79,574 / 27,96 s</span>, dan <span class="mono-inline">PPO-GRU &minus;80,937 / 28,09 s</span> dibanding <span class="mono-inline">Fixed Timer &minus;104,742 / 38,61 s</span>). Pada <span class="mono-inline">asymmetric</span>, <span class="mono-inline">PPO-GRU</span> mencatat waktu tunggu terendah (<span class="mono-inline">22,63 &plusmn; 0,73 s</span>) dan <em>throughput</em> tertinggi (<span class="mono-inline">577,1</span> kendaraan).
+          Pada skenario non-jenuh (<span class="mono-inline">normal</span>, <span class="mono-inline">asymmetric</span>, dan <span class="mono-inline">rush_hour</span>) dengan konfigurasi bawaan (<span class="mono-inline">yellow_steps = 2</span>, <span class="mono-inline">all_red_steps = 1</span>, ambang sabar <span class="mono-inline">150,0 s</span>), seluruh keempat agen RL mencatat <strong>0,00 kolisi</strong> di seluruh 50 seed evaluasi (<span class="mono-inline">seed = 42</span>) dan mengungguli <span class="mono-inline">Fixed Timer</span> secara konsisten (pada <span class="mono-inline">rush_hour</span>: <span class="mono-inline">PPO-MLP &minus;77,132 / 27,13 s</span>, <span class="mono-inline">PPO-GRU &minus;79,077 / 27,74 s</span>, <span class="mono-inline">Fly &minus;79,584 / 28,00 s</span>, dan <span class="mono-inline">Shuffled &minus;79,682 / 28,08 s</span> dibanding <span class="mono-inline">Fixed Timer &minus;104,975 / 38,86 s</span>).
         </p>
         <p class="doc-prose">
-          Pada beban jenuh ekstrem <span class="mono-inline">stress_test</span>, profil ke lima model terpisah jelas: <strong><span class="mono-inline">PPO-GRU</span></strong> menjadi satu-satunya agen RL yang melampaui <span class="mono-inline">Fixed Timer</span> pada Mean Reward (<span class="mono-inline">&minus;361,209 &plusmn; 22,370</span> vs <span class="mono-inline">&minus;365,067 &plusmn; 17,968</span>) lewat kombinasi <em>switching</em> antar-RL paling hemat (<span class="mono-inline">52,6</span> vs <span class="mono-inline">53,8–54,9</span>) dan memori rekuren yang memangkas kolisi dari <span class="mono-inline">25,20</span> (<span class="mono-inline">PPO-MLP</span>) serta <span class="mono-inline">20,90</span> (<span class="mono-inline">Fixed Timer</span>) ke <span class="mono-inline">8,60</span>. Sementara itu, <strong><span class="mono-inline">Fly Connectome PPO</span></strong> memegang rekor keselamatan tertinggi (<span class="mono-inline">5,00</span> kolisi, ~3&times; lebih rendah dari <span class="mono-inline">Shuffled</span> <span class="mono-inline">14,00</span>) serta standar deviasi reward paling rapat (<span class="mono-inline">&plusmn; 17,601</span>), meskipun kekakuan <em>frozen reservoir</em> menahannya di <span class="mono-inline">54,9</span> <em>switch</em> dengan antrean <span class="mono-inline">144,89</span> dan reward <span class="mono-inline">&minus;399,038</span>.
+          Pada beban jenuh ekstrem <span class="mono-inline">stress_test</span> (50 seed, <span class="mono-inline">seed = 42</span>), <strong><span class="mono-inline">PPO-GRU</span></strong> menjadi satu-satunya agen RL yang melampaui <span class="mono-inline">Fixed Timer</span> pada Mean Reward (<span class="mono-inline">&minus;364,830 &plusmn; 24,707</span> vs <span class="mono-inline">&minus;365,494 &plusmn; 14,610</span>) lewat <em>switching</em> antar-RL paling hemat (<span class="mono-inline">52,5</span>) dan kolisi rendah (<span class="mono-inline">7,32</span> vs <span class="mono-inline">22,32</span> pada <span class="mono-inline">PPO-MLP</span> serta <span class="mono-inline">19,62</span> pada <span class="mono-inline">Fixed Timer</span>). Untuk memeriksa konsistensi selisih <span class="mono-inline">Fly</span> vs <span class="mono-inline">Shuffled</span> terhadap variansi pelatihan dan pengacakan graf, kedua model reservoir dilatih ulang pada 2 seed tambahan (<span class="mono-inline">seed 101</span> dan <span class="mono-inline">seed 202</span>, ~5M langkah dengan graf acak terpisah) lalu dievaluasi pada 50 seed trafik yang sama:
+        </p>
+
+        <div class="table-container doc-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Seed Latih / Rewiring</th>
+                <th class="num-cell">Fly Collisions</th>
+                <th class="num-cell">Shuffled Collisions</th>
+                <th class="num-cell">Fly &lt; Shuffled (50 Ep.)</th>
+                <th class="num-cell">Fly Reward</th>
+                <th class="num-cell">Shuffled Reward</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono-value">42</td>
+                <td class="mono-value num-cell">4,34 &plusmn; 2,77</td>
+                <td class="mono-value num-cell">12,88 &plusmn; 5,23</td>
+                <td class="mono-value num-cell">46/50 (92%)</td>
+                <td class="mono-value num-cell">&minus;399,310</td>
+                <td class="mono-value num-cell">&minus;402,899</td>
+              </tr>
+              <tr>
+                <td class="mono-value">101</td>
+                <td class="mono-value num-cell">8,02 &plusmn; 3,79</td>
+                <td class="mono-value num-cell">5,10 &plusmn; 2,59</td>
+                <td class="mono-value num-cell">8/50 (16%)</td>
+                <td class="mono-value num-cell">&minus;407,856</td>
+                <td class="mono-value num-cell">&minus;393,939</td>
+              </tr>
+              <tr>
+                <td class="mono-value">202</td>
+                <td class="mono-value num-cell">8,80 &plusmn; 4,23</td>
+                <td class="mono-value num-cell">7,56 &plusmn; 3,20</td>
+                <td class="mono-value num-cell">21/50 (42%)</td>
+                <td class="mono-value num-cell">&minus;406,843</td>
+                <td class="mono-value num-cell">&minus;408,854</td>
+              </tr>
+              <tr>
+                <td><strong>Agregat (N = 3 Seed)</strong></td>
+                <td class="mono-value num-cell"><strong>7,05 &plusmn; 1,94</strong></td>
+                <td class="mono-value num-cell"><strong>8,51 &plusmn; 3,25</strong></td>
+                <td class="mono-value num-cell"><strong>75/150 (50,0%)</strong></td>
+                <td class="mono-value num-cell"><strong>&minus;404,670 &plusmn; 3,812</strong></td>
+                <td class="mono-value num-cell"><strong>&minus;401,897 &plusmn; 6,130</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="doc-prose">
+          Hasil 3 seed tersebut menunjukkan bahwa selisih besar pada <span class="mono-inline">seed 42</span> berbalik arah pada <span class="mono-inline">seed 101</span> dan <span class="mono-inline">seed 202</span>; secara agregat rentang kolisi maupun reward saling tumpang tindih dengan tingkat kemenangan berpasangan tepat <strong>50,0% (75/150)</strong>. Oleh karena itu, dari data saat ini belum dapat disimpulkan secara statistik apakah topologi biologis CX/MB memberikan keunggulan konsisten dibandingkan reservoir acak terkalibrasi spektral (<span class="mono-inline">&rho; = 0,95</span>).
         </p>
         <p class="doc-prose">
           Sementara itu, kontrol interaktif <strong>Signal Buffer</strong> (<span class="mono-inline">All-Red</span> vs <span class="mono-inline">Yellow Only</span> lewat <span class="mono-inline">set_safety_buffer</span>) mengatur durasi jeda merah serentak <span class="mono-inline">all_red_steps</span> (2,0 detik per langkah tambahan setelah tahap kuning <span class="mono-inline">yellow_steps = 2</span>). Konflik pengosongan kotak simpang (<span class="mono-inline">box_clearance_conflict</span>) muncul apabila total jeda antar-hijau dikurangi menjadi kurang dari 2 langkah sehingga fase baru menyala hijau saat kendaraan zona dilema masih tersisa di dalam kotak persimpangan.
@@ -1159,13 +1214,13 @@ total_loss = policy_loss - ppo_config.ent_coef * mean_entropy + ppo_config.vf_co
         <h3 class="doc-h2">Batasan Kondisi, Trade-off, &amp; Penutup</h3>
         <ol class="doc-list">
           <li><strong>Abstraksi simulasi terbatas.</strong> <span class="mono-inline">TrafficIntersectionEnv</span> adalah model antrean diskrit berbasis NumPy (meskipun divisualisasikan secara halus pada kanvas 2D dan adegan 3D Three.js), bukan simulator dinamika fisik mikroskopik seperti SUMO; hasil tidak dapat digeneralisasikan langsung ke persimpangan dunia nyata.</li>
-          <li><strong>Ukuran sampel evaluasi kecil.</strong> Evaluasi 10 seed per skenario belum cukup untuk menyimpulkan signifikansi statistik pada selisih tipis antar model tanpa pengujian seed yang lebih besar.</li>
+          <li><strong>Ukuran replikasi seed pelatihan masih terbatas.</strong> Meskipun isolasi <span class="mono-inline">Fly</span> vs <span class="mono-inline">Shuffled</span> telah direplikasi pada 3 seed pelatihan/pengacakan graf (<span class="mono-inline">42, 101, 202</span> &times; 50 seed trafik), <span class="mono-inline">N = 3</span> masih terbatas untuk uji signifikansi berdaya statistik tinggi, sementara <span class="mono-inline">PPO-GRU</span> dan <span class="mono-inline">PPO-MLP</span> masih dievaluasi dari satu seed pelatihan (<span class="mono-inline">seed = 42</span>).</li>
           <li><strong>Model kolisi bersifat stokastik.</strong> <span class="mono-inline">red_light_conflict</span> dan <span class="mono-inline">box_clearance_conflict</span> memakai pencuplikan acak berprobabilitas tetap, sehingga variasi seed menghasilkan jumlah konflik berbeda pada bobot yang sama.</li>
-          <li><strong>Biaya latensi operasi matriks sparse.</strong> Inferensi satu langkah Fly Connectome PPO pada CPU (<span class="mono-inline">0,288&ndash;0,336 ms/step</span>) dan Shuffled (<span class="mono-inline">0,270&ndash;0,299 ms/step</span>) sekitar 2,5&ndash;3&times; lebih lambat dibanding <span class="mono-inline">PPO-GRU</span> (<span class="mono-inline">0,107&ndash;0,129 ms/step</span>) maupun <span class="mono-inline">PPO-MLP</span> (<span class="mono-inline">0,088&ndash;0,106 ms/step</span>), dan jauh di bawah <span class="mono-inline">Fixed Timer</span> (<span class="mono-inline">0,002 ms/step</span>).</li>
+          <li><strong>Biaya latensi operasi matriks sparse.</strong> Inferensi satu langkah Fly Connectome PPO pada CPU (<span class="mono-inline">0,185&ndash;0,354 ms/step</span>) dan Shuffled (<span class="mono-inline">0,188&ndash;0,331 ms/step</span>) sekitar 2&ndash;3&times; lebih lambat dibanding <span class="mono-inline">PPO-GRU</span> (<span class="mono-inline">0,077&ndash;0,134 ms/step</span>) maupun <span class="mono-inline">PPO-MLP</span> (<span class="mono-inline">0,064&ndash;0,101 ms/step</span>), dan jauh di bawah <span class="mono-inline">Fixed Timer</span> (<span class="mono-inline">0,001&ndash;0,002 ms/step</span>).</li>
           <li><strong>Keselamatan tetap bergantung pada interlock sinyal &amp; kapasitas jalan.</strong> <span class="mono-inline">SignalController</span> menjaga batas minimum hijau (<span class="mono-inline">6</span> langkah) dan transisi antar-hijau (<span class="mono-inline">yellow=2</span>, <span class="mono-inline">all_red=1</span>), sementara lajur yang jenuh melampaui <span class="mono-inline">150,0 s</span> tetap memicu <span class="mono-inline">red_light_conflict</span> terlepas dari arsitektur agennya.</li>
         </ol>
         <p class="doc-prose">
-          Berdasarkan pengukuran menyeluruh pada Env v2, <span class="mono-inline">PPO-MLP</span> unggul pada kecepatan inferensi dan rezim non-jenuh (<span class="mono-inline">normal</span> &amp; <span class="mono-inline">rush_hour</span>) namun paling banyak memicu kolisi di beban ekstrem (<span class="mono-inline">25,20</span>); <span class="mono-inline">PPO-GRU</span> tampil sebagai pengendali <em>end-to-end</em> terbaik hingga mengungguli <span class="mono-inline">Fixed Timer</span> di <span class="mono-inline">stress_test</span> (<span class="mono-inline">&minus;361,209</span> vs <span class="mono-inline">&minus;365,067</span>); sedangkan sub-konektom <em>Drosophila melanogaster</em> (<span class="mono-inline">Fly Connectome PPO</span>) menunjukkan <em>inductive bias</em> keselamatan paling kuat (<span class="mono-inline">5,00</span> kolisi vs <span class="mono-inline">14,00</span> pada <span class="mono-inline">Shuffled</span>) serta stabilitas varians tertinggi sambil tetap membuka kendali <em>in-silico</em> atas gain sinaptik dan lesi neuron tanpa retrain.
+          Sebagai penutup, sub-konektom <em>Drosophila melanogaster</em> (<span class="mono-inline">Fly Connectome PPO</span>) terbukti mampu berfungsi sebagai inti rekuren beku PPO di CPU yang secara konsisten mengungguli <span class="mono-inline">Fixed Timer</span> pada rezim non-jenuh di seluruh seed sekaligus menyediakan kontrol <em>in-silico</em> atas gain sinaptik dan lesi neuron tanpa retrain. Namun, pada evaluasi 3 seed pelatihan dan pengacakan graf, perbandingan <span class="mono-inline">Fly</span> vs <span class="mono-inline">Shuffled</span> menunjukkan tumpang tindih antar-seed (<span class="mono-inline">7,05 &plusmn; 1,94</span> vs <span class="mono-inline">8,51 &plusmn; 3,25</span> kolisi; 75/150 kemenangan berpasangan), sehingga belum terdapat bukti statistik yang cukup untuk menyimpulkan apakah topologi biologis CX/MB memberikan keunggulan konsisten dibandingkan reservoir acak terkalibrasi spektral pada tugas ini.
         </p>
       </section>
 

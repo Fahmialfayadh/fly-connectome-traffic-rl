@@ -40,13 +40,13 @@ Melatih satu atau beberapa kebijakan PPO (`fly`, `fly_shuffled`, `mlp`, `gru`) s
 ---
 
 ## 4. `scripts/run_benchmark.py`
-Mengevaluasi kelima pengendali (`Fly Connectome PPO`, `Shuffled Connectome PPO`, `PPO-GRU`, `PPO-MLP`, dan `Fixed Timer`) melalui `AgentEvaluator` pada 4 skenario (`10` seed) + uji farmakologi/lesi, lalu menulis JSON, tabel Markdown, serta figur PNG.
+Mengevaluasi kelima pengendali (`Fly Connectome PPO`, `Shuffled Connectome PPO`, `PPO-GRU`, `PPO-MLP`, dan `Fixed Timer`) melalui `AgentEvaluator` pada 4 skenario (`50` seed) + uji farmakologi/lesi, lalu menulis JSON, tabel Markdown, serta figur PNG.
 
 | Argumen | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `--checkpoints-dir` | `Path` | `PPOConfig.checkpoints_dir` | Direktori berisi `*_ppo.pt`. |
 | `--connectome` | `Path` | `ConnectomeConfig.output_path` | Path ke `fly_subconnectome.pt` (`fly_shuffled` otomatis memuat/membuat `*_shuffled.pt`). |
-| `--output-dir` | `Path` | `BenchmarkConfig.output_dir` | Direktori keluaran `benchmark_summary.json`, `benchmark_table.md`, `training_curves.png`, `scenario_comparison.png`, `mean_reward.png`, `mean_collisions.png`, dan `pharmacology_ablation.png`. |
+| `--output-dir` | `Path` | `BenchmarkConfig.output_dir` | Direktori keluaran `benchmark_summary.json`, `benchmark_table.md`, `training_curves.png`, `scenario_comparison.png`, `fly_vs_shuffled_comparison.png`, `mean_reward.png`, `mean_collisions.png`, dan `pharmacology_ablation.png`. |
 
 ---
 
@@ -86,4 +86,9 @@ Menjalankan aplikasi desktop Pygame `TrafficConnectomeSandboxApp` (memerlukan pa
 ---
 
 ## 8. `notebooks/train_agents.ipynb`
-Notebook Jupyter interaktif untuk eksperimen pelatihan PPO dan evaluasi terisolasi (`artifacts/benchmarks/notebook_*/`), kompatibel untuk eksekusi lokal maupun remote (mis. Google Colab).
+Notebook Jupyter interaktif untuk eksperimen pelatihan PPO 4 agen (`fly`, `fly_shuffled`, `mlp`, `gru`) dan evaluasi terisolasi (`artifacts/benchmarks/notebook_*/`), kompatibel untuk eksekusi lokal maupun remote (mis. Google Colab).
+
+---
+
+## 9. `notebooks/train_fly_vs_shuffled_multiseed.ipynb`
+Notebook khusus replikasi multi-seed untuk mengisolasi `Fly Connectome PPO` vs `Shuffled Connectome PPO` lintas seed pelatihan dan pengacakan graf (`seed 42`, `101`, `202`, masing-masing dengan berkas `artifacts/fly_subconnectome_shuffled_seed{s}.pt` dan checkpoint `artifacts/checkpoints/{agent}_ppo_seed{s}.pt`), lalu mengekspor agregat `N = 3` dan konsistensi berpasangan `50` seed trafik ke `artifacts/benchmarks/multiseed_fly_vs_shuffled/`.

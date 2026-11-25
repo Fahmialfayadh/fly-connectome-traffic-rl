@@ -6,7 +6,7 @@ Seluruh konfigurasi terpusat di [`src/fly_traffic/config.py`](../src/fly_traffic
 
 ## 1. Konstanta Path Global
 
-| Nama | Nilai Default | keterangan |
+| Nama | Nilai Default | Keterangan |
 |---|---|---|
 | `PROJECT_ROOT` | `Path(__file__).resolve().parents[2]` | Direktori root repositori yang diturunkan relatif dari lokasi `config.py`. |
 | `DEFAULT_DATASET_PATH` | `PROJECT_ROOT / "dataset" / "connections_princeton.csv"` | Lokasi default tabel koneksi mentah FlyWire FAFB v783. |
@@ -18,7 +18,7 @@ Seluruh konfigurasi terpusat di [`src/fly_traffic/config.py`](../src/fly_traffic
 
 Mengatur seleksi sub-konektom otak lalat (Central Complex + Mushroom Body), pemisahan polaritas sinaptik, dan penskalaan spektral.
 
-| Field | Tipe | Default | keterangan |
+| Field | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `dataset_path` | `Path` | `DEFAULT_DATASET_PATH` | Path ke berkas CSV koneksi sinapsis mentah FAFB v783. |
 | `output_path` | `Path` | `DEFAULT_ARTIFACTS_DIR / "fly_subconnectome.pt"` | Lokasi keluaran artefak sub-konektom PyTorch. |
@@ -37,7 +37,7 @@ Mengatur seleksi sub-konektom otak lalat (Central Complex + Mushroom Body), pemi
 
 Mengatur fisika antrean diskrit, kapasitas pelepasan, aturan *interlock* sinyal, pembobotan *reward*, dan mekanisme kolisi pada `TrafficIntersectionEnv`.
 
-| Field | Tipe | Default | keterangan |
+| Field | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `dt_seconds` | `float` | `2.0` | Durasi waktu simulasi nyata per satu langkah diskrit (`step`). |
 | `max_steps` | `int` | `500` | Panjang satu episode tetap (`500` langkah = `1.000` detik simulasi). |
@@ -67,7 +67,7 @@ Mengatur fisika antrean diskrit, kapasitas pelepasan, aturan *interlock* sinyal,
 
 Mengatur hyperparameter algoritma *Proximal Policy Optimization* (PPO) beserta pelatihan rekuren BPTT per potongan urutan.
 
-| Field | Tipe | Default | keterangan |
+| Field | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `total_timesteps` | `int` | `163840` | Total target langkah environment per sesi pelatihan default (`160` update). |
 | `num_envs` | `int` | `8` | Jumlah `SyncVectorEnv` paralel per model saat mengumpulkan *rollout*. |
@@ -93,10 +93,10 @@ Mengatur hyperparameter algoritma *Proximal Policy Optimization* (PPO) beserta p
 
 Mengatur evaluasi deterministik lintas skenario dan pengukuran latensi inferensi CPU.
 
-| Field | Tipe | Default | keterangan |
+| Field | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `scenarios` | `tuple[str, ...]` | `("normal", "asymmetric", "rush_hour", "stress_test")` | Daftar skenario uji yang dijalankan pada evaluasi penuh. |
-| `eval_seeds` | `tuple[int, ...]` | `(1000..1009)` | Sepuluh seed deterministik identik per skenario. |
+| `eval_seeds` | `tuple[int, ...]` | `(1000..1049)` | Lima puluh seed deterministik identik per skenario. |
 | `latency_warmup_steps` | `int` | `20` | Jumlah langkah pemanasan sebelum waktu inferensi CPU dicatat. |
 | `latency_measure_steps` | `int` | `200` | Jumlah langkah inferensi yang diukur rata-rata waktunya (`ms/step`). |
 | `output_dir` | `Path` | `DEFAULT_ARTIFACTS_DIR / "benchmarks"` | Direktori keluaran laporan JSON, tabel Markdown, dan gambar PNG. |
@@ -107,7 +107,7 @@ Mengatur evaluasi deterministik lintas skenario dan pengukuran latensi inferensi
 
 Mengatur tampilan aplikasi Pygame opsional (`scripts/launch_sandbox.py`) serta batas default kontrol farmakologi dan lesi.
 
-| Field | Tipe | Default | keterangan |
+| Field | Tipe | Default | Keterangan |
 |---|---|---|---|
 | `window_width` | `int` | `1280` | Lebar jendela Pygame (piksel). |
 | `window_height` | `int` | `760` | Tinggi jendela Pygame (piksel). |

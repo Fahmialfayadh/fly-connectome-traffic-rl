@@ -72,8 +72,10 @@ Setiap berkas `.pt` disimpan aman (`weights_only=True`) dengan struktur kunci:
 | `trainable_params` | `int` | Jumlah parameter terlatih aktual. |
 | `trained_timesteps` | `int` | Akumulasi total langkah latih (dipakai oleh fitur `--resume`). |
 | `leak_rate_tau` | `float \| None` | Nilai $\tau$ terlatih pada model Fly, `None` untuk MLP/GRU. |
+| `seed` | `int \| None` | Seed pelatihan/rewiring yang digunakan saat menyimpan checkpoint. |
 | `saved_at_iso` | `str` | Timestamp UTC format ISO-8601. |
 | `state_dict` | `dict` | Bobot adapter/backbone (`w_exc_csr`/`w_inh_csr` dimuat ulang dari artefak konektom saat `load_policy_checkpoint`). |
 | `history` | `dict[str, list[float]]` | Riwayat metrik `TrainingHistory`. |
 | `connectome_path` | `str \| None` | Path referensi artefak konektom yang dipakai. |
+| `shuffled_connectome_path` | `str \| None` | Path artefak graf teracak spesifik seed untuk model `fly_shuffled`. |
 | `optimizer_state_dict` | `dict \| None` | State optimizer Adam untuk melanjutkan pelatihan (`--resume`). |

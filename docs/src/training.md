@@ -65,5 +65,5 @@ total_loss = (
 )
 ```
 
-- **Logika Resume**: saat `resume_from` diberikan, `PPOTrainer.train()` memuat `state_dict`, `optimizer_state_dict`, serta `TrainingHistory`, lalu menghitung sisa update dari `(total_timesteps - resume_timesteps) // transitions_per_update`.
-- **Metrik `TrainingHistory`**: setiap akhir update mencatat `updates`, `timesteps`, `mean_episode_reward`, `mean_iqm_reward` (*interquartile mean* 25%–75% dari jendela `24` episode terakhir), `mean_throughput`, `mean_switches`, `mean_collisions`, `policy_loss`, `value_loss`, `entropy`, dan `approx_kl`.
+- **Logika Resume & Penyimpanan Berkala**: saat `resume_from` diberikan, `PPOTrainer.train()` memuat `state_dict`, `optimizer_state_dict`, serta `TrainingHistory`, lalu menghitung sisa update dari `(total_timesteps - resume_timesteps) // transitions_per_update`. Selama sesi panjang, checkpoint disimpan otomatis setiap `250` update (~`256k` langkah) serta saat menerima interupsi (`KeyboardInterrupt`).
+- **Metrik `TrainingHistory`**: setiap akhir update mencatat `updates`, `timesteps`, `mean_episode_reward`, `mean_iqm_reward` (*interquartile mean* 25%–75% dari jendela `64` episode terakhir), `mean_throughput`, `mean_switches`, `mean_collisions`, `policy_loss`, `value_loss`, `entropy`, dan `approx_kl`.

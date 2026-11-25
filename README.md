@@ -22,45 +22,49 @@ Repositori ini menyertakan sub-konektom hasil ekstraksi (`artifacts/fly_subconne
 
 ## Instalasi & Cara Menjalankan
 
-Memerlukan Python `>= 3.11` dan [`uv`](https://docs.astral.sh/uv/) (indeks PyTorch CPU sudah dikonfigurasi otomatis di `pyproject.toml`):
+Memerlukan Python `>= 3.11`. Instalasi paket dapat menggunakan [`uv`](https://docs.astral.sh/uv/) (indeks PyTorch CPU sudah dikonfigurasi di `pyproject.toml`) atau `pip` di dalam *virtual environment* aktif:
 
 ```bash
-# 1. Buat virtual environment & instal dependensi inti (CPU-only PyTorch)
-uv sync
+# 1. Buat dan aktifkan virtual environment
+uv venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# 2. Instal dependensi inti (CPU-only PyTorch) dalam mode editable
+uv pip install -e .
 
 # Opsional: sertakan paket ekstraksi CSV/3D, Pygame sandbox, & pytest
-uv sync --extra all
+uv pip install -e ".[all]"
 ```
 
 ### 1. Menjalankan Web Lab Utama (Direkomendasikan)
 
 ```bash
-uv run python scripts/launch_web_lab.py --host 127.0.0.1 --port 8080
+python scripts/launch_web_lab.py --host 127.0.0.1 --port 8080
 ```
 
 Buka `http://127.0.0.1:8080` di browser. Untuk menjalankan penampil 3D simpang secara terpisah tanpa panel penuh:
 
 ```bash
-uv run python simulation3d/serve.py --host 127.0.0.1 --port 8888
+python simulation3d/serve.py --host 127.0.0.1 --port 8888
 ```
 
 ### 2. Perintah CLI & Notebook (Training, Benchmark, Pengujian)
 
 ```bash
-# Evaluasi komparatif 5 pengendali pada 4 skenario (10 seed, 500 langkah/episode)
-uv run python scripts/run_benchmark.py
+# Evaluasi komparatif 5 pengendali pada 4 skenario (50 seed, 500 langkah/episode)
+python scripts/run_benchmark.py
 
 # Latih kebijakan PPO dari CLI (mendukung --resume dan --parallel-models 1|2|4)
-uv run python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --suffix "_custom"
+python scripts/train_agents.py --agents fly fly_shuffled mlp gru --total-timesteps 163840 --suffix "_custom"
 
 # Jalankan seluruh unit & integration tests
-uv run pytest tests/ -q
+pytest tests/ -q
 
 # Opsional: ekstrak ulang sub-connectome bila menyediakan dataset/connections_princeton.csv
-# uv run --extra extract python scripts/extract_connectome.py
+# python scripts/extract_connectome.py
 ```
 
-Eksplorasi pelatihan interaktif (lokal maupun Google Colab) tersedia di [`notebooks/train_agents.ipynb`](notebooks/train_agents.ipynb).
+Eksplorasi pelatihan interaktif (lokal maupun Google Colab) tersedia di [`notebooks/train_agents.ipynb`](notebooks/train_agents.ipynb) (4 agen utama) dan [`notebooks/train_fly_vs_shuffled_multiseed.ipynb`](notebooks/train_fly_vs_shuffled_multiseed.ipynb) (replikasi multi-seed `Fly` vs `Shuffled`).
 
 ---
 
@@ -88,45 +92,62 @@ Untuk menguji apakah topologi biologis memberikan kontribusi nyata dibanding sek
 
 ---
 
-## Hasil Benchmark (~5 Juta Langkah Latih, 10 Seed per Skenario)
+## Hasil Benchmark (~5 Juta Langkah Latih, 50 Seed per Skenario)
 
-Tabel di bawah disinkronkan langsung dari [`artifacts/benchmarks/benchmark_table.md`](artifacts/benchmarks/benchmark_table.md) (`500` langkah / episode, `seed = 1000..1009`):
+Tabel di bawah disinkronkan langsung dari [`artifacts/benchmarks/benchmark_table.md`](artifacts/benchmarks/benchmark_table.md) (`500` langkah / episode, `seed = 1000..1049`):
 
 | Skenario | Agen | Parameter Terlatih | Mean Reward | Mean Queue | Mean Wait (s) | Mean Throughput | Mean Switches | Mean Collisions | Latency (ms/step) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `normal` | Fly Connectome PPO | 70.006 | -35.446 | 9.32 | 25.82 | 352.4 | 54.7 | 0.00 | 0.306 |
-| `normal` | Shuffled Connectome PPO | 70.006 | -35.630 | 9.37 | 25.99 | 353.2 | 55.0 | 0.00 | 0.299 |
-| `normal` | PPO-GRU | 69.725 | -34.923 | 9.32 | 26.07 | 348.0 | 53.5 | 0.00 | 0.115 |
-| `normal` | PPO-MLP | 69.755 | -34.605 | 9.21 | 25.75 | 349.1 | 52.9 | 0.00 | 0.106 |
-| `normal` | Fixed Timer (`10-6-10-6`) | 0 | -40.626 | 11.01 | 30.69 | 348.8 | 45.0 | 0.00 | 0.002 |
-| `asymmetric` | Fly Connectome PPO | 70.006 | -48.370 | 13.75 | 23.57 | 571.5 | 55.0 | 0.00 | 0.336 |
-| `asymmetric` | Shuffled Connectome PPO | 70.006 | -47.624 | 13.88 | 23.83 | 570.1 | 55.0 | 0.00 | 0.270 |
-| `asymmetric` | PPO-GRU | 69.725 | -47.893 | 13.34 | 22.63 | 577.1 | 53.6 | 0.00 | 0.129 |
-| `asymmetric` | PPO-MLP | 69.755 | -47.616 | 13.47 | 23.27 | 565.5 | 53.5 | 0.00 | 0.089 |
-| `asymmetric` | Fixed Timer (`10-6-10-6`) | 0 | -61.537 | 19.12 | 32.92 | 569.5 | 45.0 | 0.00 | 0.002 |
-| `rush_hour` | Fly Connectome PPO | 70.006 | -79.574 | 25.65 | 27.96 | 886.7 | 54.8 | 0.00 | 0.288 |
-| `rush_hour` | Shuffled Connectome PPO | 70.006 | -79.431 | 25.60 | 28.05 | 879.7 | 54.3 | 0.00 | 0.275 |
-| `rush_hour` | PPO-GRU | 69.725 | -80.937 | 26.01 | 28.09 | 894.5 | 53.9 | 0.00 | 0.107 |
-| `rush_hour` | PPO-MLP | 69.755 | -76.871 | 24.71 | 27.18 | 879.3 | 54.0 | 0.00 | 0.090 |
-| `rush_hour` | Fixed Timer (`10-6-10-6`) | 0 | -104.742 | 35.43 | 38.61 | 855.9 | 45.0 | 0.00 | 0.002 |
-| `stress_test` | Fly Connectome PPO | 70.006 | -399.038 | 144.89 | 88.38 | 1448.8 | 54.9 | 5.00 | 0.293 |
-| `stress_test` | Shuffled Connectome PPO | 70.006 | -395.579 | 140.52 | 84.97 | 1460.1 | 54.9 | 14.00 | 0.296 |
-| `stress_test` | PPO-GRU | 69.725 | -361.209 | 129.12 | 78.82 | 1468.7 | 52.6 | 8.60 | 0.109 |
-| `stress_test` | PPO-MLP | 69.755 | -381.887 | 131.83 | 78.69 | 1487.1 | 53.8 | 25.20 | 0.088 |
-| `stress_test` | Fixed Timer (`10-6-10-6`) | 0 | -365.067 | 126.19 | 76.47 | 1482.8 | 45.0 | 20.90 | 0.002 |
+| `normal` | Fly Connectome PPO | 70.006 | -35.875 | 9.50 | 26.31 | 352.5 | 54.4 | 0.00 | 0.354 |
+| `normal` | Shuffled Connectome PPO | 70.006 | -35.748 | 9.42 | 26.03 | 353.0 | 55.0 | 0.00 | 0.188 |
+| `normal` | PPO-GRU | 69.725 | -35.420 | 9.43 | 26.16 | 350.6 | 53.4 | 0.00 | 0.077 |
+| `normal` | PPO-MLP | 69.755 | -35.044 | 9.26 | 25.57 | 352.6 | 52.9 | 0.00 | 0.064 |
+| `normal` | Fixed Timer (`10-6-10-6`) | 0 | -41.354 | 11.25 | 31.25 | 349.2 | 45.0 | 0.00 | 0.001 |
+| `asymmetric` | Fly Connectome PPO | 70.006 | -48.896 | 13.84 | 23.67 | 572.4 | 55.0 | 0.00 | 0.185 |
+| `asymmetric` | Shuffled Connectome PPO | 70.006 | -47.840 | 13.89 | 23.76 | 572.2 | 55.0 | 0.00 | 0.331 |
+| `asymmetric` | PPO-GRU | 69.725 | -47.753 | 13.36 | 22.95 | 569.5 | 53.8 | 0.00 | 0.134 |
+| `asymmetric` | PPO-MLP | 69.755 | -47.253 | 13.43 | 23.25 | 564.5 | 53.7 | 0.00 | 0.101 |
+| `asymmetric` | Fixed Timer (`10-6-10-6`) | 0 | -61.765 | 19.23 | 33.04 | 570.2 | 45.0 | 0.00 | 0.002 |
+| `rush_hour` | Fly Connectome PPO | 70.006 | -79.584 | 25.64 | 28.00 | 883.9 | 54.6 | 0.00 | 0.292 |
+| `rush_hour` | Shuffled Connectome PPO | 70.006 | -79.682 | 25.65 | 28.08 | 882.2 | 54.3 | 0.00 | 0.308 |
+| `rush_hour` | PPO-GRU | 69.725 | -79.077 | 25.40 | 27.74 | 884.8 | 54.0 | 0.00 | 0.122 |
+| `rush_hour` | PPO-MLP | 69.755 | -77.132 | 24.71 | 27.13 | 880.2 | 53.6 | 0.00 | 0.093 |
+| `rush_hour` | Fixed Timer (`10-6-10-6`) | 0 | -104.975 | 35.55 | 38.86 | 856.2 | 45.0 | 0.00 | 0.002 |
+| `stress_test` | Fly Connectome PPO | 70.006 | -399.310 | 145.34 | 88.43 | 1452.1 | 55.0 | 4.34 | 0.321 |
+| `stress_test` | Shuffled Connectome PPO | 70.006 | -402.899 | 143.22 | 86.22 | 1465.1 | 55.0 | 12.88 | 0.283 |
+| `stress_test` | PPO-GRU | 69.725 | -364.830 | 130.93 | 79.85 | 1469.5 | 52.5 | 7.32 | 0.120 |
+| `stress_test` | PPO-MLP | 69.755 | -385.239 | 133.12 | 79.81 | 1483.3 | 53.8 | 22.32 | 0.099 |
+| `stress_test` | Fixed Timer (`10-6-10-6`) | 0 | -365.494 | 126.59 | 76.51 | 1487.1 | 45.0 | 19.62 | 0.002 |
+
+### Uji Konsistensi Multi-Seed: `Fly Connectome PPO` vs `Shuffled Connectome PPO` (`3` Seed × `50` Seed Trafik)
+
+Untuk memeriksa apakah perbedaan pada `seed 42` bersifat konsisten terhadap variasi inisialisasi pelatihan dan realisasi pengacakan graf, kedua model reservoir (`Fly` dan `Shuffled`) dilatih ulang penuh (`~5M` langkah) pada 2 seed independen tambahan (`seed 101` dan `seed 202`, masing-masing dengan graf acak terpisah `fly_subconnectome_shuffled_seed{101,202}.pt`) dan dievaluasi pada `50` seed trafik (`1000..1049`; total `150` episode per skenario per arsitektur, sumber: [`artifacts/benchmarks/multiseed_fly_vs_shuffled/multiseed_table.md`](artifacts/benchmarks/multiseed_fly_vs_shuffled/multiseed_table.md)):
+
+| Seed Latih / Rewiring | `Fly` Collisions (`stress_test`) | `Shuffled` Collisions (`stress_test`) | `Fly < Shuffled` (dari 50) | `Fly` Reward | `Shuffled` Reward |
+|---:|---:|---:|---:|---:|---:|
+| `42` | `4.34 ± 2.77` (`med 4.0`) | `12.88 ± 5.23` (`med 13.0`) | `46/50` (`92%`) | `-399.310` | `-402.899` |
+| `101` | `8.02 ± 3.79` (`med 8.0`) | `5.10 ± 2.59` (`med 5.0`) | `8/50` (`16%`) | `-407.856` | `-393.939` |
+| `202` | `8.80 ± 4.23` (`med 8.0`) | `7.56 ± 3.20` (`med 7.0`) | `21/50` (`42%`) | `-406.843` | `-408.854` |
+| **Agregat (`N = 3` Seed)** | **`7.05 ± 1.94`** | **`8.51 ± 3.25`** | **`75/150` (`50.0%`)** | **`-404.670 ± 3.812`** | **`-401.897 ± 6.130`** |
+
+Pada skenario non-jenuh lintas `N = 3` seed, keduanya tetap sejajar (`normal`: `-35.553 ± 0.233` vs `-35.559 ± 0.135`; `asymmetric`: `-48.880 ± 0.224` vs `-48.100 ± 0.204`; `rush_hour`: `-78.960 ± 0.456` vs `-79.342 ± 0.242`).
 
 ### Ringkasan Temuan Faktual
 
-1. **Rezim Non-Jenuh (`normal`, `asymmetric`, `rush_hour`)**: Seluruh keempat kebijakan RL mencatat `0.00` kolisi dan menurunkan waktu tunggu serta panjang antrean dibanding `Fixed Timer` (pada `rush_hour`, waktu tunggu rata-rata turun dari `38.61 s` menjadi `27.18–28.09 s`).
-2. **Rezim Saturasi Ekstrem (`stress_test`)**: `PPO-GRU` meraih `Mean Reward` tertinggi (`-361.209`, melampaui `Fixed Timer` `-365.067` dengan `8.60` kolisi), sedangkan `Fly Connectome PPO` mencatat `Mean Collisions` paling rendah di antara seluruh pengendali (`5.00` kolisi vs `14.00` pada `Shuffled Connectome PPO`, `20.90` pada `Fixed Timer`, dan `25.20` pada `PPO-MLP`) namun dengan antrean rata-rata lebih tinggi (`144.89`).
-3. **Perturbasi Farmakologi & Lesi Sirkuit (`rush_hour`)**: Perubahan pengali sinaptik (`g_exc = 1.8`, `g_inh = 0.2` atau `2.0`) serta lesi `25%` neuron CX, MB, maupun acak mempertahankan `0.00` kolisi dengan `Mean Reward` pada rentang `-80.407` hingga `-78.480`.
-4. **Biaya Komputasi CPU**: Perkalian matriks *sparse* `2.500 × 2.500` pada `Fly` dan `Shuffled Connectome` membutuhkan `0.270–0.336 ms/step`, sekitar 2,5–3 kali lebih lambat dibanding `PPO-GRU` (`0.107–0.129 ms/step`) dan `PPO-MLP` (`0.088–0.106 ms/step`).
+1. **Rezim Non-Jenuh (`normal`, `asymmetric`, `rush_hour`)**: Seluruh kebijakan RL mengungguli `Fixed Timer` secara konsisten di seluruh seed evaluasi maupun replikasi latih (pada `rush_hour`, waktu tunggu rata-rata turun dari `38.86 s` menjadi `27.13–28.08 s` dengan `0.00` kolisi pada evaluasi 5 agen dan `<= 0.01` kolisi pada agregat 3 seed).
+2. **Isolasi `Fly Connectome` vs `Shuffled Null Model` (Multi-Seed `N = 3`)**: Meskipun pada `seed 42` `Fly Connectome PPO` mencatat kolisi lebih rendah (`4.34` vs `12.88`; `46/50` seed trafik), arah selisih tersebut berbalik pada `seed 101` (`8.02` vs `5.10`; `8/50`) dan `seed 202` (`8.80` vs `7.56`; `21/50`). Secara agregat `N = 3`, rentang kolisi (`7.05 ± 1.94` vs `8.51 ± 3.25`) dan return (`-404.670 ± 3.812` vs `-401.897 ± 6.130`) saling tumpang tindih dengan rasio kemenangan berpasangan `75/150` (`50.0%`). Berdasarkan data 3 seed saat ini, **belum terdapat bukti statistik yang cukup untuk menyimpulkan apakah topologi biologis `CX`/`MB` memberikan keunggulan konsisten dibandingkan reservoir acak terkalibrasi spektral (`ρ = 0.95`)** pada lingkungan simpang ini.
+3. **Rezim Saturasi Lintas Arsitektur (`stress_test`, `seed 42`)**: `PPO-GRU` meraih `Mean Reward` tertinggi (`-364.830`, melampaui `Fixed Timer` `-365.494` dengan `7.32` kolisi), sedangkan `PPO-MLP` mencatat kolisi tertinggi (`22.32`). Kedua reservoir beku (`Fly` dan `Shuffled`) mempertahankan rotasi fase reguler (`~55.0` switch) dengan antrean rata-rata lebih tinggi dibanding `PPO-GRU`.
+4. **Perturbasi Farmakologi, Lesi Sirkuit, & Komputasi CPU**: Variasi pengali sinaptik (`g_exc = 1.8`, `g_inh = 0.2` atau `2.0`) serta lesi `25%` neuron CX, MB, maupun acak mempertahankan `0.00` kolisi pada `rush_hour` (`Mean Reward` `-79.584` hingga `-78.689`), dengan biaya inferensi matriks *sparse* CPU sebesar `0.185–0.354 ms/step` dibanding `0.064–0.134 ms/step` pada `PPO-MLP` dan `PPO-GRU`.
 
 ![Perbandingan Mean Reward Lintas Skenario](artifacts/benchmarks/mean_reward.png)
 
 ![Perbandingan Mean Collisions Lintas Skenario](artifacts/benchmarks/mean_collisions.png)
 
-Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_comparison.png](artifacts/benchmarks/scenario_comparison.png), [training_curves.png](artifacts/benchmarks/training_curves.png), [pharmacology_ablation.png](artifacts/benchmarks/pharmacology_ablation.png), dan [experiment_evolution_comparison.png](artifacts/benchmarks/experiment_evolution_comparison.png).
+![Perbandingan 4 Metrik Multi-Seed Fly vs Shuffled (Seed 42, 101, 202)](artifacts/benchmarks/multiseed_fly_vs_shuffled/scenario_comparison_multiseed.png)
+
+![Konsistensi Multi-Seed Fly vs Shuffled pada stress_test](artifacts/benchmarks/multiseed_fly_vs_shuffled/stress_test_seed_consistency.png)
+
+Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_comparison.png](artifacts/benchmarks/scenario_comparison.png), [fly_vs_shuffled_comparison.png](artifacts/benchmarks/fly_vs_shuffled_comparison.png), [training_curves.png](artifacts/benchmarks/training_curves.png), [training_curves_multiseed.png](artifacts/benchmarks/multiseed_fly_vs_shuffled/training_curves_multiseed.png), [pharmacology_ablation.png](artifacts/benchmarks/pharmacology_ablation.png), [experiment_evolution_comparison.png](artifacts/benchmarks/experiment_evolution_comparison.png), dan ringkasan replikasi 3 seed [`multiseed_table.md`](artifacts/benchmarks/multiseed_fly_vs_shuffled/multiseed_table.md).
 
 ---
 
@@ -140,8 +161,8 @@ Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_co
 │   ├── checkpoints/                # fly_ppo.pt, fly_shuffled_ppo.pt, gru_ppo.pt, mlp_ppo.pt
 │   └── benchmarks/                 # JSON, tabel Markdown, & grafik hasil evaluasi
 ├── docs/                           # Dokumentasi berjenjang (lihat docs/README.md)
-│   ├── README.md                   # Indeks navigasi dokumentasi 3 lapis
-│   ├── MASTER_DOC.md               # Laporan teknis & analisis hasil menyeluruh
+│   ├── README.md                   # Indeks navigasi dokumentasi
+│   ├── technical_report.pdf        # Technical report
 │   ├── TRAINING_AND_EPISODE_GUIDE.md
 │   ├── VARIABLES_AND_MATH.md
 │   ├── config.md
@@ -153,7 +174,8 @@ Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_co
 │   ├── js/                         # Controller UI & modul bersama 3D simpang (js/sim3d/)
 │   └── vendor/three/               # Pustaka Three.js lokal tanpa ketergantungan CDN
 ├── notebooks/
-│   └── train_agents.ipynb          # Notebook interaktif training & benchmark (lokal / Colab)
+│   ├── train_agents.ipynb                     # Notebook interaktif training & benchmark 4 agen
+│   └── train_fly_vs_shuffled_multiseed.ipynb  # Notebook replikasi 3 seed (Fly vs Shuffled)
 ├── scripts/                        # Entrypoint CLI (extract, build_brain_assets, train, benchmark, web)
 ├── simulation3d/                   # Server penampil 3D simpang mandiri (port 8888)
 ├── src/fly_traffic/                # Paket Python utama
@@ -175,7 +197,7 @@ Figur evaluasi lengkap lainnya tersedia di `artifacts/benchmarks/`: [scenario_co
 ## Dokumentasi Lanjutan
 
 Mulai dari [Indeks Dokumentasi (`docs/README.md`)](docs/README.md):
-1. **[Laporan Teknis Utama (`docs/MASTER_DOC.md`)](docs/MASTER_DOC.md)** — Metodologi ekstraksi konektom, spesifikasi lingkungan dan mekanisme kolisi, arsitektur kebijakan, eksperimen evolusi skema latih, hasil evaluasi, serta batasan studi.
+1. **[Technical Report (`docs/technical_report.pdf`)](docs/technical_report.pdf)** — Metodologi ekstraksi konektom, spesifikasi lingkungan dan mekanisme kolisi, arsitektur kebijakan, hasil evaluasi, serta batasan studi.
 2. **[Panduan Siklus Episode & Loop PPO (`docs/TRAINING_AND_EPISODE_GUIDE.md`)](docs/TRAINING_AND_EPISODE_GUIDE.md)** — Alur data sistem, anatomi 1 episode `500` langkah, *decision masking*, dan *Live Policy Preview*.
 3. **[Referensi Kode & Matematika](docs/VARIABLES_AND_MATH.md)** — Kamus simbol persamaan, [Referensi Konfigurasi](docs/config.md), [Referensi Submodul Backend](docs/src/README.md), dan [Referensi Skrip CLI](docs/scripts/cli.md).
 

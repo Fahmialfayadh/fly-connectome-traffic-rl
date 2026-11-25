@@ -225,15 +225,21 @@ __marimo__/
 # Raw connectome datasets (large >100MB files)
 dataset/
 
-# Checkpoints: include only the 4 final Env v2 model checkpoints in Git
+# Checkpoints: include final Env v2 model checkpoints and multi-seed runs in Git
 artifacts/checkpoints/*
 !artifacts/checkpoints/fly_ppo.pt
 !artifacts/checkpoints/fly_shuffled_ppo.pt
 !artifacts/checkpoints/gru_ppo.pt
 !artifacts/checkpoints/mlp_ppo.pt
+!artifacts/checkpoints/fly_ppo_seed*.pt
+!artifacts/checkpoints/fly_shuffled_ppo_seed*.pt
 
 # Local experiment archives & personal recording/presentation files
 artifacts/checkpoints_archive/
 artifacts/benchmarks/notebook_*/
+notebooks/*copy*.ipynb
+docs/MASTER_DOC.md
+docs/technical_report.typ
+docs/references.bib
 demo_note.md
 *.pptx

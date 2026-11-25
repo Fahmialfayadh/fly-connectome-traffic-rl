@@ -3,7 +3,7 @@
 Dokumentasi proyek ini disusun dalam tiga lapisan mulai dari laporan penelitian menyeluruh hingga referensi kode per modul:
 
 ## 1. Laporan Utama
-- [**Laporan Teknis & Evaluasi (`MASTER_DOC.md`)**](MASTER_DOC.md) — Pembahasan *end-to-end* ekstraksi sub-konektom FAFB v783, *Shuffled Null Model*, lingkungan lalu lintas, paradigma *biological reservoir* + adapter, pelatihan PPO di CPU, serta analisis hasil benchmark dan batasan.
+- [**Technical Report (`technical_report.pdf`)**](technical_report.pdf) — Metodologi ekstraksi sub-konektom FAFB v783, *Shuffled Null Model*, lingkungan lalu lintas, arsitektur kebijakan, pelatihan PPO di CPU, hasil benchmark, dan batasan studi.
 
 ## 2. Panduan Alur & Persamaan
 - [**Panduan Siklus Episode & Loop Training (`TRAINING_AND_EPISODE_GUIDE.md`)**](TRAINING_AND_EPISODE_GUIDE.md) — Diagram alur sistem, siklus 1 episode (`500` langkah / `1.000` detik), mekanisme *decision masking* PPO, dan cara kerja *Live Policy Preview*.

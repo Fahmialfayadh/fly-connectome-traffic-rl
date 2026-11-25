@@ -2,7 +2,7 @@
 
 Dokumen ini menjelaskan arsitektur interaksi antar-komponen sistem, alur satu episode simulasi lalu lintas (`500` langkah pada `src/fly_traffic/config.py`), serta mekanisme pelatihan PPO vektorisasi di CPU beserta **Live Policy Preview** pada Web UI.
 
-Untuk pemetaan simbol persamaan ke atribut kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md). Untuk laporan eksperimen menyeluruh, lihat [MASTER_DOC.md](MASTER_DOC.md).
+Untuk pemetaan simbol persamaan ke atribut kode, lihat [VARIABLES_AND_MATH.md](VARIABLES_AND_MATH.md). Untuk laporan teknis dan hasil benchmark menyeluruh, lihat [technical_report.pdf](technical_report.pdf).
 
 ---
 
@@ -12,7 +12,7 @@ Untuk pemetaan simbol persamaan ke atribut kode, lihat [VARIABLES_AND_MATH.md](V
 flowchart LR
     subgraph EnvDesign ["Desain Lingkungan & Skenario"]
         P1["Profil Training (Mixed + Jitter)<br/>Normal, Asymmetric, Rush Hour, Stress"]
-        P2["Profil Benchmark (Deterministik)<br/>Evaluasi 10 Seed"]
+        P2["Profil Benchmark (Deterministik)<br/>Evaluasi 50 Seed"]
         ENV["TrafficIntersectionEnv<br/>8 Lajur FIFO, 4 Fase, Safety Interlock"]
         P1 --> ENV
         P2 -.-> ENV
@@ -53,7 +53,7 @@ Pada `TrafficProfileFactory` (`src/fly_traffic/environment/traffic_profiles.py`)
 
 | Aspek | Mode Training (`profile_name="mixed"`) | Mode Benchmark (`AgentEvaluator`) |
 |---|---|---|
-| **Konfigurasi Default** | `TrafficEnvConfig.profile_name = "mixed"` (dipakai oleh 8 env paralel di `PPOTrainer`) | `BenchmarkConfig.scenarios = ("normal", "asymmetric", "rush_hour", "stress_test")` pada 10 seed (`1000..1009`) |
+| **Konfigurasi Default** | `TrafficEnvConfig.profile_name = "mixed"` (dipakai oleh 8 env paralel di `PPOTrainer`) | `BenchmarkConfig.scenarios = ("normal", "asymmetric", "rush_hour", "stress_test")` pada 50 seed (`1000..1049`) |
 | **Pemilihan Skenario per Episode** | Setiap `reset()` memilih acak terbobot: `normal`, `asymmetric`, `asymmetric_ew`, `rush_hour` (`2/9` tiap template) dan `stress_train` (`1/9`) | Skenario tetap dan deterministik per rangkaian evaluasi |
 | **Jitter Laju Kedatangan** | Dikalikan faktor acak `scale ~ Uniform(0.85, 1.15)` (kecuali `stress_train` yang memakai batas seragam tersendiri) | Tanpa jitter (`rate_scale = 1.0`) |
 | **Tujuan** | Mencegah *overfitting* pada satu arah kepadatan dan melatih ketahanan terhadap lonjakan beban | Mengukur perbandingan adil antar agen (`Fixed Timer`, `PPO-MLP`, `PPO-GRU`, `Shuffled Connectome`, `Fly Connectome PPO`) |
