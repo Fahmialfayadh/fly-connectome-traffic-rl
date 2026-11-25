@@ -10,7 +10,7 @@ Keempat agen berbasis neural network diseimbangkan pada anggaran parameter terla
 | `fly_shuffled` | `FlyConnectomePolicy` | `2.500` neuron | `70.006` | `70.006` (+`87.171` buffer *frozen*) | `ConnectomeRecurrentCell` (graf *global rewiring*) |
 | `gru` | `GRUBaselinePolicy` | `105` unit | `69.725` | `69.725` | `Linear(22, 105) + Tanh -> GRUCell(105, 105)` |
 | `mlp` | `MLPBaselinePolicy` | `1` (placeholder statis) | `69.755` | `69.755` | `Linear(22, 250) + Tanh -> Linear(250, 250) + Tanh` |
-| `fixed_timer` | `FixedTimerAgent` | Tidak ada (stateless) | `0` | `0` | Siklus tetap `phase_durations = (10, 6, 10, 6)` langkah |
+| `fixed_timer` | `FixedTimerAgent` | Tidak ada (stateless) | `0` | `0` | Siklus tetap `phase_durations = (10, 6, 10, 6)` langkah — fase lurus (`NS_STRAIGHT`, `EW_STRAIGHT`) 10 langkah (20 s), fase belok (`NS_TURN`, `EW_TURN`) 6 langkah (12 s) — diulang berurutan tanpa membaca antrean. |
 
 *(Catatan: `MLPBaselinePolicy` menyediakan `hidden_dim = 1` dummy tensor agar berbagi API `BaseRecurrentActorCritic` yang sama dengan `PPOTrainer`, sekaligus menyimpan `_last_layer1` & `_last_layer2` saat `torch.no_grad()` untuk telemetri Web UI.)*
 

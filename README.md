@@ -18,6 +18,12 @@ Repositori ini menyertakan sub-konektom hasil ekstraksi (`artifacts/fly_subconne
   - **Benchmark & Connectome (`/benchmark`)**: Evaluasi deterministik multi-skenario langsung dari antarmuka web, ringkasan statistik graf `FAFB v783`, serta tabel uji farmakologi dan lesi.
   - **3D Architecture (`/architecture`) & Documentation (`/docs`)**: Eksplorasi 3D aliran *Forward Pass* vs *Backward Gradient* pada `FlyConnectomePolicy` dan laporan teknis interaktif.
 
+| Live Simulation & 3D Fly Brain (`/simulation`) | Training Studio & Live Policy Preview (`/training`) |
+|:---:|:---:|
+| ![Live Simulation & 3D Brain](artifacts/demo/main_page.png) | ![Training Studio](artifacts/demo/train_page.png) |
+| **Benchmark & Connectome Analytics (`/benchmark`)** | **3D Interactive Architecture (`/architecture`)** |
+| ![Benchmark & Connectome](artifacts/demo/Benchmark_page.png) | ![3D Architecture](artifacts/demo/3d%20Architecture.png) |
+
 ---
 
 ## Instalasi & Cara Menjalankan
